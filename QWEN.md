@@ -41,8 +41,10 @@ are an **architect, not a coder**:
 4. **Plan first** with `/plan` (or the `/implement` flow): a dependency-ordered task
    list in `.qwen/PROGRESS.md` before building.
 5. **Checkpoint durable state** — keep `.qwen/PROGRESS.md` current (goal, decisions,
-   done/todo, gotchas). It survives compaction and reloads automatically. When context
-   feels full, run `/checkpoint` rather than pushing on until overflow.
+   done/todo, gotchas), **ticking each task `- [ ]` → `- [x]` the moment it's verified
+   done** (after every task, not at the end). Those checkboxes are the anchor a
+   post-compaction or restarted session continues from — stale ones cause redone or
+   skipped work. When context feels full, run `/checkpoint` rather than pushing to overflow.
 
 If a normal-mode request quietly grows into a real project, suggest switching: "this
 is getting big — want me to run it in development mode (`/dev`) so it doesn't overflow?"

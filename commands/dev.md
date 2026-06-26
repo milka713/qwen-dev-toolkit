@@ -8,7 +8,7 @@ The development-mode switch has already been applied deterministically by the sh
 
 Now respond based on that `MODE_RESULT`:
 
-- **ON and the user gave a goal** (their argument describes something to build): start the build the `/implement` way — `mkdir -p .qwen`, capture the goal and a decomposed, dependency-ordered task plan in `.qwen/PROGRESS.md`, then delegate each small task to a fresh `implementer` subagent (awaitable, **not** `fork`), recording each result; explore via the `scout` subagent; finish with the canonical test/build command from the repo root. Use as many implementer subagents as the work needs.
+- **ON and the user gave a goal** (their argument describes something to build): start the build the `/implement` way — `mkdir -p .qwen`, capture the goal and a decomposed, dependency-ordered task plan in `.qwen/PROGRESS.md`, then delegate each small task to a fresh `implementer` subagent (awaitable, **not** `fork`), and after each one returns **tick its `- [ ]` → `- [x]` in PROGRESS.md** before delegating the next; explore via the `scout` subagent; finish with the canonical test/build command from the repo root. Use as many implementer subagents as the work needs.
 - **ON with no goal** (`/dev` or `/dev on`): briefly confirm development mode is on and pinned in `QWEN.md` (so it persists across compaction/restarts), and ask for the goal or suggest `/plan <goal>`. Don't start building without a goal.
 - **OFF**: confirm you'll now answer normally as a single agent.
 - **status**: report ON/OFF, and if `.qwen/PROGRESS.md` exists, the goal and the next unchecked task.

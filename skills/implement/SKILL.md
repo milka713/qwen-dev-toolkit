@@ -83,13 +83,13 @@ Run tasks **sequentially by default** (later tasks usually depend on earlier one
 
 ## Step 5 — Record the result, then continue
 
-When an implementer returns:
+As soon as an implementer returns, and **before you delegate the next task**, update `.qwen/PROGRESS.md` — this is a required step, not optional bookkeeping:
 1. Read its `STATUS`/`SUMMARY`/`VERIFIED`/`FOLLOW-UPS`/`NOTES`.
-2. Update `.qwen/PROGRESS.md`: check off the task, append a one-line Log entry (outcome + files + how verified), and add any NOTES to Gotchas.
-3. If `STATUS: partial`, add the reported FOLLOW-UPS as new tasks and re-delegate them as fresh subagents — never let a half-done task linger.
+2. **Tick the task's checkbox `- [ ]` → `- [x]`** in the Task plan, append a one-line Log entry (outcome + files + how verified), and add any NOTES to Gotchas. The checkboxes are the **recovery anchor**: if a compaction or restart happens, the next session re-reads this file and continues from the first unchecked `- [ ]` — an unticked finished task means it gets needlessly redone, and a falsely-ticked one means it gets skipped. Keep them honest and current.
+3. If `STATUS: partial`, add the reported FOLLOW-UPS as new unchecked tasks and re-delegate them as fresh subagents — never let a half-done task linger.
 4. If `STATUS: blocked`, surface the blocker to the user if it needs their input; otherwise delegate a focused investigation/fix task.
 
-Keep this file updated continuously — it is what makes the build survivable. Do **not** accumulate full implementer transcripts in your context; the one-line Log entry is enough.
+Update this file after **every** task, not in a batch at the end. Do **not** accumulate full implementer transcripts in your context; the one-line Log entry is enough.
 
 ## Step 6 — Integration verification
 
@@ -97,7 +97,7 @@ After the task plan is complete, run (or delegate) one end-to-end check that the
 
 Run the suite the way a fresh checkout / CI would — the **canonical command from the repo root** (bare `pytest`, `npm test`, `cargo test`, `make test`), not an environment shortcut like `python -m pytest` or a hand-set `PYTHONPATH`. A green result that depends on such a shortcut is not a pass; it means the project is mis-packaged (a subagent that "verified" with a path trick can mask this). Fix the packaging so the standard command is green from a clean root, then re-run it.
 
-Run the project's checks as an **ordered quality gate** — **build/typecheck → lint → tests** — and stop to fix on the first failure before continuing. When the build is non-trivial, finish with a code-quality pass using the built-in `/review` (correctness/quality review) and `/simplify` (safe cleanup) skills, not just the security-focused `/audit`. Fix or re-delegate anything that fails. Only then report completion.
+Run the project's checks as an **ordered quality gate** — **build/typecheck → lint → tests** — and stop to fix on the first failure before continuing. When the build is non-trivial, finish with a code-quality pass using the built-in `/review` (correctness/quality review) and `/simplify` (safe cleanup) skills; and if it touches authentication, the network, files, secrets, or a database, run `/audit` (security) before reporting done. Fix or re-delegate anything that fails. Only then report completion.
 
 If **test-coverage mode** is active (a "Test-coverage mode" block is in your context), every task delegation must require tests, and this final step must measure coverage with the project's real tool and confirm it meets the target (≥90% on changed code) — below target or failing tests means keep working, not "done".
 
