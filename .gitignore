@@ -1,0 +1,11 @@
+# OS / editor cruft
+.DS_Store
+*.swp
+*~
+
+# Node / tooling (not used by the toolkit itself, but keep clones clean)
+node_modules/
+
+# qwen-code runtime state that may appear if you test inside this repo
+.qwen/PROGRESS.md
+.qwen/worktrees/

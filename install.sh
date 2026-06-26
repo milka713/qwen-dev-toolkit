@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+# qwen-dev-toolkit installer.
+# Copies skills, subagents and hook scripts into ~/.qwen, then idempotently merges
+# the hook + memory settings into ~/.qwen/settings.json and the workflow guidance
+# into ~/.qwen/QWEN.md — without touching any of your existing keys, env vars, or
+# API secrets. Safe to re-run (it overwrites only this toolkit's own files/blocks).
+set -euo pipefail
+
+SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+QHOME="${QWEN_HOME:-$HOME/.qwen}"
+HOOKS_DIR="$QHOME/hooks"
+
+command -v node >/dev/null || { echo "ERROR: node is required (qwen-code needs it too)."; exit 1; }
+
+echo "Installing qwen-dev-toolkit into $QHOME"
+mkdir -p "$QHOME/skills" "$QHOME/agents" "$QHOME/commands" "$HOOKS_DIR"
+
+# 1) Skills, subagents, the /dev command, and hooks — plain file copies.
+for s in implement plan checkpoint; do
+  mkdir -p "$QHOME/skills/$s"
+  cp "$SRC/skills/$s/SKILL.md" "$QHOME/skills/$s/SKILL.md"
+done
+cp "$SRC/agents/implementer.md" "$SRC/agents/scout.md" "$QHOME/agents/"
+cp "$SRC/commands/dev.md" "$SRC/commands/_dev-toggle.sh" "$QHOME/commands/"
+chmod +x "$QHOME/commands/_dev-toggle.sh"
+cp "$SRC/hooks/session-start-restore.js" "$SRC/hooks/pre-compact-steer.js" "$HOOKS_DIR/"
+echo "  ✓ skills (implement, plan, checkpoint)"
+echo "  ✓ /dev command"
+echo "  ✓ subagents (implementer, scout)"
+echo "  ✓ hook scripts"
+
+# 2) Merge hooks + memory into settings.json (preserve everything else).
+node - "$QHOME" <<'NODE'
+const fs = require('fs'), path = require('path');
+const qhome = process.argv[2];
+const file = path.join(qhome, 'settings.json');
+let s = {};
+try { s = JSON.parse(fs.readFileSync(file, 'utf8')); } catch (_) {}
+const hooksDir = path.join(qhome, 'hooks');
+const entry = (script, name) => ({ hooks: [{ type: 'command', command: 'node ' + path.join(hooksDir, script), name }] });
+s.hooks = s.hooks || {};
+// Replace only our named entries; keep any other hooks the user already has.
+const setHook = (event, script, name) => {
+  const others = (s.hooks[event] || []).filter(g => !(g.hooks || []).some(h => h.name === name));
+  s.hooks[event] = [...others, entry(script, name)];
+};
+setHook('SessionStart', 'session-start-restore.js', 'restore-progress');
+setHook('PreCompact',   'pre-compact-steer.js',     'steer-compaction');
+s.memory = Object.assign({ enableManagedAutoMemory: true, enableManagedAutoDream: true }, s.memory || {});
+fs.writeFileSync(file, JSON.stringify(s, null, 2) + '\n');
+console.log('  ✓ settings.json merged (hooks + auto-memory); existing keys untouched');
+NODE
+
+# 3) Merge workflow guidance into ~/.qwen/QWEN.md between markers (idempotent).
+node - "$QHOME" "$SRC/QWEN.md" <<'NODE'
+const fs = require('fs'), path = require('path');
+const [qhome, guideFile] = process.argv.slice(2);
+const file = path.join(qhome, 'QWEN.md');
+const START = '<!-- qwen-dev-toolkit:start -->', END = '<!-- qwen-dev-toolkit:end -->';
+const guide = fs.readFileSync(guideFile, 'utf8').trim();
+const block = `${START}\n${guide}\n${END}`;
+let cur = '';
+try { cur = fs.readFileSync(file, 'utf8'); } catch (_) {}
+const re = new RegExp(START.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '[\\s\\S]*?' + END.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+let out;
+if (re.test(cur)) out = cur.replace(re, block);
+else out = (cur.trim() ? cur.trimEnd() + '\n\n' : '') + block + '\n';
+fs.writeFileSync(file, out);
+console.log('  ✓ QWEN.md guidance ' + (re.test(cur) ? 'updated' : 'added'));
+NODE
+
+echo
+echo "Done. Restart qwen-code (or start a new session) to load everything."
+echo "Verify:  /skills   ->  implement, checkpoint, plan"
+echo "         /agents manage  ->  implementer, scout"
+echo "         /dev status     ->  the /dev command responds"
+echo "Try:     /dev   then   /plan build me a small CLI todo app"
