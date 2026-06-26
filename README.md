@@ -7,7 +7,7 @@ small-context models** (e.g. a llama.cpp server with a ~90–100k window). It st
 builds stalling after a context overflow + lossy compaction by making the model an
 **architect that delegates**, with state that survives compaction.
 
-> 🇷🇺 [README.ru.md](README.ru.md)
+> 🇺🇸 English · [🇷🇺 Русский](README.ru.md)
 
 ## How it works
 
