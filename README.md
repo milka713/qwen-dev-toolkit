@@ -62,7 +62,7 @@ project `QWEN.md` (or `FACTS.md`), so the state survives compaction with no re-d
 | ------- | ------------ |
 | `/dev` · `on` · `off` · `status` · `<what to build>` | Development-mode switch for the whole architect-and-delegate workflow. `on` pins the dev block into `QWEN.md` (the session now plans in the main context and delegates to subagents); `off` removes it; `<goal>` turns it on **and** starts building. Idempotent; your other `QWEN.md` content is preserved. |
 | `/cover` · `on` · `off` · `status` | **Test-coverage mode.** When on, every feature must ship real tests covering edge/error paths, coverage is **measured** with the project's real tool (`pytest --cov`, `jest --coverage`, …) and must hit **≥90% on changed code** — so you get verified output, not a hollow "looks done" shell. |
-| `/pin <fact>` · `/pin list` | Pins a durable specific (server IP/port, deploy command, env quirk, where creds live) into a **compaction-proof `FACTS.md`** that's auto-loaded via `@FACTS.md` in `QWEN.md` and **gitignored** so it never leaks to the repo. Always in context, never compacted. |
+| `/pin <anything>` · `list` · `remove <text>` · `clear` | Remember **any** important info (server IP/port, deploy command, env quirk, a decision, a URL, a snippet) into a **compaction-proof `FACTS.md`** — auto-loaded via `@FACTS.md` in `QWEN.md` and **gitignored** so it never leaks to the repo. Always in context, never compacted. Per-project. |
 
 ### Skills (model- and user-invocable)
 
@@ -105,6 +105,30 @@ enabled.
   The model then plans in the main context and delegates **all** implementation to
   `implementer` subagents. Because the flag is pinned in `QWEN.md`, it stays on for the
   whole session **and after any compaction or restart**, until you run `/dev off`.
+
+---
+
+## Where everything lives (scope)
+
+`QWEN.md` is a **context file** qwen-code re-attaches as system context on every request
+(so it is never compacted). It is loaded from two places — there is **no session-only
+QWEN.md**:
+
+- `~/.qwen/QWEN.md` → **global** (every project)
+- `<project>/QWEN.md` and up the directory tree → **project** (the folder where you launched qwen)
+
+This toolkit puts each kind of state where it belongs:
+
+| State | Lives in | Scope |
+| ----- | -------- | ----- |
+| Skills, subagents, commands, hooks, base guidance | `~/.qwen/…` | **Global** — available in every project |
+| `/pin` memory (IP/port, decisions, anything) | `<project>/FACTS.md` (+ `@FACTS.md` in project `QWEN.md`), gitignored | **Project** |
+| `/dev` & `/cover` flags | a block in `<project>/QWEN.md` | **Project**, sticky until `/dev off` / `/cover off` |
+| Durable task state | `<project>/.qwen/PROGRESS.md` | **Project** |
+
+So the toolkit itself is global, your pinned memory and flags are per-project, and
+everything that must outlive a compaction lives in a `QWEN.md`-loaded file, not in the
+conversation.
 
 ---
 
