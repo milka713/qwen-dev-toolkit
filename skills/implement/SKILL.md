@@ -97,6 +97,8 @@ After the task plan is complete, run (or delegate) one end-to-end check that the
 
 Run the suite the way a fresh checkout / CI would — the **canonical command from the repo root** (bare `pytest`, `npm test`, `cargo test`, `make test`), not an environment shortcut like `python -m pytest` or a hand-set `PYTHONPATH`. A green result that depends on such a shortcut is not a pass; it means the project is mis-packaged (a subagent that "verified" with a path trick can mask this). Fix the packaging so the standard command is green from a clean root, then re-run it. Fix or re-delegate anything that fails. Only then report completion.
 
+If **test-coverage mode** is active (a "Test-coverage mode" block is in your context), every task delegation must require tests, and this final step must measure coverage with the project's real tool and confirm it meets the target (≥90% on changed code) — below target or failing tests means keep working, not "done".
+
 ## Step 7 — Report to the user
 
 Summarize: what was built, where it lives, how it was verified, and anything left open. Point them at `.qwen/PROGRESS.md` for the full trail.

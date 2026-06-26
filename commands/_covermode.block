@@ -1,0 +1,8 @@
+<!-- covermode:start -->
+## 🧪 Test-coverage mode — ACTIVE
+This project is in **high test-coverage mode**. No feature is "done" until it ships tests and they pass:
+- Every implementation task must add or update tests for its new/changed code, covering edge cases and error paths — not just the happy path.
+- Target **≥90% line coverage on changed code**. Measure it with the project's real coverage tool (`pytest --cov`, `jest --coverage`, `vitest --coverage`, `go test -cover`, `cargo tarpaulin`, etc.) and report the **actual measured number** — never claim coverage you did not run.
+- Gate completion on it: if tests fail or coverage is below target, keep working; do not present hollow, unverified output. When delegating, tell each `implementer` subagent to ship tests and report measured coverage.
+(Turn off with `/cover off`.)
+<!-- covermode:end -->

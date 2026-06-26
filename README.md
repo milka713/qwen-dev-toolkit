@@ -53,17 +53,16 @@ event-restored big state = the right split.)
 
 ## Components — what each piece does
 
-### `/dev` — development-mode switch (a custom command)
-The on/off switch for the whole architect-and-delegate workflow. Implemented as a
-**custom command** so the file change is **deterministic** (it runs a shell step via
-`!{…}`, not left to the model's discretion).
+### Commands — deterministic, user-invoked toggles
+Implemented as **custom commands** so their file change is **deterministic** (they run a
+shell step via `!{…}`, not left to the model's discretion). Each pins a block into the
+project `QWEN.md` (or `FACTS.md`), so the state survives compaction with no re-declaration.
 
-| Invocation | What it does |
-| ---------- | ------------ |
-| `/dev` or `/dev on` | Pins the development-mode block into the project `QWEN.md` (idempotent). The session now plans in the main context and delegates implementation to subagents. |
-| `/dev off` | Removes the block (your other `QWEN.md` content is preserved). Back to normal single-agent answers. |
-| `/dev status` | Reports ON/OFF, plus the current goal and next task if a `PROGRESS.md` exists. |
-| `/dev <what to build>` | Turns the mode on **and** immediately starts building that goal through the delegated flow. |
+| Command | What it does |
+| ------- | ------------ |
+| `/dev` · `on` · `off` · `status` · `<what to build>` | Development-mode switch for the whole architect-and-delegate workflow. `on` pins the dev block into `QWEN.md` (the session now plans in the main context and delegates to subagents); `off` removes it; `<goal>` turns it on **and** starts building. Idempotent; your other `QWEN.md` content is preserved. |
+| `/cover` · `on` · `off` · `status` | **Test-coverage mode.** When on, every feature must ship real tests covering edge/error paths, coverage is **measured** with the project's real tool (`pytest --cov`, `jest --coverage`, …) and must hit **≥90% on changed code** — so you get verified output, not a hollow "looks done" shell. |
+| `/pin <fact>` · `/pin list` | Pins a durable specific (server IP/port, deploy command, env quirk, where creds live) into a **compaction-proof `FACTS.md`** that's auto-loaded via `@FACTS.md` in `QWEN.md` and **gitignored** so it never leaks to the repo. Always in context, never compacted. |
 
 ### Skills (model- and user-invocable)
 
@@ -72,6 +71,7 @@ The on/off switch for the whole architect-and-delegate workflow. Implemented as 
 | `/plan` | Turns a fuzzy or large request into a **dependency-ordered task list** written to `.qwen/PROGRESS.md`, ready for `/implement`. Explores the codebase via the read-only `scout` subagent (so the main context isn't filled with file reads), resolves open questions, and decides the structure. Produces a plan, not code. |
 | `/implement` | The **architect/orchestrator**. Captures the goal in `.qwen/PROGRESS.md`, decomposes the work into small tasks, and runs **each task in a fresh `implementer` subagent**, recording the result and ticking the task off as it goes. Ends with an end-to-end verification using the *canonical* command a clean checkout/CI would run. Use it for any multi-step or multi-file build. |
 | `/checkpoint` | **Smart, durable compaction.** Curates the important state (goal, decisions, done/todo, gotchas) into `.qwen/PROGRESS.md` — selection, not a raw dump — so it survives the engine's lossy auto-compression. `/checkpoint restore` reloads it. Run it when the context is getting full instead of pushing on until overflow. |
+| `/audit` | **Security review at the architecture + code level.** Hunts hardcoded secrets and secrets about to be committed, then reviews authn/authz, injection (SQL/command/path), SSRF, unsafe deserialization, weak crypto, CORS/config, and risky deps — reporting findings by severity and fixing the safe ones. Run before shipping security-sensitive work. |
 
 ### Subagents (delegated workers with isolated context)
 
@@ -86,6 +86,7 @@ The on/off switch for the whole architect-and-delegate workflow. Implemented as 
 | ---- | ------------------------ |
 | `SessionStart` → `session-start-restore.js` | If `.qwen/PROGRESS.md` exists, injects it at session start (and after a compaction/resume) so the model recovers the full goal/decisions/next-steps automatically. |
 | `PreCompact` → `pre-compact-steer.js` | Fires just before the built-in compressor runs and steers it to **preserve** the goal, decisions, file list, and done/todo split rather than dropping them. |
+| `PreToolUse` → `secret-guard.js` | **Deterministically blocks** any `write_file`/`edit`/`run_shell_command` whose content contains a hardcoded credential (private keys, AWS/OpenAI/GitHub/Slack/HF/… tokens, high-entropy secret assignments) or that stages/commits an obvious secret file (`.env`, `id_rsa`, `*.pem`). Enforces "no keys in code, no secrets in the repo" at the engine level instead of trusting the model to remember. Low false-positive: env-var usage and placeholders pass. |
 
 ### Context guidance (`QWEN.md`)
 A lean global working agreement installed at `~/.qwen/QWEN.md`: the two operating modes
@@ -151,8 +152,11 @@ Restart qwen-code, then:
 
 ```text
 /dev                                  # enter development mode (pinned in QWEN.md)
+/cover on                             # require real tests, ≥90% coverage on output
+/pin model server 10.0.0.5 port 8080  # pin infra facts (compaction-proof, gitignored)
 /plan add JWT auth to the API         # design → .qwen/PROGRESS.md
 /implement                            # execute the plan via delegated subagents
+/audit                                # security review before shipping
 /checkpoint                           # save durable state when the context gets full
 /checkpoint restore                   # reload state after a restart/compaction
 /dev off                              # back to normal single-agent mode

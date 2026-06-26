@@ -15,19 +15,19 @@ command -v node >/dev/null || { echo "ERROR: node is required (qwen-code needs i
 echo "Installing qwen-dev-toolkit into $QHOME"
 mkdir -p "$QHOME/skills" "$QHOME/agents" "$QHOME/commands" "$HOOKS_DIR"
 
-# 1) Skills, subagents, the /dev command, and hooks — plain file copies.
-for s in implement plan checkpoint; do
+# 1) Skills, subagents, commands and hooks — plain file copies.
+for s in implement plan checkpoint audit; do
   mkdir -p "$QHOME/skills/$s"
   cp "$SRC/skills/$s/SKILL.md" "$QHOME/skills/$s/SKILL.md"
 done
 cp "$SRC/agents/implementer.md" "$SRC/agents/scout.md" "$QHOME/agents/"
-cp "$SRC/commands/dev.md" "$SRC/commands/_dev-toggle.sh" "$QHOME/commands/"
-chmod +x "$QHOME/commands/_dev-toggle.sh"
-cp "$SRC/hooks/session-start-restore.js" "$SRC/hooks/pre-compact-steer.js" "$HOOKS_DIR/"
-echo "  ✓ skills (implement, plan, checkpoint)"
-echo "  ✓ /dev command"
+cp "$SRC"/commands/* "$QHOME/commands/"
+chmod +x "$QHOME"/commands/*.sh
+cp "$SRC/hooks/session-start-restore.js" "$SRC/hooks/pre-compact-steer.js" "$SRC/hooks/secret-guard.js" "$HOOKS_DIR/"
+echo "  ✓ skills (implement, plan, checkpoint, audit)"
+echo "  ✓ commands (/dev, /cover, /pin)"
 echo "  ✓ subagents (implementer, scout)"
-echo "  ✓ hook scripts"
+echo "  ✓ hook scripts (restore, compaction-steer, secret-guard)"
 
 # 2) Merge hooks + memory into settings.json (preserve everything else).
 node - "$QHOME" <<'NODE'
@@ -37,15 +37,20 @@ const file = path.join(qhome, 'settings.json');
 let s = {};
 try { s = JSON.parse(fs.readFileSync(file, 'utf8')); } catch (_) {}
 const hooksDir = path.join(qhome, 'hooks');
-const entry = (script, name) => ({ hooks: [{ type: 'command', command: 'node ' + path.join(hooksDir, script), name }] });
+const entry = (script, name, matcher) => {
+  const g = { hooks: [{ type: 'command', command: 'node ' + path.join(hooksDir, script), name }] };
+  if (matcher) g.matcher = matcher;
+  return g;
+};
 s.hooks = s.hooks || {};
 // Replace only our named entries; keep any other hooks the user already has.
-const setHook = (event, script, name) => {
+const setHook = (event, script, name, matcher) => {
   const others = (s.hooks[event] || []).filter(g => !(g.hooks || []).some(h => h.name === name));
-  s.hooks[event] = [...others, entry(script, name)];
+  s.hooks[event] = [...others, entry(script, name, matcher)];
 };
 setHook('SessionStart', 'session-start-restore.js', 'restore-progress');
 setHook('PreCompact',   'pre-compact-steer.js',     'steer-compaction');
+setHook('PreToolUse',   'secret-guard.js',          'secret-guard', 'write_file|edit|replace|run_shell_command');
 s.memory = Object.assign({ enableManagedAutoMemory: true, enableManagedAutoDream: true }, s.memory || {});
 fs.writeFileSync(file, JSON.stringify(s, null, 2) + '\n');
 console.log('  ✓ settings.json merged (hooks + auto-memory); existing keys untouched');
@@ -71,7 +76,9 @@ NODE
 
 echo
 echo "Done. Restart qwen-code (or start a new session) to load everything."
-echo "Verify:  /skills   ->  implement, checkpoint, plan"
+echo "Verify:  /skills   ->  implement, checkpoint, plan, audit"
 echo "         /agents manage  ->  implementer, scout"
-echo "         /dev status     ->  the /dev command responds"
+echo "         /dev status / /cover status / /pin list  ->  commands respond"
 echo "Try:     /dev   then   /plan build me a small CLI todo app"
+echo "         /cover on   (require ≥90% tested output)"
+echo "         /audit      (security review)"

@@ -1,0 +1,4 @@
+<!-- devmode:start -->
+## 🏗️ Development mode — ACTIVE
+This project is in **development mode**. Operate as an ARCHITECT, not a coder: keep the main context lean (goal, plan, short result summaries); delegate ALL implementation to `implementer` subagents (as many as the work needs, one per small task); delegate exploration to `scout`; keep `.qwen/PROGRESS.md` current. Do not write feature code directly in the main context. (Turn off with `/dev off`.)
+<!-- devmode:end -->

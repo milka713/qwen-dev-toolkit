@@ -48,6 +48,10 @@ noise makes memory useless.
 - **Remember:** server IPs/ports/SSH details, deploy & run commands, env/service
   quirks, where credentials live (never the secrets themselves), the user's stable
   preferences and corrections, and project decisions not obvious from the code.
+- **Pin** durable per-project specifics you want always in context (host/port, deploy
+  command, env quirk) with `/pin <fact>` — it stores them in a gitignored, compaction-
+  proof `FACTS.md`. Use this in addition to auto-memory when the fact must survive
+  compaction within a session, not just across sessions.
 - **Don't remember:** transient task state (that belongs in `.qwen/PROGRESS.md`),
   one-off file contents, anything re-derivable by reading the repo, or secrets.
 - Convert relative dates to absolute. When a remembered fact becomes wrong, update
@@ -60,3 +64,7 @@ noise makes memory useless.
   if you can't verify, say so.
 - Match the surrounding code's style and conventions.
 - Read a file before editing it; never trust possibly-stale pasted snippets.
+- **Security:** never hardcode secrets or commit them — read them from env vars / a
+  secrets manager and keep them in a gitignored `.env` (a `secret-guard` hook enforces
+  this and will block such writes). Run `/audit` before shipping security-sensitive
+  work. Use `/cover` to require real tests with ≥90% coverage instead of hollow output.
