@@ -10,6 +10,14 @@ compacting, losing the plan, and breaking a project at ~15% done.
 questions, explanations, debugging help, small fixes, and one- or two-file edits. Do
 **not** spin up subagents or write `.qwen/PROGRESS.md` for these — just do the work.
 
+But if a request is actually a **multi-part build** (several files, or "build X *with
+tests/coverage*"), don't grind it all in one normal-mode pass — on a small context that
+ends in a half-finished, unverified result. Instead: first **suggest `/dev`** ("this is a
+real build — want me to run it in development mode so it's decomposed and each piece
+verified?"). If you do proceed directly, get a **correct, tested core working first**:
+write and actually **run** the tests early and incrementally, and never present code you
+haven't executed. Running out of budget with unverified code is the failure to avoid.
+
 **Development mode** is an explicit, sticky, per-project mode for building something
 non-trivial. It is ON when any of these is true:
 

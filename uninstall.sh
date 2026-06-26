@@ -8,8 +8,9 @@ QHOME="${QWEN_HOME:-$HOME/.qwen}"
 rm -rf "$QHOME/skills/implement" "$QHOME/skills/checkpoint" "$QHOME/skills/plan" "$QHOME/skills/audit"
 rm -f  "$QHOME/agents/implementer.md" "$QHOME/agents/scout.md"
 rm -f  "$QHOME/commands/dev.md" "$QHOME/commands/cover.md" "$QHOME/commands/pin.md" \
-       "$QHOME/commands/_mode-toggle.sh" "$QHOME/commands/_devmode.block" \
-       "$QHOME/commands/_covermode.block" "$QHOME/commands/_pin.sh" \
+       "$QHOME/commands/status.md" "$QHOME/commands/_mode-toggle.sh" \
+       "$QHOME/commands/_devmode.block" "$QHOME/commands/_covermode.block" \
+       "$QHOME/commands/_pin.sh" "$QHOME/commands/_status.sh" \
        "$QHOME/commands/_dev-toggle.sh"
 rm -f  "$QHOME/hooks/session-start-restore.js" "$QHOME/hooks/pre-compact-steer.js" "$QHOME/hooks/secret-guard.js"
 echo "  ✓ removed skills, commands, subagents, hook scripts"

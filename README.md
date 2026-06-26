@@ -63,6 +63,7 @@ project `QWEN.md` (or `FACTS.md`), so the state survives compaction with no re-d
 | `/dev` · `on` · `off` · `status` · `<what to build>` | Development-mode switch for the whole architect-and-delegate workflow. `on` pins the dev block into `QWEN.md` (the session now plans in the main context and delegates to subagents); `off` removes it; `<goal>` turns it on **and** starts building. Idempotent; your other `QWEN.md` content is preserved. |
 | `/cover` · `on` · `off` · `status` | **Test-coverage mode.** When on, every feature must ship real tests covering edge/error paths, coverage is **measured** with the project's real tool (`pytest --cov`, `jest --coverage`, …) and must hit **≥90% on changed code** — so you get verified output, not a hollow "looks done" shell. |
 | `/pin <anything>` · `list` · `remove <text>` · `clear` | Remember **any** important info (server IP/port, deploy command, env quirk, a decision, a URL, a snippet) into a **compaction-proof `FACTS.md`** — auto-loaded via `@FACTS.md` in `QWEN.md` and **gitignored** so it never leaks to the repo. Always in context, never compacted. Per-project. |
+| `/status` | Read-only snapshot of the project's toolkit state at a glance: development mode on/off, test-coverage mode on/off, number of pinned facts, and the active goal with done/remaining tasks and the next one. |
 
 ### Skills (model- and user-invocable)
 

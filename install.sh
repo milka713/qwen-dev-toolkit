@@ -25,7 +25,7 @@ cp "$SRC"/commands/* "$QHOME/commands/"
 chmod +x "$QHOME"/commands/*.sh
 cp "$SRC/hooks/session-start-restore.js" "$SRC/hooks/pre-compact-steer.js" "$SRC/hooks/secret-guard.js" "$HOOKS_DIR/"
 echo "  ✓ skills (implement, plan, checkpoint, audit)"
-echo "  ✓ commands (/dev, /cover, /pin)"
+echo "  ✓ commands (/dev, /cover, /pin, /status)"
 echo "  ✓ subagents (implementer, scout)"
 echo "  ✓ hook scripts (restore, compaction-steer, secret-guard)"
 
