@@ -1,6 +1,6 @@
 ---
 name: plan
-description: Turn a fuzzy request into a concrete, dependency-ordered task plan written to .qwen/PROGRESS.md, ready to hand to /implement. Explores via the read-only scout subagent (keeping the main context clean), resolves open questions, and decomposes the work into small independently-verifiable tasks. Use before building something non-trivial, or when a request is too big/vague to start. Invoke /plan or /plan <what you want>.
+description: Turn a fuzzy request into a concrete, dependency-ordered task plan written to .qwen/PROGRESS.md, ready to hand to /implement. Explores via the read-only scout subagent (keeping the main context clean), resolves open questions, and decomposes the work into small independently-verifiable tasks. Use PROACTIVELY before building something non-trivial, or when a request is too big/vague to start (for very vague asks, /brainstorm first). Invoke /plan or /plan <what you want>.
 argument-hint: '[what you want to build]'
 priority: 15
 allowedTools:

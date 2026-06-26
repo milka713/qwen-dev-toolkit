@@ -1,6 +1,6 @@
 ---
 name: audit
-description: Security review at the architecture and code level — find hardcoded secrets, secrets about to be committed, authn/authz gaps, injection (SQL/command/path), unsafe deserialization, SSRF, missing input validation, weak crypto, and risky dependencies. Use before shipping, before a commit/push, after building an auth/network/file/DB feature, or when the user asks to check security. Invoke with /audit or /audit <focus or path>.
+description: Security review at the architecture and code level — find hardcoded secrets, secrets about to be committed, authn/authz gaps, injection (SQL/command/path), unsafe deserialization, SSRF, missing input validation, weak crypto, and risky dependencies. Use PROACTIVELY before shipping, before a commit/push, after building an auth/network/file/DB feature, or when the user asks to check security. Invoke with /audit or /audit <focus or path>.
 argument-hint: '[focus area or path]'
 priority: 20
 allowedTools:
@@ -41,6 +41,7 @@ Reason about the design, not just lines:
 - **Crypto:** no MD5/SHA1 for passwords (use bcrypt/argon2), no ECB, no hardcoded IV/salt, TLS verification not disabled.
 - **Transport & config:** debug mode off in prod, permissive CORS (`*` with credentials), security headers, default/weak credentials.
 - **Dependencies:** obviously outdated or known-risky packages; run the ecosystem audit if cheap (`npm audit`, `pip-audit`).
+- **Static analysis:** if `semgrep` or `codeql` is installed, run a quick automated pass (e.g. `semgrep --config auto`) and fold its findings into the report; otherwise rely on the manual review above. Don't block on installing heavy tooling.
 
 ## Step 4 — Report
 

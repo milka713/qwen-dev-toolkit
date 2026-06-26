@@ -1,6 +1,6 @@
 ---
 name: implement
-description: Build a feature or whole project to completion without losing context. The main session stays an architect — it decomposes the work and delegates each chunk to fresh implementer subagents, keeping its own context small so large projects finish instead of stalling at ~15% after a compaction. Use for any multi-step or multi-file build, "implement X", "build me a Y", "finish this project". Invoke with /implement or /implement <what to build>.
+description: Build a feature or whole project to completion without losing context. The main session stays an architect — it decomposes the work and delegates each chunk to fresh implementer subagents, keeping its own context small so large projects finish instead of stalling at ~15% after a compaction. Use PROACTIVELY for any multi-step or multi-file build, "implement X", "build me a Y", "finish this project". Invoke with /implement or /implement <what to build>.
 argument-hint: '[what to build]'
 priority: 20
 allowedTools:
@@ -95,7 +95,9 @@ Keep this file updated continuously — it is what makes the build survivable. D
 
 After the task plan is complete, run (or delegate) one end-to-end check that the pieces work together: build the whole thing, run the full test suite, or actually launch/exercise the app against the acceptance criteria from Step 1.
 
-Run the suite the way a fresh checkout / CI would — the **canonical command from the repo root** (bare `pytest`, `npm test`, `cargo test`, `make test`), not an environment shortcut like `python -m pytest` or a hand-set `PYTHONPATH`. A green result that depends on such a shortcut is not a pass; it means the project is mis-packaged (a subagent that "verified" with a path trick can mask this). Fix the packaging so the standard command is green from a clean root, then re-run it. Fix or re-delegate anything that fails. Only then report completion.
+Run the suite the way a fresh checkout / CI would — the **canonical command from the repo root** (bare `pytest`, `npm test`, `cargo test`, `make test`), not an environment shortcut like `python -m pytest` or a hand-set `PYTHONPATH`. A green result that depends on such a shortcut is not a pass; it means the project is mis-packaged (a subagent that "verified" with a path trick can mask this). Fix the packaging so the standard command is green from a clean root, then re-run it.
+
+Run the project's checks as an **ordered quality gate** — **build/typecheck → lint → tests** — and stop to fix on the first failure before continuing. When the build is non-trivial, finish with a code-quality pass using the built-in `/review` (correctness/quality review) and `/simplify` (safe cleanup) skills, not just the security-focused `/audit`. Fix or re-delegate anything that fails. Only then report completion.
 
 If **test-coverage mode** is active (a "Test-coverage mode" block is in your context), every task delegation must require tests, and this final step must measure coverage with the project's real tool and confirm it meets the target (≥90% on changed code) — below target or failing tests means keep working, not "done".
 

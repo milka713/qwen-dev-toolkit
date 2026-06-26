@@ -16,18 +16,18 @@ echo "Installing qwen-dev-toolkit into $QHOME"
 mkdir -p "$QHOME/skills" "$QHOME/agents" "$QHOME/commands" "$HOOKS_DIR"
 
 # 1) Skills, subagents, commands and hooks — plain file copies.
-for s in implement plan checkpoint audit; do
+for s in implement plan checkpoint audit brainstorm; do
   mkdir -p "$QHOME/skills/$s"
   cp "$SRC/skills/$s/SKILL.md" "$QHOME/skills/$s/SKILL.md"
 done
 cp "$SRC/agents/implementer.md" "$SRC/agents/scout.md" "$QHOME/agents/"
 cp "$SRC"/commands/* "$QHOME/commands/"
 chmod +x "$QHOME"/commands/*.sh
-cp "$SRC/hooks/session-start-restore.js" "$SRC/hooks/pre-compact-steer.js" "$SRC/hooks/secret-guard.js" "$HOOKS_DIR/"
-echo "  ✓ skills (implement, plan, checkpoint, audit)"
+cp "$SRC"/hooks/*.js "$HOOKS_DIR/"
+echo "  ✓ skills (implement, plan, checkpoint, audit, brainstorm)"
 echo "  ✓ commands (/dev, /cover, /pin, /status)"
 echo "  ✓ subagents (implementer, scout)"
-echo "  ✓ hook scripts (restore, compaction-steer, secret-guard)"
+echo "  ✓ hook scripts (restore, compaction-steer, secret-guard, skill-reminder)"
 
 # 2) Merge hooks + memory into settings.json (preserve everything else).
 node - "$QHOME" <<'NODE'
@@ -48,9 +48,10 @@ const setHook = (event, script, name, matcher) => {
   const others = (s.hooks[event] || []).filter(g => !(g.hooks || []).some(h => h.name === name));
   s.hooks[event] = [...others, entry(script, name, matcher)];
 };
-setHook('SessionStart', 'session-start-restore.js', 'restore-progress');
-setHook('PreCompact',   'pre-compact-steer.js',     'steer-compaction');
-setHook('PreToolUse',   'secret-guard.js',          'secret-guard', 'write_file|edit|replace|run_shell_command');
+setHook('SessionStart',    'session-start-restore.js', 'restore-progress');
+setHook('PreCompact',      'pre-compact-steer.js',     'steer-compaction');
+setHook('PreToolUse',      'secret-guard.js',          'secret-guard', 'write_file|edit|replace|run_shell_command');
+setHook('UserPromptSubmit','skill-reminder.js',        'skill-reminder');
 s.memory = Object.assign({ enableManagedAutoMemory: true, enableManagedAutoDream: true }, s.memory || {});
 fs.writeFileSync(file, JSON.stringify(s, null, 2) + '\n');
 console.log('  ✓ settings.json merged (hooks + auto-memory); existing keys untouched');

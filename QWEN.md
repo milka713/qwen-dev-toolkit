@@ -72,6 +72,11 @@ noise makes memory useless.
   if you can't verify, say so.
 - Match the surrounding code's style and conventions.
 - Read a file before editing it; never trust possibly-stale pasted snippets.
+- **Simplicity-first:** prefer the simplest design that meets the real requirement;
+  reducing complexity is a primary goal, not an afterthought. Make **surgical changes** —
+  touch only what the task needs, don't refactor unrelated code along the way.
+- For a vague or broad build request, clarify requirements first (`/brainstorm`) before
+  planning — a few questions beat building the wrong thing on a small context.
 - **Security:** never hardcode secrets or commit them — read them from env vars / a
   secrets manager and keep them in a gitignored `.env` (a `secret-guard` hook enforces
   this and will block such writes). Run `/audit` before shipping security-sensitive

@@ -5,14 +5,16 @@
 set -euo pipefail
 QHOME="${QWEN_HOME:-$HOME/.qwen}"
 
-rm -rf "$QHOME/skills/implement" "$QHOME/skills/checkpoint" "$QHOME/skills/plan" "$QHOME/skills/audit"
+rm -rf "$QHOME/skills/implement" "$QHOME/skills/checkpoint" "$QHOME/skills/plan" \
+       "$QHOME/skills/audit" "$QHOME/skills/brainstorm"
 rm -f  "$QHOME/agents/implementer.md" "$QHOME/agents/scout.md"
 rm -f  "$QHOME/commands/dev.md" "$QHOME/commands/cover.md" "$QHOME/commands/pin.md" \
        "$QHOME/commands/status.md" "$QHOME/commands/_mode-toggle.sh" \
        "$QHOME/commands/_devmode.block" "$QHOME/commands/_covermode.block" \
        "$QHOME/commands/_pin.sh" "$QHOME/commands/_status.sh" \
        "$QHOME/commands/_dev-toggle.sh"
-rm -f  "$QHOME/hooks/session-start-restore.js" "$QHOME/hooks/pre-compact-steer.js" "$QHOME/hooks/secret-guard.js"
+rm -f  "$QHOME/hooks/session-start-restore.js" "$QHOME/hooks/pre-compact-steer.js" \
+       "$QHOME/hooks/secret-guard.js" "$QHOME/hooks/skill-reminder.js"
 echo "  ✓ removed skills, commands, subagents, hook scripts"
 
 node - "$QHOME" <<'NODE'
@@ -20,7 +22,7 @@ const fs = require('fs'), path = require('path');
 const qhome = process.argv[2];
 const file = path.join(qhome, 'settings.json');
 let s; try { s = JSON.parse(fs.readFileSync(file, 'utf8')); } catch (_) { process.exit(0); }
-const names = new Set(['restore-progress', 'steer-compaction', 'secret-guard']);
+const names = new Set(['restore-progress', 'steer-compaction', 'secret-guard', 'skill-reminder']);
 for (const ev of Object.keys(s.hooks || {})) {
   s.hooks[ev] = (s.hooks[ev] || []).filter(g => !(g.hooks || []).some(h => names.has(h.name)));
   if (!s.hooks[ev].length) delete s.hooks[ev];

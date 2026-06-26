@@ -29,7 +29,7 @@ not left to the model.
 | Command | What it does |
 | ------- | ------------ |
 | `/dev` · `on` · `off` · `status` · `<goal>` | Development-mode switch. `on` pins the dev block into `QWEN.md` → the session plans and delegates to `implementer` subagents; `off` removes it; `<goal>` enables it **and** starts building. Idempotent; other `QWEN.md` content is kept. |
-| `/cover` · `on` · `off` · `status` | Test-coverage mode. Every feature must ship real tests; coverage is **measured** (`pytest --cov`, `jest --coverage`, …) and must hit **≥90% on changed code** — verified output, not a hollow shell. |
+| `/cover` · `on` · `off` · `status` | Test-first / coverage mode. Build **test-first** (red→green→refactor); coverage is **measured** (`pytest --cov`, `jest --coverage`, …) and must hit **≥90% on changed code** — verified output, not a hollow shell. |
 | `/pin <anything>` · `list` · `remove <text>` · `clear` | Remember any info (IP/port, deploy command, decision, URL, snippet) into a compaction-proof `FACTS.md` — auto-loaded via `@FACTS.md` and **gitignored** so it can't leak. Per-project. |
 | `/status` | Read-only snapshot: dev/cover mode, pinned-fact count, current goal and next task. |
 
@@ -37,6 +37,7 @@ not left to the model.
 
 | Skill | What it does |
 | ----- | ------------ |
+| `/brainstorm` | Clarifies and pressure-tests requirements **before** building (scope, success criteria, edge cases, constraints) so a small context isn't spent building the wrong thing. Produces an agreed spec, then hands to `/plan`. |
 | `/plan` | Turns a fuzzy/large request into a dependency-ordered task list in `.qwen/PROGRESS.md`. Explores via the read-only `scout`. Produces a plan, not code. |
 | `/implement` | Orchestrator: captures the goal, decomposes it, runs **each task in a fresh `implementer` subagent**, then verifies end-to-end with the canonical command. For any multi-step build. |
 | `/checkpoint` | Curates the important state into `.qwen/PROGRESS.md` so it survives lossy auto-compression. `/checkpoint restore` reloads it. |
@@ -56,6 +57,7 @@ not left to the model.
 | `SessionStart` → `session-start-restore.js` | Re-injects `.qwen/PROGRESS.md` at session start / after compaction, so the model recovers the goal and next steps. |
 | `PreCompact` → `pre-compact-steer.js` | Steers the built-in compressor to keep the goal, decisions, file list and done/todo. |
 | `PreToolUse` → `secret-guard.js` | **Blocks** any write/edit/command containing a hardcoded credential (private keys, AWS/OpenAI/GitHub/Slack/HF tokens, …) or that commits a secret file (`.env`, `id_rsa`, `*.pem`). Env-var usage and placeholders pass. |
+| `UserPromptSubmit` → `skill-reminder.js` | Small local models under-trigger model-invoked skills; this injects a short, targeted reminder (e.g. "looks security-related → `/audit`") only when the prompt clearly matches, so the right skill actually fires. Silent on trivial prompts. |
 
 Plus a lean `~/.qwen/QWEN.md` (operating modes + memory discipline) and native auto-memory.
 

@@ -1,6 +1,6 @@
 ---
 name: checkpoint
-description: Smart, durable context compaction. Curate the important state of the current work into .qwen/PROGRESS.md so it survives the engine's lossy auto-compression, a restart, or a /clear — and reload it to recover. Use when context is getting full, before a risky long task, or when the session feels like it's forgetting earlier decisions. Invoke /checkpoint to save, /checkpoint restore to reload.
+description: Smart, durable context compaction. Curate the important state of the current work into .qwen/PROGRESS.md so it survives the engine's lossy auto-compression, a restart, or a /clear — and reload it to recover. Use PROACTIVELY when context is getting full, before a risky long task, or when the session feels like it's forgetting earlier decisions. Invoke /checkpoint to save, /checkpoint restore to reload.
 argument-hint: '[restore]'
 priority: 20
 allowedTools:
