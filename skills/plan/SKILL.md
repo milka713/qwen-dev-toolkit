@@ -27,7 +27,7 @@ For existing code, call the `agent` tool with `subagent_type: "scout"` and a pre
 
 ## Step 3 — Decompose
 
-Break the work into small, vertical, independently-verifiable tasks, each sized to fit inside one implementer subagent's context (well under ~60k tokens of read+write). Order them by dependency so each builds on verified prior work. Prefer "model + endpoint + test" slices over horizontal "do all the models, then all the endpoints" layers.
+Break the work into the **smallest cohesive, independently-verifiable units** — prefer **more, smaller tasks over fewer big ones** (a local model handles a tight task far more reliably). Each task should be roughly one "quantum": a single function/method + its test, one endpoint, one small class, one migration. Order them by dependency so each builds on verified prior work. Be smart, not mechanical — each task must still be a meaningful, testable increment, not a trivial micro-step. Prefer thin vertical slices over horizontal "do all the models, then all the endpoints" layers.
 
 For each task note, briefly: what it produces, which files/areas it touches, and how it'll be verified.
 

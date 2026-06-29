@@ -25,7 +25,7 @@ cp "$SRC"/commands/* "$QHOME/commands/"
 chmod +x "$QHOME"/commands/*.sh
 cp "$SRC"/hooks/*.js "$HOOKS_DIR/"
 echo "  ✓ skills (implement, plan, checkpoint, audit, brainstorm)"
-echo "  ✓ commands (/dev, /cover, /pin, /status)"
+echo "  ✓ commands (/dev, /cover, /pin, /status, /maxagents)"
 echo "  ✓ subagents (implementer, scout)"
 echo "  ✓ hook scripts (restore, compaction-steer, secret-guard, skill-reminder)"
 

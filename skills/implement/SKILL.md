@@ -59,15 +59,18 @@ If working in an existing/unfamiliar codebase, do **not** read it yourself — d
 
 Only read files yourself when it's a couple of small, decisive files — never bulk-read.
 
-## Step 3 — Decompose into small tasks
+## Step 3 — Decompose into small, "quantized" tasks
 
-Break the goal into tasks where **each task fits comfortably inside one subagent's context** (rule of thumb: a task a focused engineer finishes in well under ~60k tokens of reading+writing). Good tasks are vertical and independently verifiable:
+Break the goal into the **smallest cohesive, independently-verifiable units** — and prefer **more, smaller tasks over fewer big ones**. A local model handles a tight, well-scoped task far more reliably than a broad one, so err on the side of finer granularity. A good task is roughly **one engineer "quantum"**: a single function or method + its test, one endpoint, one small class, one migration, one config wiring — something finishable in a few minutes and a few dozen-to-a-couple-hundred lines, well under a subagent's context.
 
-- ✅ "Create the data model + migration for todos and a passing unit test"
-- ✅ "Add the POST /todos endpoint wired to the model, with one integration test"
-- ❌ "Build the backend" (too big — will overflow the subagent, the exact failure we're avoiding)
+- ✅ "Implement `Money.add`/`subtract` with overflow checks + unit tests" (one unit)
+- ✅ "Add the `POST /todos` handler wired to the existing model, with one integration test"
+- ⚠️ "Build the todos CRUD" → too coarse; split into create / read / update / delete, each its own task
+- ❌ "Build the backend" (will overflow the subagent — the exact failure we avoid)
 
-Order tasks so each builds on verified prior work. Write the full list into `Task plan`. Sequence matters more than cleverness — a dependency-ordered chain of small tasks is the whole point.
+**Be smart, not mechanical:** each task must still be a meaningful, testable increment — don't fragment into trivial micro-steps ("create empty file", "add import") that add coordination overhead without value. Aim for the smallest piece that is worth verifying on its own.
+
+Order tasks so each builds on verified prior work, and write the full list into `Task plan`. A long, dependency-ordered chain of small tasks is exactly the point — it's what keeps every subagent inside its budget and the main context tiny.
 
 ## Step 4 — Delegate tasks one at a time
 
@@ -79,7 +82,7 @@ Write each delegation prompt to be **self-contained but short**:
 - Give the exact verification command to run if you know it.
 - Carry forward only the decisions/gotchas that matter for this task.
 
-Run tasks **sequentially by default** (later tasks usually depend on earlier ones). Only batch 2-3 in parallel when they are genuinely independent and touch different files.
+Run tasks **sequentially by default** (later tasks usually depend on earlier ones). Only batch a few in parallel when they are genuinely independent and touch different files — and if a **"Subagent limit — at most N at a time"** block is in your context (set via `/maxagents`), never exceed N awaitable subagents in one response (N=1 means strictly one at a time). This keeps a resource-constrained local model from being overwhelmed.
 
 ## Step 5 — Record the result, then continue
 
@@ -99,7 +102,7 @@ Run the suite the way a fresh checkout / CI would — the **canonical command fr
 
 Run the project's checks as an **ordered quality gate** — **build/typecheck → lint → tests** — and stop to fix on the first failure before continuing. When the build is non-trivial, finish with a code-quality pass using the built-in `/review` (correctness/quality review) and `/simplify` (safe cleanup) skills; and if it touches authentication, the network, files, secrets, or a database, run `/audit` (security) before reporting done. Fix or re-delegate anything that fails. Only then report completion.
 
-If **test-coverage mode** is active (a "Test-coverage mode" block is in your context), every task delegation must require tests, and this final step must measure coverage with the project's real tool and confirm it meets the target (≥90% on changed code) — below target or failing tests means keep working, not "done".
+If **test-first / coverage mode** is active (a "Test-coverage / TDD mode" block is in your context — it states the target %, default 80%), every task delegation must require tests, and this final step must measure coverage with the project's real tool and confirm it meets that target — below target or failing tests means keep working, not "done".
 
 ## Step 7 — Report to the user
 

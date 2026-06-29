@@ -29,9 +29,10 @@ not left to the model.
 | Command | What it does |
 | ------- | ------------ |
 | `/dev` · `on` · `off` · `status` · `<goal>` | Development-mode switch. `on` pins the dev block into `QWEN.md` → the session plans and delegates to `implementer` subagents; `off` removes it; `<goal>` enables it **and** starts building. Idempotent; other `QWEN.md` content is kept. |
-| `/cover` · `on` · `off` · `status` | Test-first / coverage mode. Build **test-first** (red→green→refactor); coverage is **measured** (`pytest --cov`, `jest --coverage`, …) and must hit **≥90% on changed code** — verified output, not a hollow shell. |
+| `/cover` · `<N>` · `off` · `status` | Test-first / coverage mode. Build **test-first** (red→green→refactor); coverage is **measured** and must hit the target — `/cover 95` sets 95%, plain `/cover` defaults to **80%**. Verified output, not a hollow shell. |
+| `/maxagents <N>` · `off` · `status` | Cap how many subagents run **at once** for a constrained local model (`/maxagents 1` = strictly sequential). Default = as many as the work needs. Deterministic, pinned. |
 | `/pin <anything>` · `list` · `remove <text>` · `clear` | Remember any info (IP/port, deploy command, decision, URL, snippet) into a compaction-proof `FACTS.md` — auto-loaded via `@FACTS.md` and **gitignored** so it can't leak. Per-project. |
-| `/status` | Read-only snapshot: dev/cover mode, pinned-fact count, current goal and next task. |
+| `/status` | Read-only snapshot: dev mode, coverage target, subagent cap, pinned-fact count, current goal and next task. |
 
 ### Skills (model- and user-invocable)
 
@@ -95,7 +96,8 @@ the dirs into `~/.qwen/` manually.
 
 ```text
 /dev                                 # development mode (architect + delegation)
-/cover on                            # require real tests, ≥90% coverage
+/cover 80                            # test-first, require ≥80% measured coverage
+/maxagents 2                         # cap parallel subagents (weak hardware)
 /pin model server 10.0.0.5:8080      # remember infra facts (compaction-proof, gitignored)
 /plan add JWT auth to the API        # design → .qwen/PROGRESS.md
 /implement                           # build via delegated subagents
@@ -106,6 +108,22 @@ the dirs into `~/.qwen/` manually.
 ```
 
 One-shot: `/dev build a Python CLI expense tracker with SQLite and pytest`.
+
+## Reliable auto-compaction (important for small windows)
+
+qwen-code auto-compacts before the context overflows, but it computes the trigger from
+the **model's context window size** — and for a custom OpenAI-compatible provider it
+can't detect that and falls back to a default that may be larger than your server's real
+window, so it compacts **too late** and overflows. Tell it the real size (a bit below your
+server's `-c` value, for margin) in `~/.qwen/settings.json`:
+
+```json
+{ "model": { "generationConfig": { "contextWindowSize": 120000 } } }
+```
+
+e.g. for a llama.cpp server started with `-c 125000`, set `120000`. The toolkit's
+`PreCompact` hook then steers that built-in compaction to keep the goal/decisions, and the
+`SessionStart` hook reloads `.qwen/PROGRESS.md` afterwards — so nothing important is lost.
 
 ## Requirements & uninstall
 

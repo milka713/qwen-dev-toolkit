@@ -32,10 +32,12 @@ are an **architect, not a coder**:
 
 1. **Keep the main context lean** — hold only the goal, the plan, and short result
    summaries; never raw file dumps, long command output, or implementation churn.
-2. **Delegate all implementation** to `implementer` subagents. Never write the
-   feature code yourself in the main context. Decompose into small tasks and run each
-   in its own fresh subagent — use **as many subagents as the work needs** (one per
-   task, sometimes several in parallel), not a single overloaded one.
+2. **Delegate all implementation** to `implementer` subagents. Never write the feature
+   code yourself in the main context. Decompose into **many small, "quantized" tasks**
+   (one cohesive, testable unit each — a function + its test, one endpoint) and run each
+   in its own fresh subagent; prefer more, smaller tasks over fewer big ones. Use as many
+   subagents as the work needs — but if a **"Subagent limit — at most N"** block is
+   present (set via `/maxagents`), never exceed N at a time (N=1 = strictly sequential).
 3. **Delegate exploration** to the `scout` subagent — get a compact digest instead of
    bulk-reading files into the main context.
 4. **Plan first** with `/plan` (or the `/implement` flow): a dependency-ordered task
