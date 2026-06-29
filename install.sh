@@ -12,8 +12,15 @@ HOOKS_DIR="$QHOME/hooks"
 
 command -v node >/dev/null || { echo "ERROR: node is required (qwen-code needs it too)."; exit 1; }
 
-echo "Installing qwen-dev-toolkit into $QHOME"
+VERSION="$(cat "$SRC/VERSION" 2>/dev/null || echo '?')"
+echo "Installing / updating qwen-dev-toolkit (v$VERSION) into $QHOME"
 mkdir -p "$QHOME/skills" "$QHOME/agents" "$QHOME/commands" "$HOOKS_DIR"
+
+# Clean stale files from older releases so updates don't leave orphans behind.
+# (Names that were renamed/removed across versions; current files are overwritten below.)
+rm -rf "$QHOME/skills/dev"                      # /dev became a command, was a skill
+rm -f  "$QHOME/commands/_dev-toggle.sh" \
+       "$QHOME/commands/_covermode.block"       # superseded by _mode-toggle.sh / _cover.sh
 
 # 1) Skills, subagents, commands and hooks — plain file copies.
 for s in implement plan checkpoint audit brainstorm; do
@@ -25,7 +32,7 @@ cp "$SRC"/commands/* "$QHOME/commands/"
 chmod +x "$QHOME"/commands/*.sh
 cp "$SRC"/hooks/*.js "$HOOKS_DIR/"
 echo "  ✓ skills (implement, plan, checkpoint, audit, brainstorm)"
-echo "  ✓ commands (/dev, /cover, /pin, /status, /maxagents)"
+echo "  ✓ commands (/dev, /cover, /pin, /status, /maxagents, /bro)"
 echo "  ✓ subagents (implementer, scout)"
 echo "  ✓ hook scripts (restore, compaction-steer, secret-guard, skill-reminder)"
 
@@ -68,11 +75,14 @@ const block = `${START}\n${guide}\n${END}`;
 let cur = '';
 try { cur = fs.readFileSync(file, 'utf8'); } catch (_) {}
 const re = new RegExp(START.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '[\\s\\S]*?' + END.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-let out;
-if (re.test(cur)) out = cur.replace(re, block);
-else out = (cur.trim() ? cur.trimEnd() + '\n\n' : '') + block + '\n';
+const had = re.test(cur);
+// Drop the existing marker block, then also strip any *bare* verbatim copy of the guide
+// that sits outside the markers (left behind by older installs or direct hand-edits),
+// so re-running never duplicates the guidance. Then append a single fresh block.
+let body = cur.replace(re, '').replace(guide, '').replace(/\n{3,}/g, '\n\n').trim();
+const out = (body ? body + '\n\n' : '') + block + '\n';
 fs.writeFileSync(file, out);
-console.log('  ✓ QWEN.md guidance ' + (re.test(cur) ? 'updated' : 'added'));
+console.log('  ✓ QWEN.md guidance ' + (had ? 'updated' : 'added'));
 NODE
 
 echo

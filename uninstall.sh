@@ -13,7 +13,8 @@ rm -f  "$QHOME/commands/dev.md" "$QHOME/commands/cover.md" "$QHOME/commands/pin.
        "$QHOME/commands/_mode-toggle.sh" "$QHOME/commands/_devmode.block" \
        "$QHOME/commands/_covermode.block" "$QHOME/commands/_pin.sh" \
        "$QHOME/commands/_status.sh" "$QHOME/commands/_cover.sh" \
-       "$QHOME/commands/_maxagents.sh" "$QHOME/commands/_dev-toggle.sh"
+       "$QHOME/commands/_maxagents.sh" "$QHOME/commands/bro.md" \
+       "$QHOME/commands/_bro.sh" "$QHOME/commands/_dev-toggle.sh"
 rm -f  "$QHOME/hooks/session-start-restore.js" "$QHOME/hooks/pre-compact-steer.js" \
        "$QHOME/hooks/secret-guard.js" "$QHOME/hooks/skill-reminder.js"
 echo "  ✓ removed skills, commands, subagents, hook scripts"
@@ -37,9 +38,10 @@ node - "$QHOME" <<'NODE'
 const fs = require('fs'), path = require('path');
 const file = path.join(process.argv[2], 'QWEN.md');
 let cur; try { cur = fs.readFileSync(file, 'utf8'); } catch (_) { process.exit(0); }
-const re = /\n*<!-- qwen-dev-toolkit:start -->[\s\S]*?<!-- qwen-dev-toolkit:end -->\n*/;
-fs.writeFileSync(file, cur.replace(re, '\n').replace(/\n{3,}/g, '\n\n').trimEnd() + '\n');
-console.log('  ✓ removed QWEN.md guidance block');
+let out = cur.replace(/\n*<!-- qwen-dev-toolkit:start -->[\s\S]*?<!-- qwen-dev-toolkit:end -->\n*/, '\n');
+out = out.replace(/\n*<!-- bromode:start -->[\s\S]*?<!-- bromode:end -->\n*/, '\n'); // /bro persona block
+fs.writeFileSync(file, out.replace(/\n{3,}/g, '\n\n').trimEnd() + '\n');
+console.log('  ✓ removed QWEN.md guidance + bro-mode block');
 NODE
 
 echo "Done. Restart qwen-code."

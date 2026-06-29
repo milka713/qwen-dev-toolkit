@@ -33,11 +33,13 @@ are an **architect, not a coder**:
 1. **Keep the main context lean** — hold only the goal, the plan, and short result
    summaries; never raw file dumps, long command output, or implementation churn.
 2. **Delegate all implementation** to `implementer` subagents. Never write the feature
-   code yourself in the main context. Decompose into **many small, "quantized" tasks**
-   (one cohesive, testable unit each — a function + its test, one endpoint) and run each
-   in its own fresh subagent; prefer more, smaller tasks over fewer big ones. Use as many
-   subagents as the work needs — but if a **"Subagent limit — at most N"** block is
-   present (set via `/maxagents`), never exceed N at a time (N=1 = strictly sequential).
+   code yourself in the main context. Decompose into **right-sized tasks — roughly one
+   module/class/file + its tests each** ("Goldilocks": small enough for one subagent, not
+   so tiny you split one component across tasks; a small-to-mid project is ~3–6 tasks).
+   Don't over-split — a task per function of the same file just adds overhead and is
+   slower with no quality gain. Run each task in its own fresh subagent; if a **"Subagent
+   limit — at most N"** block is present (`/maxagents`), never exceed N at a time
+   (N=1 = strictly sequential).
 3. **Delegate exploration** to the `scout` subagent — get a compact digest instead of
    bulk-reading files into the main context.
 4. **Plan first** with `/plan` (or the `/implement` flow): a dependency-ordered task
@@ -84,4 +86,7 @@ noise makes memory useless.
 - **Security:** never hardcode secrets or commit them — read them from env vars / a
   secrets manager and keep them in a gitignored `.env` (a `secret-guard` hook enforces
   this and will block such writes). Run `/audit` before shipping security-sensitive
-  work. Use `/cover` to require real tests with ≥90% coverage instead of hollow output.
+  work. Use `/cover` (test-first, measured coverage target, default 80%) to require real
+  tests instead of hollow output.
+
+

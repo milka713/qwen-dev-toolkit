@@ -27,7 +27,7 @@ For existing code, call the `agent` tool with `subagent_type: "scout"` and a pre
 
 ## Step 3 — Decompose
 
-Break the work into the **smallest cohesive, independently-verifiable units** — prefer **more, smaller tasks over fewer big ones** (a local model handles a tight task far more reliably). Each task should be roughly one "quantum": a single function/method + its test, one endpoint, one small class, one migration. Order them by dependency so each builds on verified prior work. Be smart, not mechanical — each task must still be a meaningful, testable increment, not a trivial micro-step. Prefer thin vertical slices over horizontal "do all the models, then all the endpoints" layers.
+Break the work into **right-sized, independently-verifiable tasks — roughly one module/class/file + its tests per task** ("Goldilocks" size: small enough to fit one subagent's context, not so tiny you fragment one component across many tasks). A typical small-to-mid project is **3–6 tasks**, driven by natural module boundaries, not a quota — over-splitting (e.g. a task per function of the same file) just adds overhead and is empirically ~50% slower with no quality gain. Order them by dependency so each builds on verified prior work, and prefer thin vertical slices over horizontal "all models, then all endpoints" layers.
 
 For each task note, briefly: what it produces, which files/areas it touches, and how it'll be verified.
 

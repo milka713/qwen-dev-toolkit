@@ -59,18 +59,20 @@ If working in an existing/unfamiliar codebase, do **not** read it yourself — d
 
 Only read files yourself when it's a couple of small, decisive files — never bulk-read.
 
-## Step 3 — Decompose into small, "quantized" tasks
+## Step 3 — Decompose into right-sized tasks
 
-Break the goal into the **smallest cohesive, independently-verifiable units** — and prefer **more, smaller tasks over fewer big ones**. A local model handles a tight, well-scoped task far more reliably than a broad one, so err on the side of finer granularity. A good task is roughly **one engineer "quantum"**: a single function or method + its test, one endpoint, one small class, one migration, one config wiring — something finishable in a few minutes and a few dozen-to-a-couple-hundred lines, well under a subagent's context.
+Break the goal into **cohesive, independently-verifiable tasks — one logical module or related group of functions per task**, each with its tests. Aim for the **"Goldilocks" size**: small enough to fit comfortably in one subagent's context and be verified on its own, but not so tiny that you fragment one component across many tasks.
 
-- ✅ "Implement `Money.add`/`subtract` with overflow checks + unit tests" (one unit)
-- ✅ "Add the `POST /todos` handler wired to the existing model, with one integration test"
-- ⚠️ "Build the todos CRUD" → too coarse; split into create / read / update / delete, each its own task
-- ❌ "Build the backend" (will overflow the subagent — the exact failure we avoid)
+The right target is roughly **one source file (or one class/module) + its tests per task** — e.g. "implement `token_bucket.py` (the `TokenBucket` class) with its unit tests", "add the `POST /todos` handler + its integration test". A typical small-to-mid project is **3–6 tasks**, a larger one more — but driven by the natural module boundaries, not by a quota.
 
-**Be smart, not mechanical:** each task must still be a meaningful, testable increment — don't fragment into trivial micro-steps ("create empty file", "add import") that add coordination overhead without value. Aim for the smallest piece that is worth verifying on its own.
+- ✅ "Implement `storage.py` (the `Storage` class: add/list/totals) + its unit tests" — one module, one task
+- ✅ "Add the `report` CLI subcommand + its test"
+- ⚠️ Over-splitting: a separate task for `mean`, another for `median`, another for `mode` of the *same* `stats.py` — this just adds coordination overhead and slows things down (empirically ~50% slower) for no quality gain. Group them: "implement `stats.py` with all its functions + tests".
+- ❌ "Build the backend" — too coarse; split along module/layer boundaries.
 
-Order tasks so each builds on verified prior work, and write the full list into `Task plan`. A long, dependency-ordered chain of small tasks is exactly the point — it's what keeps every subagent inside its budget and the main context tiny.
+**Why not finer:** testing showed that splitting below the module level doesn't improve correctness but is markedly slower and makes the run harder to track. Prefer the coarsest task that still fits a subagent comfortably and is independently testable.
+
+Order tasks so each builds on verified prior work, and write the full list into `Task plan`. A dependency-ordered chain of right-sized tasks keeps every subagent inside its budget and the main context tiny.
 
 ## Step 4 — Delegate tasks one at a time
 

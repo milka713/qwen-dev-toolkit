@@ -33,6 +33,7 @@ not left to the model.
 | `/maxagents <N>` · `off` · `status` | Cap how many subagents run **at once** for a constrained local model (`/maxagents 1` = strictly sequential). Default = as many as the work needs. Deterministic, pinned. |
 | `/pin <anything>` · `list` · `remove <text>` · `clear` | Remember any info (IP/port, deploy command, decision, URL, snippet) into a compaction-proof `FACTS.md` — auto-loaded via `@FACTS.md` and **gitignored** so it can't leak. Per-project. |
 | `/status` | Read-only snapshot: dev mode, coverage target, subagent cap, pinned-fact count, current goal and next task. |
+| `/bro` · `on` · `off` · `status` | Talk to you like a close friend — casual, blunt, playful — instead of a formal assistant. Off by default; pinned **globally** so it persists across projects until `/bro off`. |
 
 ### Skills (model- and user-invocable)
 
@@ -91,6 +92,16 @@ the dirs into `~/.qwen/` manually.
 
 **Verify** (after restart): `/skills` lists `implement, plan, checkpoint, audit`;
 `/agents manage` lists `implementer, scout`; `/status` responds.
+
+### Updating
+
+```bash
+git pull && ./install.sh        # idempotent; cleans up files renamed/removed in old releases
+```
+
+`install.sh` overwrites only this toolkit's own files and config blocks (your keys, other
+settings, memories, and `.qwen/PROGRESS.md` are untouched), so re-running it is the update.
+Extension users: `qwen extensions update qwen-dev-toolkit`. Current version is in `VERSION`.
 
 ## Usage
 
