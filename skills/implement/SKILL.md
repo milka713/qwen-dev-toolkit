@@ -67,6 +67,7 @@ The right target is roughly **one source file (or one class/module) + its tests 
 
 - ✅ "Implement `storage.py` (the `Storage` class: add/list/totals) + its unit tests" — one module, one task
 - ✅ "Add the `report` CLI subcommand + its test"
+- ⚠️ **A module and its tests are ONE task, not two.** Don't make "write `primes.py`" and "write `test_primes.py`" separate delegations — the subagent that writes the module also writes its tests, in the same task. Splitting them doubles the task count and the overhead.
 - ⚠️ Over-splitting: a separate task for `mean`, another for `median`, another for `mode` of the *same* `stats.py` — this just adds coordination overhead and slows things down (empirically ~50% slower) for no quality gain. Group them: "implement `stats.py` with all its functions + tests".
 - ❌ "Build the backend" — too coarse; split along module/layer boundaries.
 
@@ -77,6 +78,8 @@ Order tasks so each builds on verified prior work, and write the full list into 
 ## Step 4 — Delegate tasks one at a time
 
 For each task, in order, call the `agent` tool with `subagent_type: "implementer"`. **Use a named/awaitable subagent so its summary returns to you inline — do NOT use `subagent_type: "fork"`** (forks never report back, so you could not track progress).
+
+**Do not write the code yourself.** Every source/test/config file is created or changed by an `implementer` subagent — never by your own `write_file`/`edit` in the main context (those are only for `.qwen/PROGRESS.md`). This holds even when a task looks small enough to "just do quickly": delegate it anyway. Building inline defeats the entire purpose — it fills the main context and a larger project then overflows. If you notice you're about to edit a source file directly, stop and delegate that task instead.
 
 Write each delegation prompt to be **self-contained but short**:
 - State the one task and its acceptance criteria.
@@ -101,6 +104,8 @@ Update this file after **every** task, not in a batch at the end. Do **not** acc
 After the task plan is complete, run (or delegate) one end-to-end check that the pieces work together: build the whole thing, run the full test suite, or actually launch/exercise the app against the acceptance criteria from Step 1.
 
 Run the suite the way a fresh checkout / CI would — the **canonical command from the repo root** (bare `pytest`, `npm test`, `cargo test`, `make test`), not an environment shortcut like `python -m pytest` or a hand-set `PYTHONPATH`. A green result that depends on such a shortcut is not a pass; it means the project is mis-packaged (a subagent that "verified" with a path trick can mask this). Fix the packaging so the standard command is green from a clean root, then re-run it.
+
+**Packaging is YOUR responsibility as orchestrator.** When you delegate atomic per-file tasks, no single subagent owns "make the project runnable from the repo root", so you must ensure it — ideally make it the **first task** (scaffold: package layout, `__init__.py`, and the test-runner glue such as `pyproject.toml` with `[tool.pytest.ini_options] pythonpath=["."]` or a root `conftest.py`) or, failing that, add it here before the integration run. A pile of correct files that `bare pytest` can't even import is not a finished build.
 
 Run the project's checks as an **ordered quality gate** — **build/typecheck → lint → tests** — and stop to fix on the first failure before continuing. When the build is non-trivial, finish with a code-quality pass using the built-in `/review` (correctness/quality review) and `/simplify` (safe cleanup) skills; and if it touches authentication, the network, files, secrets, or a database, run `/audit` (security) before reporting done. Fix or re-delegate anything that fails. Only then report completion.
 

@@ -73,16 +73,21 @@ const fs = require('fs'), path = require('path');
 const [qhome, guideFile] = process.argv.slice(2);
 const file = path.join(qhome, 'QWEN.md');
 const START = '<!-- qwen-dev-toolkit:start -->', END = '<!-- qwen-dev-toolkit:end -->';
-const guide = fs.readFileSync(guideFile, 'utf8').trim();
+const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+// Defensive: the bundled guide should be bare, but strip markers if any slipped in.
+const guide = fs.readFileSync(guideFile, 'utf8').replace(new RegExp(esc(START) + '|' + esc(END), 'g'), '').trim();
 const block = `${START}\n${guide}\n${END}`;
 let cur = '';
 try { cur = fs.readFileSync(file, 'utf8'); } catch (_) {}
-const re = new RegExp(START.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '[\\s\\S]*?' + END.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-const had = re.test(cur);
-// Drop the existing marker block, then also strip any *bare* verbatim copy of the guide
-// that sits outside the markers (left behind by older installs or direct hand-edits),
-// so re-running never duplicates the guidance. Then append a single fresh block.
-let body = cur.replace(re, '').replace(guide, '').replace(/\n{3,}/g, '\n\n').trim();
+// Strip ALL existing marker blocks (global — handles past double-marker bugs), then any
+// bare verbatim copy of the guide left by older installs / hand-edits, so re-running
+// never duplicates. Then append exactly one fresh block.
+const reAll = new RegExp(esc(START) + '[\\s\\S]*?' + esc(END), 'g');
+const had = reAll.test(cur);
+let body = cur.replace(reAll, '')                              // paired blocks
+              .replace(new RegExp(esc(START) + '|' + esc(END), 'g'), '') // orphan markers
+              .replace(guide, '')                              // bare guide copy
+              .replace(/\n{3,}/g, '\n\n').trim();
 const out = (body ? body + '\n\n' : '') + block + '\n';
 fs.writeFileSync(file, out);
 console.log('  ✓ QWEN.md guidance ' + (had ? 'updated' : 'added'));

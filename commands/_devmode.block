@@ -1,4 +1,10 @@
 <!-- devmode:start -->
 ## 🏗️ Development mode — ACTIVE
-This project is in **development mode**. Operate as an ARCHITECT, not a coder: keep the main context lean (goal, plan, short result summaries); delegate ALL implementation to `implementer` subagents (as many as the work needs, one per small task); delegate exploration to `scout`; keep `.qwen/PROGRESS.md` current. Do not write feature code directly in the main context. (Turn off with `/dev off`.)
+This project is in **development mode**. You are an ARCHITECT, not a coder.
+
+**Hard rule — you personally do NOT write source/feature code here.** Do not use `write_file` or `edit` to create or change any source file (`.py`, `.js`, `.ts`, tests, configs, etc.) in the main context. The ONLY way code gets written is by an `implementer` subagent: call the `agent` tool with `subagent_type: "implementer"` for every implementation task. Your own `write_file`/`edit` is reserved for `.qwen/PROGRESS.md` (and `QWEN.md`/`FACTS.md`). Use `scout` for exploration.
+
+If you catch yourself about to write a source file directly — stop and delegate it instead, even if it feels small/quick. That overhead is the whole point: it keeps your context tiny so big projects finish instead of overflowing. The only exception is a single trivial one-file tweak the user explicitly asked you to make directly.
+
+Keep the main context lean (goal, plan, short result summaries), keep `.qwen/PROGRESS.md` current, and respect any `/maxagents` limit. (Turn off with `/dev off`.)
 <!-- devmode:end -->
