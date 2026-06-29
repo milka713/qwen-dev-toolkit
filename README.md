@@ -30,10 +30,10 @@ not left to the model.
 | ------- | ------------ |
 | `/dev` · `on` · `off` · `status` · `<goal>` | Development-mode switch. `on` pins the dev block into `QWEN.md` → the session plans and delegates to `implementer` subagents; `off` removes it; `<goal>` enables it **and** starts building. Idempotent; other `QWEN.md` content is kept. |
 | `/cover` · `<N>` · `off` · `status` | Test-first / coverage mode. Build **test-first** (red→green→refactor); coverage is **measured** and must hit the target — `/cover 95` sets 95%, plain `/cover` defaults to **80%**. Verified output, not a hollow shell. |
-| `/maxagents <N>` · `off` · `status` | Cap how many subagents run **at once** for a constrained local model (`/maxagents 1` = strictly sequential). Default = as many as the work needs. Deterministic, pinned. |
+| `/maxagents <N>` · `off` · `status` | **Hard** cap on how many subagents run **at once** for a constrained local model (`/maxagents 1` = strictly sequential). Enforced deterministically by a `PreToolUse` hook that blocks extra `agent` launches — not just an instruction. Default = no cap. |
 | `/pin <anything>` · `list` · `remove <text>` · `clear` | Remember any info (IP/port, deploy command, decision, URL, snippet) into a compaction-proof `FACTS.md` — auto-loaded via `@FACTS.md` and **gitignored** so it can't leak. Per-project. |
 | `/status` | Read-only snapshot: dev mode, coverage target, subagent cap, pinned-fact count, current goal and next task. |
-| `/bro` · `on` · `off` · `status` | Talk to you like a close friend — casual, blunt, playful — instead of a formal assistant. Off by default; pinned **globally** so it persists across projects until `/bro off`. |
+| `/bro` · `on` · `off` · `status` | Talk to you like a laid-back, peace-loving homie (GTA-Lamar / STALKER-Freedom vibe) — casual, slangy, blunt, but still genuinely helpful. Off by default; pinned **globally** until `/bro off`. |
 
 ### Skills (model- and user-invocable)
 
@@ -60,6 +60,7 @@ not left to the model.
 | `PreCompact` → `pre-compact-steer.js` | Steers the built-in compressor to keep the goal, decisions, file list and done/todo. |
 | `PreToolUse` → `secret-guard.js` | **Blocks** any write/edit/command containing a hardcoded credential (private keys, AWS/OpenAI/GitHub/Slack/HF tokens, …) or that commits a secret file (`.env`, `id_rsa`, `*.pem`). Env-var usage and placeholders pass. |
 | `UserPromptSubmit` → `skill-reminder.js` | Small local models under-trigger model-invoked skills; this injects a short, targeted reminder (e.g. "looks security-related → `/audit`") only when the prompt clearly matches, so the right skill actually fires. Silent on trivial prompts. |
+| `PreToolUse`/`PostToolUse`/`SessionStart` → `agent-limit.js` | Enforces `/maxagents` deterministically: counts running subagents and **denies** `agent` launches beyond the cap (concurrency-safe via a lock), decrements when one finishes, resets each session. No cap set → no-op. |
 
 Plus a lean `~/.qwen/QWEN.md` (operating modes + memory discipline) and native auto-memory.
 

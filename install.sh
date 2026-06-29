@@ -56,8 +56,11 @@ const setHook = (event, script, name, matcher) => {
   s.hooks[event] = [...others, entry(script, name, matcher)];
 };
 setHook('SessionStart',    'session-start-restore.js', 'restore-progress');
+setHook('SessionStart',    'agent-limit.js reset',     'agent-limit-reset');
 setHook('PreCompact',      'pre-compact-steer.js',     'steer-compaction');
 setHook('PreToolUse',      'secret-guard.js',          'secret-guard', 'write_file|edit|replace|run_shell_command');
+setHook('PreToolUse',      'agent-limit.js pre',       'agent-limit-pre', 'agent');
+setHook('PostToolUse',     'agent-limit.js post',      'agent-limit-post', 'agent');
 setHook('UserPromptSubmit','skill-reminder.js',        'skill-reminder');
 s.memory = Object.assign({ enableManagedAutoMemory: true, enableManagedAutoDream: true }, s.memory || {});
 fs.writeFileSync(file, JSON.stringify(s, null, 2) + '\n');

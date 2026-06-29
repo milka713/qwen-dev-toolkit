@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# /maxagents backend — deterministic cap on how many subagents run at once.
-# The default (no block) is "as many as the work needs", which on a busy local model can
-# be too heavy. Args: <N> (>=1) -> cap at N concurrent ; off | auto -> remove the cap ;
-# status. Pins a maxagents block into the project QWEN.md.
+# /maxagents backend — HARD cap on how many subagents run at once.
+# The "at most N at a time" line written here is the single source of truth read by the
+# agent-limit.js hook, which DETERMINISTICALLY denies `agent` launches beyond N at the
+# PreToolUse layer (not just an instruction the model may ignore). The block also tells
+# the model to self-limit. Default (no block) = "as many as the work needs".
+# Args: <N> (>=1) -> cap at N ; off | auto -> remove the cap ; status.
 set -u
 ARG="${*:-}"; F="QWEN.md"; M="maxagents"
 norm="$(printf '%s' "$ARG" | tr '[:upper:]' '[:lower:]' | xargs 2>/dev/null || printf '%s' "$ARG")"
@@ -17,7 +19,7 @@ write_block() {
     '' \
     '<!-- maxagents:start -->' \
     "## 🧱 Subagent limit — at most ${n} at a time" \
-    "This machine is resource-constrained (a local model). Run **at most ${n} \`implementer\`/\`scout\` subagent(s) concurrently** — never launch more than ${n} awaitable subagent(s) in a single response.${seq} Keep decomposing the work into small tasks; just process them within this limit. (Remove with \`/maxagents off\`.)" \
+    "This machine is resource-constrained (a local model). Run **at most ${n} \`implementer\`/\`scout\` subagent(s) concurrently** — never launch more than ${n} awaitable subagent(s) in a single response.${seq} This limit is **enforced deterministically** (extra subagent launches are blocked automatically), so launching more just wastes a turn — pace them within the limit. Keep decomposing into right-sized tasks; just process them ${n} at a time. (Remove with \`/maxagents off\`.)" \
     '<!-- maxagents:end -->' >> "$F"
 }
 
