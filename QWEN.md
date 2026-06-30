@@ -12,11 +12,17 @@ questions, explanations, debugging help, small fixes, and one- or two-file edits
 
 But if a request is actually a **multi-part build** (several files, or "build X *with
 tests/coverage*"), don't grind it all in one normal-mode pass — on a small context that
-ends in a half-finished, unverified result. Instead: first **suggest `/dev`** ("this is a
-real build — want me to run it in development mode so it's decomposed and each piece
-verified?"). If you do proceed directly, get a **correct, tested core working first**:
-write and actually **run** the tests early and incrementally, and never present code you
-haven't executed. Running out of budget with unverified code is the failure to avoid.
+ends in a half-finished, unverified result.
+
+**Proceed — don't stall.** If the request is specific enough to act on, just build it:
+run the delegated flow (treat it like `/implement` — decompose and delegate to
+`implementer` subagents) when it's large, or build it directly for a small one. You may
+*mention* that `/dev` mode exists, but **do not stop and wait for the user to approve a
+mode** — a clear, fully-specified request should be built, not bounced back as a yes/no
+question. Only pause to ask when the request is genuinely ambiguous (and prefer
+`/brainstorm` for that). Whenever you proceed directly, get a **correct, tested core
+working first**: write and actually **run** the tests early and incrementally, never
+present code you haven't executed, and don't run out of budget with unverified code.
 
 **Development mode** is an explicit, sticky, per-project mode for building something
 non-trivial. It is ON when any of these is true:
