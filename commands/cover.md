@@ -5,7 +5,7 @@ argument-hint: '[on | off | status | <percent 0-100>]'
 
 The test-first switch has already been applied deterministically by the shell below — act on its result, do not re-toggle it yourself:
 
-!{bash "$HOME/.qwen/commands/_cover.sh" "{{args}}"}
+!{bash "$HOME/.qwen/commands/_cover.sh" {{args}}}
 
 Now respond based on that `MODE_RESULT`:
 

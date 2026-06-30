@@ -4,7 +4,7 @@ description: Remember ANY important info compaction-proof — server IP/port, de
 
 The change below was applied deterministically by the shell — act on its result:
 
-!{bash "$HOME/.qwen/commands/_pin.sh" "{{args}}"}
+!{bash "$HOME/.qwen/commands/_pin.sh" {{args}}}
 
 Based on `PIN_RESULT`:
 - A fact was **pinned**: confirm briefly what is now remembered, and note it stays in context across compaction/restarts and is gitignored (won't be committed). If it's clearly a duplicate, say so instead of re-adding.

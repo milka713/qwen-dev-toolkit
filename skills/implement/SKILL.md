@@ -73,6 +73,8 @@ The right target is roughly **one source file (or one class/module) + its tests 
 
 **Why not finer:** testing showed that splitting below the module level doesn't improve correctness but is markedly slower and makes the run harder to track. Prefer the coarsest task that still fits a subagent comfortably and is independently testable.
 
+**Make the FIRST task a scaffold** when building a package/app from scratch: set up the package layout (`__init__.py` with the exports the spec promises) and the **test-runner glue** (`pyproject.toml` with `[tool.pytest.ini_options] pythonpath=["."]`, or a root `conftest.py`; the equivalent for other languages) — plus a single trivial smoke test that runs green. This guarantees `bare pytest` works from the repo root from the very start, so the project is runnable at every intermediate point and a long build that gets interrupted still leaves a coherent, importable project (don't leave packaging for a final step that budget/time might never reach).
+
 Order tasks so each builds on verified prior work, and write the full list into `Task plan`. A dependency-ordered chain of right-sized tasks keeps every subagent inside its budget and the main context tiny.
 
 ## Step 4 — Delegate tasks one at a time

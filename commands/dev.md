@@ -4,7 +4,7 @@ description: Toggle per-project Development Mode (architect + delegate to implem
 
 The development-mode switch has already been applied deterministically by the shell below — act on its result, do not re-toggle it yourself:
 
-!{bash "$HOME/.qwen/commands/_mode-toggle.sh" devmode "$HOME/.qwen/commands/_devmode.block" "Development mode" "{{args}}"}
+!{bash "$HOME/.qwen/commands/_mode-toggle.sh" devmode "$HOME/.qwen/commands/_devmode.block" "Development mode" {{args}}}
 
 Now respond based on that `MODE_RESULT`:
 
