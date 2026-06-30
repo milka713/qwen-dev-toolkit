@@ -121,21 +121,36 @@ Extension users: `qwen extensions update qwen-dev-toolkit`. Current version is i
 
 One-shot: `/dev build a Python CLI expense tracker with SQLite and pytest`.
 
-## Reliable auto-compaction (important for small windows)
+## Reliability on a small / slow / shared local server
 
-qwen-code auto-compacts before the context overflows, but it computes the trigger from
-the **model's context window size** — and for a custom OpenAI-compatible provider it
-can't detect that and falls back to a default that may be larger than your server's real
-window, so it compacts **too late** and overflows. Tell it the real size (a bit below your
-server's `-c` value, for margin) in `~/.qwen/settings.json`:
+Two `~/.qwen/settings.json` knobs matter a lot for a local model and are easy to get
+wrong. For a **custom OpenAI-compatible provider**, put them under the provider entry's
+`generationConfig` (qwen ignores `model.generationConfig` for such providers):
 
 ```json
-{ "model": { "generationConfig": { "contextWindowSize": 120000 } } }
+{
+  "modelProviders": {
+    "openai": [{
+      "id": "...", "name": "...", "baseUrl": "http://HOST:PORT/v1", "envKey": "OPENAI_API_KEY",
+      "generationConfig": {
+        "contextWindowSize": 120000,
+        "timeout": 1800000
+      }
+    }]
+  }
+}
 ```
 
-e.g. for a llama.cpp server started with `-c 125000`, set `120000`. The toolkit's
-`PreCompact` hook then steers that built-in compaction to keep the goal/decisions, and the
-`SessionStart` hook reloads `.qwen/PROGRESS.md` afterwards — so nothing important is lost.
+- **`contextWindowSize`** — qwen auto-compacts *before* the context overflows, but it
+  computes the trigger from the model's context window. For a custom provider it can't
+  detect that and falls back to a default that may be larger than your server's real
+  window, so it compacts **too late** and overflows. Set it a bit below your server's `-c`
+  value (e.g. `120000` for a llama.cpp `-c 125000`). The toolkit's `PreCompact` hook then
+  keeps the goal/decisions during compaction and `SessionStart` reloads `.qwen/PROGRESS.md`.
+- **`timeout`** (ms) — the **per-request** timeout. The default (~6 min) aborts a single
+  model call when the server is slow or shared with other work, killing a build mid-task
+  (this is separate from a run's overall budget). Raise it generously — `1800000` (30 min)
+  — so long generations under load complete instead of erroring with `Request timeout`.
 
 ## Requirements & uninstall
 
