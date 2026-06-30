@@ -152,6 +152,30 @@ wrong. For a **custom OpenAI-compatible provider**, put them under the provider 
   (this is separate from a run's overall budget). Raise it generously — `1800000` (30 min)
   — so long generations under load complete instead of erroring with `Request timeout`.
 
+### Loop protection
+
+Small local models sometimes get stuck repeating the same tool call or output. qwen-code
+has a loop detector, but it's **off by default** (to avoid false positives). For a local
+model it's worth turning on, plus a finite tool-call backstop — these are top-level
+`model` settings:
+
+```json
+{ "model": { "skipLoopDetection": false, "maxToolCalls": 5000 } }
+```
+
+- **`skipLoopDetection: false`** re-enables loop detection (repeated identical tool calls
+  or repeated streamed content). Interactively it asks you whether to continue when a loop
+  is caught; in headless runs it stops the stuck loop instead of burning budget.
+- **`maxToolCalls: 5000`** is a hard backstop — a runaway loop aborts (exit 55) at 5000
+  cumulative tool calls, while a normal build stays well under that.
+- For unattended runs, also pass `--max-wall-time 1800` as an overall time cap. Mid-run,
+  `Esc` (or `Ctrl+C`) cancels immediately.
+
+Note: a stale `/maxagents 1` left in a project can itself trigger a loop — when the model
+tries to launch several subagents, each extra one is denied and a small model may keep
+retrying the same launch. Clear it with `/maxagents off` if you're not deliberately
+capping.
+
 ## Requirements & uninstall
 
 - qwen-code (tested on **0.19.x**) + Node.js. Any provider; designed for small-context local models.
