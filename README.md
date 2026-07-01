@@ -72,6 +72,7 @@ not left to the model.
 | `/pin <anything>` · `list` · `remove <text>` · `clear` | Remember any info (IP/port, deploy command, decision, URL, snippet) into a compaction-proof `FACTS.md` — auto-loaded via `@FACTS.md` and **gitignored** so it can't leak. Per-project. |
 | `/status` | Read-only snapshot: dev mode, coverage target, subagent cap, pinned-fact count, current goal and next task. |
 | `/main-push` · `off` · `status` | Authorize push/merge to the protected branch (`main`/`master`) for a **15-minute release window** (covers the merge **and** the push). The `git-branch-guard` hook blocks main operations by default; `/main-push` is the user-only release valve. |
+| `/versioning` · `on` · `off` · `status` · `<custom scheme>` | Toggle version-naming mode (**off by default**). On → name versions with semantic versioning by significance (PATCH `1.4.7` / MINOR `1.5.0` / MAJOR `2.0.0`) and say which part you bumped. Pass free text to pin a custom scheme instead. Pinned **globally**. |
 | `/bro` · `свобода` · `ламар` · `off` · `status` | Talk to you like a homie, in one of **two personas**: `свобода` = a S.T.A.L.K.E.R. *Freedom* drifter (always calls you "мэн"), `ламар` = a GTA V *Lamar Davis* street homie ("homie/foo/dog") — casual, slangy, blunt, but still genuinely helpful. Off by default; pinned **globally** until `/bro off`. |
 
 ### Skills (model- and user-invocable)
