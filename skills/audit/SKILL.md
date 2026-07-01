@@ -29,7 +29,7 @@ Review the project (or the recent changes / the path the user named) for securit
 - If the user gave a path or focus, start there.
 - Otherwise audit the **recent change set** (`git diff HEAD` plus untracked new files). Step 2 still covers the whole repo.
 - No diff and nothing named → the whole tree.
-- For a large codebase, delegate the hunt to read-only `scout` subagents — one per area (auth, input→sink paths, secrets/config, dependencies) — each returning *candidate* findings with file:line evidence. Verify the candidates yourself before reporting; don't relay them blind.
+- For a large codebase, delegate the hunt to read-only `scout` subagents — one per area (auth, input→sink paths, secrets/config, dependencies) — each returning *candidate* findings with file:line evidence. Verify the candidates before reporting — yourself for a small set, or one `verifier` subagent per candidate (refute-first; CONFIRMED/REFUTED/PLAUSIBLE with the exploit path). Never relay candidates blind; report PLAUSIBLE ones only as LOW/INFO with what's unproven.
 
 ## Step 2 — Secrets & repo hygiene (always, whole repo)
 

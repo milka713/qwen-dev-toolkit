@@ -24,7 +24,7 @@ If `/brainstorm` already recorded an agreed spec in `.qwen/PROGRESS.md` (Goal/De
 
 ## Step 2 — Understand the ground (delegate)
 
-For existing code, call the `agent` tool with `subagent_type: "scout"` and a precise question about where things live and what a change must touch (for a big codebase, several scouts — one per area). Use the digests — don't bulk-read files yourself. For a greenfield project, skip this and instead decide the structure (layout, stack, key modules) explicitly.
+For existing code, call the `agent` tool with `subagent_type: "scout"` and a precise question about where things live and what a change must touch (for a big codebase, several scouts — one per area). Use the digests — don't bulk-read files yourself. For a greenfield project, skip this and instead decide the structure (layout, stack, key modules) explicitly — and when a choice hinges on an unfamiliar dependency, get a `researcher` digest (pinned version, real API, caveats) before committing the plan to it.
 
 ## Step 3 — Decompose
 
