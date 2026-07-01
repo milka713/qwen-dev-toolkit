@@ -94,7 +94,8 @@ can run `/name`). Arguments in `<…>` are optional.
 
 **`/brainstorm`** — Pins down *what* to build before any code. Clarifies and pressure-tests
 the requirements — scope, success criteria, edge cases, constraints, what's explicitly out —
-so a small context isn't spent building the wrong thing. Produces an agreed spec, then hands
+so a small context isn't spent building the wrong thing. Produces an agreed spec, records it
+durably in `.qwen/PROGRESS.md` (it survives compaction — chat history doesn't), then hands
 off to `/plan`.
 
 **`/plan`** — Turns a fuzzy or large request into a concrete, **dependency-ordered task list**
@@ -348,5 +349,11 @@ You mostly talk to it in plain language; the skills and guards fire on their own
 
 The point: you never have to remember the branch rules, re-state the plan after a
 compaction, or babysit which subagent does what — that's what the toolkit handles.
+
+## Development
+
+Changing the toolkit itself? Run the dependency-free test harness first: `node test/run.js`
+— it exercises the hooks' allow/deny behavior, `/pin` backend parity (bash + Node), and a
+full installer round-trip, all in temp dirs (your real `~/.qwen` is never touched).
 
 MIT — see [LICENSE](LICENSE).
