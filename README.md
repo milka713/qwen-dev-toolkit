@@ -2,50 +2,16 @@
 
 # qwen-dev-toolkit
 
-A workflow pack for [qwen-code](https://github.com/QwenLM/qwen-code) on **local /
-small-context models** (e.g. a llama.cpp server with a ~90–100k window). It stops big
+A **skills pack** for [qwen-code](https://github.com/QwenLM/qwen-code) on **local /
+small-context models** (e.g. a llama.cpp server with a ~90–100k window). Its core stops big
 builds stalling after a context overflow + lossy compaction by making the model an
-**architect that delegates**, with state that survives compaction.
+**architect that delegates**, with state that survives compaction — and on top of that it
+ships a full set of everyday development skills and commands: git-flow discipline
+(`/gitflow`, `/commit`, `/main-push`), code `/review` and security `/audit`, `/docs` and
+`/changelog`, planning (`/brainstorm`, `/plan`), test-coverage mode (`/cover`), a root-cause
+`debugger`, and more — all listed below.
 
 > 🇺🇸 English · [🇷🇺 Русский](README.ru.md)
-
-## Install / update
-
-**Install and update are the same command** — re-run it any time and it refreshes in place.
-It copies only this toolkit's own files into `~/.qwen`; your other skills, settings, API
-keys and memories are left untouched. Cross-platform: **macOS · Linux · Windows** (one Node
-installer — it wires bash backends on macOS/Linux and Node backends on Windows automatically).
-
-### 🤖 If you're an AI agent
-
-The user pointed you at this repo and asked to install/update the skills? Follow
-**[`INSTALL_FOR_AI.md`](INSTALL_FOR_AI.md)** — step-by-step instructions written for you,
-including how to **verify** it worked. Short version (install *and* update):
-
-```
-git clone --depth 1 https://github.com/milka713/qwen-dev-toolkit
-node qwen-dev-toolkit/install.js
-```
-
-Already inside a checkout? just `node install.js`. Updating an existing checkout? `git pull`
-then re-run. Already running inside qwen-code? invoke **`/toolkit-update`** and it does all of this for you.
-
-### 🧑 If you're a human
-
-Prerequisites: **Node.js** + **qwen-code** (and **git** for the git features). The installer
-checks them and prints what's missing.
-
-```bash
-./install.sh      # macOS / Linux
-install.cmd       # Windows        (or: node install.js  — anywhere)
-```
-
-Then **restart qwen-code**. To update later, re-run the same command (or `/toolkit-update`
-from inside qwen-code). To remove: `./uninstall.sh` / `uninstall.cmd`.
-
-**Verify** (after restart): `/skills` lists `brainstorm, plan, implement, checkpoint,
-gitflow, audit, review, commit, docs, changelog, toolkit-update`; `/agents manage` lists
-`implementer, scout, debugger`; `/status` responds.
 
 ## How it works
 
@@ -233,33 +199,6 @@ no session-only QWEN.md.
 
 One-shot: `/dev build a Python CLI expense tracker with SQLite and pytest`.
 
-### A typical end-to-end session
-
-You mostly talk to it in plain language; the skills and guards fire on their own.
-
-```text
-> /brainstorm a URL shortener service in Python
-    ← agrees the scope, success criteria and edge cases, writes them down
-
-> /dev build it
-    ← becomes the architect: plans the modules, delegates each one to a fresh
-      implementer subagent, ticking tasks in .qwen/PROGRESS.md as they land.
-      A context overflow + compaction mid-build? SessionStart reloads PROGRESS.md
-      and it continues from the first unchecked task — no lost work.
-
-> запушь готовое            (or "push it")
-    ← gitflow kicks in: creates `dev` if missing, commits, pushes to origin/dev.
-      main is never touched — the git-branch-guard hook blocks that by default.
-
-> выкати в main             (or "release to main")
-    ← it asks you to run /main-push first (main is protected)
-> /main-push                   ← you open a 15-min release window
-> выкати в main             ← now it merges dev → main and pushes
-```
-
-The point: you never have to remember the branch rules, re-state the plan after a
-compaction, or babysit which subagent does what — that's what the toolkit handles.
-
 ## Reliability on a small / slow / shared local server
 
 Two `~/.qwen/settings.json` knobs matter a lot for a local model and are easy to get
@@ -344,7 +283,70 @@ outranks everything, even in yolo).
 
 - **qwen-code** (tested on **0.19.x**) + **Node.js**; **git** for the git features. Any
   provider; designed for small-context local models. Runs on macOS, Linux and Windows.
-- Uninstall (removes only this toolkit's files/blocks; your other settings, env vars and
-  `.qwen/PROGRESS.md` stay intact): `./uninstall.sh` (macOS/Linux) or `uninstall.cmd` (Windows).
+
+## Install / update
+
+**Install and update are the same command** — re-run it any time and it refreshes in place.
+It copies only this toolkit's own files into `~/.qwen`; your other skills, settings, API
+keys and memories are left untouched. Cross-platform: **macOS · Linux · Windows** (one Node
+installer — it wires bash backends on macOS/Linux and Node backends on Windows automatically).
+
+### 💬 If you're an AI agent
+
+The user pointed you at this repo and asked to install/update the skills? Follow
+**[`INSTALL_FOR_AI.md`](INSTALL_FOR_AI.md)** — step-by-step instructions written for you,
+including how to **verify** it worked. Short version:
+
+```
+git clone --depth 1 https://github.com/milka713/qwen-dev-toolkit
+node qwen-dev-toolkit/install.js
+```
+
+Already inside a checkout? just `node install.js`. Updating an existing checkout? `git pull`
+then re-run. Already running inside qwen-code? invoke **`/toolkit-update`** and it does all of this for you.
+
+### 🧑 If you're a human
+
+Prerequisites: **Node.js** + **qwen-code** (and **git** for the git features). The installer
+checks them and prints what's missing.
+
+```bash
+./install.sh      # macOS / Linux
+install.cmd       # Windows        (or: node install.js  — anywhere)
+```
+
+Then **restart qwen-code**. To update later, re-run the same command (or `/toolkit-update`
+from inside qwen-code). To remove: `./uninstall.sh` / `uninstall.cmd`.
+
+**Verify** (after restart): `/skills` lists `brainstorm, plan, implement, checkpoint,
+gitflow, audit, review, commit, docs, changelog, toolkit-update`; `/agents manage` lists
+`implementer, scout, debugger`; `/status` responds.
+
+## A typical end-to-end session
+
+You mostly talk to it in plain language; the skills and guards fire on their own.
+
+```text
+> /brainstorm a URL shortener service in Python
+    ← agrees the scope, success criteria and edge cases, writes them down
+
+> /dev build it
+    ← becomes the architect: plans the modules, delegates each one to a fresh
+      implementer subagent, ticking tasks in .qwen/PROGRESS.md as they land.
+      A context overflow + compaction mid-build? SessionStart reloads PROGRESS.md
+      and it continues from the first unchecked task — no lost work.
+
+> запушь готовое            (or "push it")
+    ← gitflow kicks in: creates `dev` if missing, commits, pushes to origin/dev.
+      main is never touched — the git-branch-guard hook blocks that by default.
+
+> выкати в main             (or "release to main")
+    ← it asks you to run /main-push first (main is protected)
+> /main-push                   ← you open a 15-min release window
+> выкати в main             ← now it merges dev → main and pushes
+```
+
+The point: you never have to remember the branch rules, re-state the plan after a
+compaction, or babysit which subagent does what — that's what the toolkit handles.
 
 MIT — see [LICENSE](LICENSE).
