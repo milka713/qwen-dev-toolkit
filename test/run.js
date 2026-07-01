@@ -75,6 +75,8 @@ const sr = path.join(ROOT, 'hooks', 'skill-reminder.js');
 const srRun = (prompt) => runNode(sr, { input: JSON.stringify({ prompt }) }).stdout;
 ok('security prompt nudges /audit', srRun('please check this code for sql injection vulnerabilities').includes('/audit'));
 ok('build prompt nudges /implement', srRun('build me a small cli tool for tracking expenses').includes('/implement'));
+ok('library question nudges researcher', srRun('how do I use pandas groupby with multiple keys here').includes('researcher'));
+ok('doc-update prompt nudges /docs, not researcher', (() => { const o = srRun('update the readme for the new cli flags please'); return o.includes('/docs') && !o.includes('researcher'); })());
 ok('requirements.txt prompt stays silent', srRun('pip install -r requirements.txt fails on my machine somehow') === '');
 ok('short prompt stays silent', srRun('fix typo') === '');
 ok('slash command stays silent', srRun('/implement build me an app with tests') === '');

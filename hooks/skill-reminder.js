@@ -24,6 +24,8 @@ const rules = [
   [/\b(plan|design|architect(ure)?|break (this|it) (down|into)|decompose)\b/, 'invoke the `/plan` skill (dependency-ordered task list)'],
   [/\b(please remember|remember:|remember (that|this|for|to|the|my|our|about|:)|note (that|this|down|:)|keep in mind|don'?t forget|save (this|that|the)|jot down|make a note)/, 'suggest the user run `/pin <fact>` to keep it compaction-proof in context (you can also save it to memory)'],
   [/\b(context (is )?(full|getting (full|long|big))|losing track|you forgot|compact(ion)?|running low on context)\b/, 'invoke the `/checkpoint` skill (save durable state before it overflows)'],
+  [/\b(update (the )?(docs|readme|documentation)|обнови (доки|док|readme))\b/, 'invoke the `/docs` skill (sync the documentation with the code)'],
+  [/\b(look up|check the docs|read the docs|which version of|how (do|to) (i |you )?use)\b/, 'delegate a `researcher` subagent for a version-pinned API digest instead of answering from memory'],
 ];
 
 const hits = [];
