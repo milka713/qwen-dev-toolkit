@@ -23,7 +23,7 @@ rm -f  "$QHOME/commands/_dev-toggle.sh" \
        "$QHOME/commands/_covermode.block"       # superseded by _mode-toggle.sh / _cover.sh
 
 # 1) Skills, subagents, commands and hooks — plain file copies.
-for s in implement plan checkpoint audit brainstorm; do
+for s in implement plan checkpoint audit brainstorm gitflow; do
   mkdir -p "$QHOME/skills/$s"
   cp "$SRC/skills/$s/SKILL.md" "$QHOME/skills/$s/SKILL.md"
 done
@@ -31,10 +31,10 @@ cp "$SRC/agents/implementer.md" "$SRC/agents/scout.md" "$QHOME/agents/"
 cp "$SRC"/commands/* "$QHOME/commands/"
 chmod +x "$QHOME"/commands/*.sh
 cp "$SRC"/hooks/*.js "$HOOKS_DIR/"
-echo "  ✓ skills (implement, plan, checkpoint, audit, brainstorm)"
-echo "  ✓ commands (/dev, /cover, /pin, /status, /maxagents, /bro)"
+echo "  ✓ skills (implement, plan, checkpoint, audit, brainstorm, gitflow)"
+echo "  ✓ commands (/dev, /cover, /pin, /status, /maxagents, /bro, /mainok)"
 echo "  ✓ subagents (implementer, scout)"
-echo "  ✓ hook scripts (restore, compaction-steer, secret-guard, skill-reminder)"
+echo "  ✓ hook scripts (restore, compaction-steer, secret-guard, branch-guard, skill-reminder)"
 
 # 2) Merge hooks + memory into settings.json (preserve everything else).
 node - "$QHOME" <<'NODE'
@@ -59,6 +59,7 @@ setHook('SessionStart',    'session-start-restore.js', 'restore-progress');
 setHook('SessionStart',    'agent-limit.js reset',     'agent-limit-reset');
 setHook('PreCompact',      'pre-compact-steer.js',     'steer-compaction');
 setHook('PreToolUse',      'secret-guard.js',          'secret-guard', 'write_file|edit|replace|run_shell_command');
+setHook('PreToolUse',      'git-branch-guard.js',      'git-branch-guard', 'run_shell_command');
 setHook('PreToolUse',      'agent-limit.js pre',       'agent-limit-pre', 'agent');
 setHook('PostToolUse',     'agent-limit.js post',      'agent-limit-post', 'agent');
 setHook('UserPromptSubmit','skill-reminder.js',        'skill-reminder');
