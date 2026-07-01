@@ -54,13 +54,22 @@ for (const f of ['_dev-toggle.sh', '_covermode.block', 'mainok.md', '_mainok.sh'
   rm(path.join(QHOME, 'commands', f));                       // renamed/superseded
 }
 
-// ---- 3) skills, subagents, hooks (plain copies) --------------------------
+// ---- 3) skills, subagents, hooks -----------------------------------------
+// Skills are copied as-is on POSIX. On Windows, backend invocations inside skill bodies
+// (e.g. /implement's `bash "$HOME/.qwen/commands/_mode-toggle.sh" ...`) are rewritten to
+// the Node backends with a real absolute path — same idea as the command rewiring below,
+// but targeted so prose that merely mentions $HOME is left alone.
+const qhomeFwdEarly = QHOME.replace(/\\/g, '/');
+const winSkillBody = (body) =>
+  body.replace(/bash "\$HOME\/\.qwen\/commands\/([^"]+)\.sh"/g, 'node "' + qhomeFwdEarly + '/commands/$1.js"')
+      .replace(/"\$HOME\/\.qwen\//g, '"' + qhomeFwdEarly + '/'); // remaining quoted args (e.g. a block file)
 const SKILLS = ['implement', 'plan', 'checkpoint', 'audit', 'brainstorm', 'gitflow', 'commit', 'review', 'docs', 'changelog', 'toolkit-update'];
 for (const s of SKILLS) {
   const srcF = path.join(SRC, 'skills', s, 'SKILL.md');
   if (!exists(srcF)) continue;
   mkdirp(path.join(QHOME, 'skills', s));
-  copy(srcF, path.join(QHOME, 'skills', s, 'SKILL.md'));
+  const dst = path.join(QHOME, 'skills', s, 'SKILL.md');
+  if (isWin) fs.writeFileSync(dst, winSkillBody(read(srcF))); else copy(srcF, dst);
 }
 const AGENTS = ['implementer', 'scout', 'debugger'];
 for (const a of AGENTS) { const f = path.join(SRC, 'agents', a + '.md'); if (exists(f)) copy(f, path.join(QHOME, 'agents', a + '.md')); }
