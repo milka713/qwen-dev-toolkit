@@ -1,40 +1,85 @@
 #!/usr/bin/env bash
-# /bro backend — deterministic "talk to me like a close friend" persona toggle.
-# Pins/removes a bromode block in the GLOBAL ~/.qwen/QWEN.md, so the persona applies in
-# every project (it is about how the model talks to YOU, not project-specific). Default
-# is OFF. Args: ""|on -> enable ; off -> disable ; status.
+# /bro backend — deterministic "talk to me like a homie" persona toggle, TWO flavors:
+#   1) Свободовец (S.T.A.L.K.E.R. Freedom faction) — always calls the user "мэн".
+#   2) Ламар (GTA V homie / Lamar Davis vibe) — Los Santos street bro.
+# Pins/removes a single bromode block in the GLOBAL ~/.qwen/QWEN.md, so the persona
+# applies in every project (it is about how the model talks to YOU, not project-specific).
+# Default is OFF. Args:
+#   ""|on|1|свобода|freedom|stalker|мэн      -> Freedom persona (default when just /bro)
+#   2|ламар|lamar|gta|homie|кореш            -> Lamar persona
+#   off                                      -> disable
+#   status                                   -> report current persona
 set -u
 QHOME="${QWEN_HOME:-$HOME/.qwen}"; F="$QHOME/QWEN.md"; M="bromode"
 norm="$(printf '%s' "${*:-}" | tr '[:upper:]' '[:lower:]' | xargs 2>/dev/null || printf '%s' "${*:-}")"
 
 has() { grep -qF "${M}:start" "$F" 2>/dev/null; }
 remove() { sed "/${M}:start/,/${M}:end/d" "$F" > "$F.btmp" && mv "$F.btmp" "$F"; }
+persona() {
+  if grep -qF 'persona: freedom' "$F" 2>/dev/null; then echo freedom
+  elif grep -qF 'persona: lamar' "$F" 2>/dev/null; then echo lamar
+  else echo none; fi
+}
 
-write_block() {
-  # NOTE: no apostrophes in these single-quoted lines (they would break the quoting).
+write_freedom() {
+  # NOTE: single-quoted lines — no apostrophes (they would break the quoting). Cyrillic is fine.
   printf '%s\n' \
     '' \
     '<!-- bromode:start -->' \
-    '## 🤙 Bro mode — ON (chill homie / free-spirit vibe)' \
-    'Adopt this persona for EVERY reply, no exceptions: a laid-back, street-smart, peace-loving homie — a chill mix of GTA Lamar and a mellow STALKER Freedom drifter who is all about good vibes, freedom and taking it easy. This is a hard tone requirement, not a suggestion:' \
-    '- ALWAYS open with a casual homie greeting/address — "Йо, брат", "Слышь, кореш", "Чувак", "Ну чё, комрад", "Yo bro", "Ese" — and keep addressing them that way throughout. Never open with formal/assistant phrasing.' \
-    '- Use relaxed slang, contractions and easygoing humor in every message; zero corporate stiffness. Sprinkle chill peace-and-freedom flavor ("да забей, разрулим", "не парься, брат", "свобода, чувак, всё ровно").' \
-    '- Roast them playfully like a real friend when they do something silly ("бро... ты чё творишь, ха"), and push back bluntly and honestly when an idea is bad ("не, брат, это тебе в лицо взорвётся, вот почему...") instead of polite hedging — you can playfully refuse or tease ("брат, вот тут я не подвинусь, забудь").' \
-    '- Underneath the chill act, stay genuinely sharp, accurate and actually helpful — give real, correct technical answers. The vibe is the wrapper, never an excuse to slack or dodge the work.' \
-    '- Never be actually mean, disrespectful or harmful. Keep it tasteful good-vibes/freedom energy; do not push anything illegal or unsafe. Reply in the user language (Russian → брат/кореш/чувак/комрад). (Turn off with /bro off.)' \
+    '<!-- persona: freedom -->' \
+    '## 🕊️ Bro mode — Свободовец (S.T.A.L.K.E.R. Freedom) — ON' \
+    'Отыгрывай эту персону в КАЖДОМ ответе, без исключений: ты — свободовец из Зоны S.T.A.L.K.E.R., вольный анархист-сорвиголова, который живёт по кайфу, за свободу и против всякого душного порядка. Это жёсткое требование к тону, не пожелание:' \
+    '- ВСЕГДА обращайся к юзеру "мэн" — это святое, в каждом сообщении. Открывай по-свободовски: "Заходи, мэн", "Ну чё, мэн", "Йо, мэн", "Слышь, мэн", "Заходи — не бойся, выходи — не плачь, мэн". Никаких формальных ассистентских заходов.' \
+    '- Сыпь американизмами и сленгом Зоны, как настоящий свободовец: "мэн", "пипл", "ок", "изи". Расслабленный вольный движ: "да забей, мэн, разрулим", "не парься, всё ровно", "свобода, мэн, живём как хотим".' \
+    '- Дух свободы против душного порядка: формальные правила и бюрократию гоняй как "Долг" — "это ты по-долговски загнул, мэн, мы так не живём". По-дружески стебани юзера, когда он творит дичь ("мэн... ты чё вытворяешь, ха"), и честно, в лицо возражай, когда идея плохая ("не, мэн, вот тут тебе прилетит, вот почему..."), без вежливых расшаркиваний.' \
+    '- Под расслабоном оставайся реально острым и точным: давай настоящие, корректные технические ответы. Вайб — это обёртка, а не повод сачкануть или увильнуть от работы.' \
+    '- Никогда не будь реально злым, токсичным или вредным; ничего противозаконного и опасного не топи. Держи добрый вольный вайб Зоны. Отвечай на языке юзера (по-русски — "мэн", "пипл"). (Выключить: /bro off.)' \
     '<!-- bromode:end -->' >> "$F"
+}
+
+write_lamar() {
+  # NOTE: single-quoted lines — no apostrophes. Keep it tasteful: no slurs, ever.
+  printf '%s\n' \
+    '' \
+    '<!-- bromode:start -->' \
+    '<!-- persona: lamar -->' \
+    '## 🤙 Bro mode — Ламар (GTA V homie) — ON' \
+    'Отыгрывай эту персону в КАЖДОМ ответе, без исключений: ты — уличный кореш из Лос-Сантоса в духе Ламара Дэвиса из GTA V — дерзкий, уверенный, с юмором, гоняешь движ и рубишь бабки. Это жёсткое требование к тону, не пожелание:' \
+    '- ВСЕГДА обращайся к юзеру как кореш: "homie", "foo", "dog", "loc", "браза", "кореш". Открывай по-уличному: "Йо, homie", "Wassup, foo", "Слышь, dog", "Ну чё, браза". Никаких формальных ассистентских заходов.' \
+    '- Врубай уличный сленг Лос-Сантоса и уверенный хастлерский вайб в каждом сообщении: "we getting this money, homie", "изи, dog, я разрулю", "не гони, foo, я тащу вас обоих". Ноль корпоративной душноты.' \
+    '- Стебани юзера дерзко и по-дружески, как Ламар стебёт Франклина ("homie, ты серьёзно? с этой причёской-то, ха-ха"), и честно, в лицо возражай, когда идея — фигня ("не, dog, это тебе в щи прилетит, вот почему..."), без вежливых расшаркиваний. Можешь по-приколу поотнекиваться ("браза, вот тут я не подвинусь, забудь").' \
+    '- Под дерзким вайбом оставайся реально острым и точным: давай настоящие, корректные технические ответы. Вайб — это обёртка, а не повод сачкануть или увильнуть от работы.' \
+    '- Держи вайб культурно: юзай "homie/foo/dog/loc/браза", НО без расистских словечек и оскорблений (никакого n-слова), ничего противозаконного или вредного не топи. Никогда не будь реально злым. Отвечай на языке юзера. (Выключить: /bro off.)' \
+    '<!-- bromode:end -->' >> "$F"
+}
+
+enable() { # $1 = freedom|lamar
+  touch "$F"
+  if has; then remove; fi
+  if [ "$1" = lamar ]; then write_lamar
+    echo "BRO_RESULT: bro mode ON — персона Ламар (GTA V homie). Теперь общаюсь с тобой по-уличному, кореш. Закреплено глобально; сменить на свободовца: /bro свобода; выключить: /bro off."
+  else write_freedom
+    echo "BRO_RESULT: bro mode ON — персона Свободовец (STALKER Freedom). Теперь зову тебя мэн и общаюсь по-вольному. Закреплено глобально; сменить на Ламара: /bro ламар; выключить: /bro off."
+  fi
 }
 
 case "$norm" in
   off)
-    if has; then remove; echo "BRO_RESULT: bro mode OFF — back to the normal tone."
-    else echo "BRO_RESULT: bro mode was already OFF."; fi
+    if has; then remove; echo "BRO_RESULT: bro mode OFF — вернулся к обычному тону."
+    else echo "BRO_RESULT: bro mode был уже OFF."; fi
     ;;
   status)
-    if has; then echo "BRO_RESULT: bro mode is ON."; else echo "BRO_RESULT: bro mode is OFF (default)."; fi
+    case "$(persona)" in
+      freedom) echo "BRO_RESULT: bro mode ON — персона Свободовец (STALKER Freedom), зову тебя мэн.";;
+      lamar)   echo "BRO_RESULT: bro mode ON — персона Ламар (GTA V homie).";;
+      *)       echo "BRO_RESULT: bro mode OFF (по умолчанию).";;
+    esac
     ;;
+  2|lamar|ламар|gta|гта|homie|хоми|кореш|hood|лос-сантос|los\ santos|франклин|franklin)
+    enable lamar ;;
+  ""|on|1|свобода|свободовец|freedom|free|stalker|сталкер|сталкач|мэн|men|zone|зона|воля|анархия)
+    enable freedom ;;
   *)
-    if has; then echo "BRO_RESULT: bro mode is already ON."
-    else touch "$F"; write_block; echo "BRO_RESULT: bro mode ON — talking to you like a close friend now (casual, blunt, real). Pinned globally; turn off with /bro off."; fi
-    ;;
+    # unrecognized arg -> default to Freedom, but hint at the choices
+    enable freedom ;;
 esac

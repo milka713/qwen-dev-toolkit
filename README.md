@@ -33,7 +33,7 @@ not left to the model.
 | `/maxagents <N>` · `off` · `status` | **Hard** cap on how many subagents run **at once** for a constrained local model (`/maxagents 1` = strictly sequential). Enforced deterministically by a `PreToolUse` hook that blocks extra `agent` launches — not just an instruction. Default = no cap. |
 | `/pin <anything>` · `list` · `remove <text>` · `clear` | Remember any info (IP/port, deploy command, decision, URL, snippet) into a compaction-proof `FACTS.md` — auto-loaded via `@FACTS.md` and **gitignored** so it can't leak. Per-project. |
 | `/status` | Read-only snapshot: dev mode, coverage target, subagent cap, pinned-fact count, current goal and next task. |
-| `/bro` · `on` · `off` · `status` | Talk to you like a laid-back, peace-loving homie (GTA-Lamar / STALKER-Freedom vibe) — casual, slangy, blunt, but still genuinely helpful. Off by default; pinned **globally** until `/bro off`. |
+| `/bro` · `свобода` · `ламар` · `off` · `status` | Talk to you like a homie, in one of **two personas**: `свобода` = a S.T.A.L.K.E.R. *Freedom* drifter (always calls you "мэн"), `ламар` = a GTA V *Lamar Davis* street homie ("homie/foo/dog") — casual, slangy, blunt, but still genuinely helpful. Off by default; pinned **globally** until `/bro off`. |
 
 ### Skills (model- and user-invocable)
 
