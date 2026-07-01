@@ -9,4 +9,5 @@ Project toolkit state (computed deterministically by the shell):
 Present the `STATUS_*` values above to the user as a short, friendly summary: whether
 development mode and test-coverage mode are on, how many facts are pinned, and — if a
 build is active — the goal, progress (done/remaining), and the next task. Do not run any
-other tools; this is a read-only status check.
+other tools; this is a read-only status check. If a build is active, end by offering to
+continue it from the next unchecked task.

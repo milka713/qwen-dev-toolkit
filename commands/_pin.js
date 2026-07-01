@@ -23,11 +23,15 @@ if (n === '' || n === 'list' || n === 'status' || n === 'show') {
 } else if (n === 'clear') {
   if (exists(FACTS)) { writeF(FACTS, HEADER + '\n\n'); console.log('PIN_RESULT: cleared all pinned memory in FACTS.md.'); }
   else console.log('PIN_RESULT: nothing to clear.');
+} else if (n === 'remove' || n === 'forget') {
+  console.log('PIN_RESULT: usage — /pin remove <text of the pinned line to remove>.');
 } else if (n.startsWith('remove ') || n.startsWith('forget ')) {
+  // Only fact lines ("- ...") are candidates — never the header.
   const pat = arg.slice(arg.indexOf(' ') + 1);
   const lc = pat.toLowerCase();
-  if (exists(FACTS) && readF(FACTS).toLowerCase().includes(lc)) {
-    const kept = readF(FACTS).split('\n').filter((l) => !l.toLowerCase().includes(lc));
+  const isMatch = (l) => l.startsWith('- ') && l.toLowerCase().includes(lc);
+  if (exists(FACTS) && readF(FACTS).split('\n').some(isMatch)) {
+    const kept = readF(FACTS).split('\n').filter((l) => !isMatch(l));
     writeF(FACTS, kept.join('\n'));
     console.log('PIN_RESULT: removed pinned lines matching: ' + pat);
   } else console.log('PIN_RESULT: no pinned line matches: ' + pat);

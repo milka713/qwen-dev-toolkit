@@ -91,6 +91,9 @@ noise makes memory useless.
   touch only what the task needs, don't refactor unrelated code along the way.
 - For a vague or broad build request, clarify requirements first (`/brainstorm`) before
   planning — a few questions beat building the wrong thing on a small context.
+- **Git:** new work lands on `dev` or a feature branch; `main`/`master` changes only on
+  the user's explicit approval via `/main-push` (the `/gitflow` policy — a guard hook
+  enforces it, don't fight the hook).
 - **Security:** never hardcode secrets or commit them — read them from env vars / a
   secrets manager and keep them in a gitignored `.env` (a `secret-guard` hook enforces
   this and will block such writes). Run `/audit` before shipping security-sensitive

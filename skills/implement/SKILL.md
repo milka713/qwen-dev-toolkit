@@ -21,11 +21,16 @@ You are the **architect/orchestrator**. The single most important rule: **you do
 
 Keep your context lean: hold only the goal, the plan, and short result summaries. Push everything else down into subagents.
 
+## Step 0 — Resume, or fresh start?
+
+If `.qwen/PROGRESS.md` already exists with a task plan (written by `/plan`, or left by an interrupted run), do **not** re-plan. Read it, sanity-check the first unchecked task against the tree (it may already be done on disk — the tree wins; tick it if so), then jump straight to Step 4 and continue from that task. Never restart or redo finished work.
+
 ## Step 1 — Capture the goal in a durable doc
 
-Run `mkdir -p .qwen`. Since `/implement` means a real build, also turn on development mode for this project so it persists across restarts/compaction: if the project's `QWEN.md` does not already contain a `<!-- devmode:start -->` block, append the development-mode block (see the `/dev` skill) to `QWEN.md`. Pinned there, it survives compaction with no re-declaration.
+Run `mkdir -p .qwen`. Since `/implement` means a real build, also turn on development mode for this project so it persists across restarts/compaction — one idempotent command:
+`bash "$HOME/.qwen/commands/_mode-toggle.sh" devmode "$HOME/.qwen/commands/_devmode.block" "Development mode" on`
 
-Then create or update `.qwen/PROGRESS.md`. This file is the ground truth that survives any compaction or restart. Use this structure:
+Then create or update `.qwen/PROGRESS.md`. This file is the ground truth that survives any compaction or restart. Get the timestamp from `date '+%F %H:%M'` — don't guess it. Use this structure:
 
 ```markdown
 # PROGRESS — <short project name>
@@ -88,30 +93,31 @@ Write each delegation prompt to be **self-contained but short**:
 - Point to the relevant files/dirs by path (from the Scout digest) and the conventions to follow — do **not** paste large file contents; the implementer reads them itself.
 - Give the exact verification command to run if you know it.
 - Carry forward only the decisions/gotchas that matter for this task.
+- If the task depends on an **unfamiliar external library**, first get a digest from the `researcher` subagent (version-pinned signatures + one working example) and paste the relevant lines into the delegation prompt — implementers must not guess APIs from memory.
 
 Run tasks **sequentially by default** (later tasks usually depend on earlier ones). Only batch a few in parallel when they are genuinely independent and touch different files — and if a **"Subagent limit — at most N at a time"** block is in your context (set via `/maxagents`), never exceed N awaitable subagents in one response (N=1 means strictly one at a time). This keeps a resource-constrained local model from being overwhelmed.
 
 ## Step 5 — Record the result, then continue
 
 As soon as an implementer returns, and **before you delegate the next task**, update `.qwen/PROGRESS.md` — this is a required step, not optional bookkeeping:
-1. Read its `STATUS`/`SUMMARY`/`VERIFIED`/`FOLLOW-UPS`/`NOTES`.
+1. Read its `STATUS`/`SUMMARY`/`FILES`/`VERIFIED`/`FOLLOW-UPS`/`NOTES`.
 2. **Tick the task's checkbox `- [ ]` → `- [x]`** in the Task plan, append a one-line Log entry (outcome + files + how verified), and add any NOTES to Gotchas. The checkboxes are the **recovery anchor**: if a compaction or restart happens, the next session re-reads this file and continues from the first unchecked `- [ ]` — an unticked finished task means it gets needlessly redone, and a falsely-ticked one means it gets skipped. Keep them honest and current.
 3. If `STATUS: partial`, add the reported FOLLOW-UPS as new unchecked tasks and re-delegate them as fresh subagents — never let a half-done task linger.
-4. If `STATUS: blocked`, surface the blocker to the user if it needs their input; otherwise delegate a focused investigation/fix task.
+4. If `STATUS: blocked`, surface it to the user if it needs their input. Otherwise — and whenever the **same task fails verification twice** — stop re-running the same implementer prompt and delegate a root-cause pass to the `debugger` subagent (`subagent_type: "debugger"`) with the exact failing command; it returns the diagnosis + minimal fix. If the diagnosis shows the task was mis-scoped, fix the task plan before continuing.
 
-Update this file after **every** task, not in a batch at the end. Do **not** accumulate full implementer transcripts in your context; the one-line Log entry is enough.
+Update this file after **every** task, not in a batch at the end. Do **not** accumulate full implementer transcripts in your context; the one-line Log entry is enough (the session-restore hook injects only the first ~12k characters of this file — keep it lean).
 
 ## Step 6 — Integration verification
 
 After the task plan is complete, run (or delegate) one end-to-end check that the pieces work together: build the whole thing, run the full test suite, or actually launch/exercise the app against the acceptance criteria from Step 1.
 
-**Check the build against the EXPLICIT requirements, not just "my tests pass."** Passing tests are necessary but not sufficient — a subagent writes its own tests, which can be green while a stated requirement is quietly unmet (e.g. the spec said "export `JobQueue` from the package `__init__`" but the code only exports it from a submodule; the self-written tests imported it the working way, so they passed and masked the gap). So go back to the goal/acceptance criteria from Step 1 and verify **each one literally**: every named public API actually importable/callable the way the spec states (e.g. `from pkg import X` from the repo root, the CLI subcommands exist and run, the entry point works, the documented signatures match). Test the *contract a user was promised*, with a quick independent check that doesn't go through the subagents' own test files. Fix any unmet requirement before reporting done.
+**Check the build against the EXPLICIT requirements, not just "my tests pass."** Passing tests are necessary but not sufficient — a subagent writes its own tests, which can be green while a stated requirement is quietly unmet (e.g. the spec said "export `JobQueue` from the package `__init__`" but the code only exports it from a submodule; the self-written tests imported it the working way, so they passed and masked the gap). So delegate the contract check to the **`tester` subagent**: give it *only* the goal/acceptance criteria from Step 1 (never the implementation details), and it verifies each one literally — every named public API importable/callable the way the spec states (`from pkg import X` from the repo root), the CLI subcommands exist and run, the entry point works, the documented signatures match — returning per-criterion PASS/FAIL. Fix every FAIL (re-delegate to an `implementer`, or `debugger` if the cause is unclear) before reporting done.
 
 Run the suite the way a fresh checkout / CI would — the **canonical command from the repo root** (bare `pytest`, `npm test`, `cargo test`, `make test`), not an environment shortcut like `python -m pytest` or a hand-set `PYTHONPATH`. A green result that depends on such a shortcut is not a pass; it means the project is mis-packaged (a subagent that "verified" with a path trick can mask this). Fix the packaging so the standard command is green from a clean root, then re-run it.
 
 **Packaging is YOUR responsibility as orchestrator.** When you delegate atomic per-file tasks, no single subagent owns "make the project runnable from the repo root", so you must ensure it — ideally make it the **first task** (scaffold: package layout, `__init__.py`, and the test-runner glue such as `pyproject.toml` with `[tool.pytest.ini_options] pythonpath=["."]` or a root `conftest.py`) or, failing that, add it here before the integration run. A pile of correct files that `bare pytest` can't even import is not a finished build.
 
-Run the project's checks as an **ordered quality gate** — **build/typecheck → lint → tests** — and stop to fix on the first failure before continuing. When the build is non-trivial, finish with a code-quality pass using the built-in `/review` (correctness/quality review) and `/simplify` (safe cleanup) skills; and if it touches authentication, the network, files, secrets, or a database, run `/audit` (security) before reporting done. Fix or re-delegate anything that fails. Only then report completion.
+Run the project's checks as an **ordered quality gate** — **build/typecheck → lint → tests** — and stop to fix on the first failure before continuing. When the build is non-trivial, finish with a code-quality pass using the built-in `/review` (correctness/quality review) and `/simplify` (safe cleanup) skills; and if it touches authentication, the network, files, secrets, or a database, run `/audit` (security) before reporting done. Fix or re-delegate anything that fails — an integration failure with a non-obvious cause goes to the `debugger` subagent, not to trial-and-error in your own context. Only then report completion.
 
 If **test-first / coverage mode** is active (a "Test-coverage / TDD mode" block is in your context — it states the target %, default 80%), every task delegation must require tests, and this final step must measure coverage with the project's real tool and confirm it meets that target — below target or failing tests means keep working, not "done".
 
@@ -121,7 +127,7 @@ Summarize: what was built, where it lives, how it was verified, and anything lef
 
 ## If interrupted or resumed
 
-On a fresh invocation where `.qwen/PROGRESS.md` already exists, read it first and continue from the first unchecked task — do not restart or redo finished work.
+On a fresh invocation where `.qwen/PROGRESS.md` already exists, follow Step 0: sanity-check the first unchecked task against the tree, then continue from it — do not restart or redo finished work.
 
 ---
 The user's argument (what to build), if any, follows. Treat it as the goal for Step 1.

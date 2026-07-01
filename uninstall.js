@@ -16,7 +16,7 @@ const read = (p) => { try { return fs.readFileSync(p, 'utf8'); } catch (_) { ret
 
 const SKILLS = ['implement', 'plan', 'checkpoint', 'audit', 'brainstorm', 'gitflow', 'commit', 'review', 'docs', 'changelog', 'toolkit-update'];
 for (const s of SKILLS) rm(path.join(QHOME, 'skills', s));
-for (const a of ['implementer', 'scout', 'debugger']) rm(path.join(QHOME, 'agents', a + '.md'));
+for (const a of ['implementer', 'scout', 'debugger', 'tester', 'researcher', 'verifier']) rm(path.join(QHOME, 'agents', a + '.md'));
 
 const CMD_MD = ['dev', 'cover', 'pin', 'status', 'maxagents', 'bro', 'main-push', 'versioning'];
 const CMD_BACKENDS = ['_qdt', '_mode-toggle', '_cover', '_pin', '_status', '_maxagents', '_bro', '_main-push', '_versioning'];

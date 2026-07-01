@@ -19,7 +19,7 @@ write_block() {
     '' \
     '<!-- maxagents:start -->' \
     "## 🧱 Subagent limit — at most ${n} at a time" \
-    "This machine is resource-constrained (a local model). Run **at most ${n} \`implementer\`/\`scout\` subagent(s) concurrently** — never launch more than ${n} awaitable subagent(s) in a single response.${seq} This limit is **enforced deterministically** (extra subagent launches are blocked automatically), so launching more just wastes a turn — pace them within the limit. Keep decomposing into right-sized tasks; just process them ${n} at a time. (Remove with \`/maxagents off\`.)" \
+    "This machine is resource-constrained (a local model). Run **at most ${n} subagent(s) of any type (implementer/scout/tester/…) concurrently** — never launch more than ${n} awaitable subagent(s) in a single response.${seq} This limit is **enforced deterministically** (extra subagent launches are blocked automatically), so launching more just wastes a turn — pace them within the limit. Keep decomposing into right-sized tasks; just process them ${n} at a time. (Remove with \`/maxagents off\`.)" \
     '<!-- maxagents:end -->' >> "$F"
 }
 
