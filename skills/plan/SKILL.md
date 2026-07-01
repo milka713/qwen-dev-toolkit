@@ -11,6 +11,7 @@ allowedTools:
   - glob
   - list_directory
   - write_file
+  - run_shell_command
 ---
 
 # /plan — design the work before building it
@@ -19,25 +20,27 @@ Produce a plan, not code. The output is a populated `.qwen/PROGRESS.md` that `/i
 
 ## Step 1 — Clarify the goal
 
-Restate what's being asked in one or two sentences and define acceptance criteria (what "done" looks like, how it'll be verified). If something essential is genuinely undecidable from context — target stack, scope boundary, an either/or product choice — ask the user **once**, concisely. Don't ask about things you can reasonably default; state your assumption instead.
+If `/brainstorm` already recorded an agreed spec in `.qwen/PROGRESS.md` (Goal/Decisions filled, task plan empty), start from it — don't re-ask what it already answers. Otherwise restate what's being asked in one or two sentences and define acceptance criteria (what "done" looks like, how it'll be verified). If something essential is genuinely undecidable from context — target stack, scope boundary, an either/or product choice — ask the user **once**, concisely. Don't ask about things you can reasonably default; state your assumption instead.
 
 ## Step 2 — Understand the ground (delegate)
 
-For existing code, call the `agent` tool with `subagent_type: "scout"` and a precise question about where things live and what a change must touch. Use its digest — don't bulk-read files yourself. For a greenfield project, skip this and instead decide the structure (layout, stack, key modules) explicitly.
+For existing code, call the `agent` tool with `subagent_type: "scout"` and a precise question about where things live and what a change must touch (for a big codebase, several scouts — one per area). Use the digests — don't bulk-read files yourself. For a greenfield project, skip this and instead decide the structure (layout, stack, key modules) explicitly.
 
 ## Step 3 — Decompose
 
 Break the work into **right-sized, independently-verifiable tasks — roughly one module/class/file + its tests per task** ("Goldilocks" size: small enough to fit one subagent's context, not so tiny you fragment one component across many tasks). A typical small-to-mid project is **3–6 tasks**, driven by natural module boundaries, not a quota — over-splitting (e.g. a task per function of the same file) just adds overhead and is empirically ~50% slower with no quality gain. Order them by dependency so each builds on verified prior work, and prefer thin vertical slices over horizontal "all models, then all endpoints" layers.
 
+**When building a package/app from scratch, make T1 a scaffold task**: package layout, the test-runner glue (`pyproject.toml` with `[tool.pytest.ini_options] pythonpath=["."]` or a root `conftest.py`; the equivalent for other languages), and one trivial smoke test that runs green — so the canonical test command works from the repo root from the very first task. A module and its tests are **one** task, not two.
+
 For each task note, briefly: what it produces, which files/areas it touches, and how it'll be verified.
 
 ## Step 4 — Write the plan to disk
 
-`mkdir -p .qwen`, then write `.qwen/PROGRESS.md`:
+`mkdir -p .qwen`, then write `.qwen/PROGRESS.md` (timestamp from `date '+%F %H:%M'` — don't guess it):
 
 ```markdown
 # PROGRESS — <short name>
-_Updated: <YYYY-MM-DD HH:MM>. Durable plan — re-read after any compaction/restart._
+_Updated: <YYYY-MM-DD HH:MM>. Durable state — re-read after any compaction/restart. Continue from the first unchecked task._
 
 ## 🎯 Goal
 <objective + acceptance criteria>
