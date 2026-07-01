@@ -94,8 +94,8 @@ Alternatives: `qwen extensions install https://github.com/milka713/qwen-dev-tool
 (skills + subagents + commands + guidance; run `./install.sh` too for the hooks), or copy
 the dirs into `~/.qwen/` manually.
 
-**Verify** (after restart): `/skills` lists `implement, plan, checkpoint, audit`;
-`/agents manage` lists `implementer, scout`; `/status` responds.
+**Verify** (after restart): `/skills` lists `brainstorm, plan, implement, checkpoint,
+gitflow, audit`; `/agents manage` lists `implementer, scout`; `/status` responds.
 
 ### Updating
 
@@ -110,6 +110,7 @@ Extension users: `qwen extensions update qwen-dev-toolkit`. Current version is i
 ## Usage
 
 ```text
+/brainstorm a URL shortener API      # pin down scope & acceptance criteria first
 /dev                                 # development mode (architect + delegation)
 /cover 80                            # test-first, require ≥80% measured coverage
 /maxagents 2                         # cap parallel subagents (weak hardware)
@@ -123,6 +124,33 @@ Extension users: `qwen extensions update qwen-dev-toolkit`. Current version is i
 ```
 
 One-shot: `/dev build a Python CLI expense tracker with SQLite and pytest`.
+
+### A typical end-to-end session
+
+You mostly talk to it in plain language; the skills and guards fire on their own.
+
+```text
+> /brainstorm a URL shortener service in Python
+    ← agrees the scope, success criteria and edge cases, writes them down
+
+> /dev build it
+    ← becomes the architect: plans the modules, delegates each one to a fresh
+      implementer subagent, ticking tasks in .qwen/PROGRESS.md as they land.
+      A context overflow + compaction mid-build? SessionStart reloads PROGRESS.md
+      and it continues from the first unchecked task — no lost work.
+
+> запушь готовое            (or "push it")
+    ← gitflow kicks in: creates `dev` if missing, commits, pushes to origin/dev.
+      main is never touched — the git-branch-guard hook blocks that by default.
+
+> выкати в main             (or "release to main")
+    ← it asks you to run /mainok first (main is protected)
+> /mainok                   ← you open a 15-min release window
+> выкати в main             ← now it merges dev → main and pushes
+```
+
+The point: you never have to remember the branch rules, re-state the plan after a
+compaction, or babysit which subagent does what — that's what the toolkit handles.
 
 ## Reliability on a small / slow / shared local server
 
