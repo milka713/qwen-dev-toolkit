@@ -1,5 +1,5 @@
 ---
-description: Toggle version-naming mode. When ON, name versions with semantic versioning by significance — PATCH for small fixes (1.4.7), MINOR for notable features (1.5.0), MAJOR for breaking changes (2.0.0) — and say which part you bumped. Off by default. /versioning or /versioning on = enable (semantic); /versioning <how to name versions instead> = enable with a custom scheme; /versioning off = disable; /versioning status = check. Pinned globally in ~/.qwen/QWEN.md.
+description: Toggle version-naming mode. When ON, name versions with semantic versioning by significance — PATCH for small fixes (1.4.7), MINOR for notable features (1.5.0), MAJOR for breaking changes (2.0.0) — and say which part you bumped. Off by default. /versioning or /versioning on = enable (semantic); /versioning <how to name versions instead> = enable with a custom scheme; /versioning off = disable; /versioning status = check. Pinned **per-project** in the project's QWEN.md, so different projects can use different schemes in parallel.
 argument-hint: '[on | off | status | <custom scheme text>]'
 ---
 

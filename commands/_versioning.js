@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 'use strict';
-// Node port of _versioning.sh — version-naming policy toggle (GLOBAL ~/.qwen/QWEN.md).
-const { fs, path, readF, writeF, appendF, exists, norm, hasMarker, removeBlock, qHome, rawArg } = require('./_qdt.js');
+// Node port of _versioning.sh — version-naming policy toggle, PER-PROJECT (project ./QWEN.md).
+const { readF, writeF, appendF, exists, norm, hasMarker, removeBlock, rawArg } = require('./_qdt.js');
 
-const F = path.join(qHome(), 'QWEN.md');
+const F = 'QWEN.md';
 const M = 'versioning';
 const arg = rawArg(2);
 const n = norm(arg);
@@ -37,7 +37,7 @@ const custom = () => [
   '<!-- versioning:end -->',
 ];
 
-function ensureFile() { if (!exists(F)) { fs.mkdirSync(path.dirname(F), { recursive: true }); writeF(F, ''); } }
+function ensureFile() { if (!exists(F)) writeF(F, ''); }
 
 if (n === 'off') {
   if (hasMarker(F, M)) { removeBlock(F, M); console.log('VERSIONING_RESULT: version-naming mode OFF — back to normal.'); }
@@ -49,8 +49,8 @@ if (n === 'off') {
   else console.log('VERSIONING_RESULT: OFF (default).');
 } else if (n === '' || n === 'on') {
   ensureFile(); if (hasMarker(F, M)) removeBlock(F, M); appendF(F, DEFAULT.join('\n') + '\n');
-  console.log('VERSIONING_RESULT: version-naming mode ON — semantic versioning by significance (patch/minor/major), explicit version names. Pinned globally; /versioning off to disable.');
+  console.log('VERSIONING_RESULT: version-naming mode ON — semantic versioning by significance (patch/minor/major), explicit version names. Pinned in this project\'s QWEN.md; /versioning off to disable.');
 } else {
   ensureFile(); if (hasMarker(F, M)) removeBlock(F, M); appendF(F, custom().join('\n') + '\n');
-  console.log('VERSIONING_RESULT: version-naming mode ON — custom scheme applied. Pinned globally; /versioning off to disable.');
+  console.log('VERSIONING_RESULT: version-naming mode ON — custom scheme applied. Pinned in this project\'s QWEN.md; /versioning off to disable.');
 }

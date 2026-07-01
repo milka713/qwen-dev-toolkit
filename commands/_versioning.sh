@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# /versioning backend — deterministic version-naming policy toggle (GLOBAL ~/.qwen/QWEN.md).
+# /versioning backend — deterministic version-naming policy toggle, PER-PROJECT (writes the
+# project's ./QWEN.md, so different projects can use different schemes in parallel).
 # Default OFF. When ON, the model names versions with semver by significance (patch/minor/
 # major) and states the bump. A free-text argument pins a CUSTOM naming scheme instead.
 # Args: ""|on -> semantic default ; off -> disable ; status ; <text> -> custom scheme.
 set -u
-QHOME="${QWEN_HOME:-$HOME/.qwen}"; F="$QHOME/QWEN.md"; M="versioning"
+F="QWEN.md"; M="versioning"
 ARG="${*:-}"
 norm="$(printf '%s' "$ARG" | tr '[:upper:]' '[:lower:]' | xargs 2>/dev/null || printf '%s' "$ARG")"
 
@@ -54,10 +55,10 @@ case "$norm" in
     ;;
   ""|on)
     touch "$F"; has && remove; write_default
-    echo "VERSIONING_RESULT: version-naming mode ON — semantic versioning by significance (patch/minor/major), explicit version names. Pinned globally; /versioning off to disable."
+    echo "VERSIONING_RESULT: version-naming mode ON — semantic versioning by significance (patch/minor/major), explicit version names. Pinned in this project's QWEN.md; /versioning off to disable."
     ;;
   *)
     touch "$F"; has && remove; write_custom
-    echo "VERSIONING_RESULT: version-naming mode ON — custom scheme applied. Pinned globally; /versioning off to disable."
+    echo "VERSIONING_RESULT: version-naming mode ON — custom scheme applied. Pinned in this project's QWEN.md; /versioning off to disable."
     ;;
 esac
