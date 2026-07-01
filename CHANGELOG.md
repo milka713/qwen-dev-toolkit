@@ -7,7 +7,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com); versions foll
 ## [1.7.0] - 2026-07-01
 
 ### Added
-- Test harness: `node test/run.js` — dependency-free checks of hook allow/deny behavior, `/pin` backend parity (bash + Node), and a full installer round-trip in temp dirs.
+- Three new subagents: **`tester`** (independent black-box verification of acceptance criteria — wired into `/implement`'s final gate, `/dev`, and `/cover`), **`researcher`** (version-pinned library/API digests for `/plan` and implementer delegations), **`verifier`** (adversarial CONFIRMED/REFUTED/PLAUSIBLE check of one candidate finding — wired into `/review` and `/audit`).
+- Test harness: `node test/run.js` — dependency-free checks of hook allow/deny behavior, `/pin` backend parity (bash + Node), manifest consistency, and a full installer round-trip in temp dirs.
 - `/brainstorm` now records the agreed spec durably into `.qwen/PROGRESS.md` (Goal/Decisions/Gotchas), so it survives compaction before `/plan` runs; it also inspects the repo before asking and caps the interview at two rounds.
 - `/audit`: severity definitions pinned to exploitability, evidence rules (file:line + entry point + sink path per finding), high-signal runnable secret-scan commands, rotate-first remediation order, XSS and mass-assignment coverage.
 - `/implement`: Step 0 resume routing (an existing task plan skips re-planning), escalation of repeated task failures to the `debugger` subagent, deterministic devmode pinning via the mode-toggle backend.
