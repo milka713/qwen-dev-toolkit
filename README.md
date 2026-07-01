@@ -64,32 +64,122 @@ gitflow, audit, review, commit, docs, changelog, toolkit-update`; `/agents manag
 Custom commands — the file change runs via a shell step (`!{…}`), so it's deterministic,
 not left to the model.
 
-| Command | What it does |
-| ------- | ------------ |
-| `/dev` · `on` · `off` · `status` · `<goal>` | Development-mode switch. `on` pins the dev block into `QWEN.md` → the session plans and delegates to `implementer` subagents; `off` removes it; `<goal>` enables it **and** starts building. Idempotent; other `QWEN.md` content is kept. |
-| `/cover` · `<N>` · `off` · `status` | Test-first / coverage mode. Build **test-first** (red→green→refactor); coverage is **measured** and must hit the target — `/cover 95` sets 95%, plain `/cover` defaults to **80%**. Verified output, not a hollow shell. |
-| `/maxagents <N>` · `off` · `status` | **Hard** cap on how many subagents run **at once** for a constrained local model (`/maxagents 1` = strictly sequential). Enforced deterministically by a `PreToolUse` hook that blocks extra `agent` launches — not just an instruction. Default = no cap. |
-| `/pin <anything>` · `list` · `remove <text>` · `clear` | Remember any info (IP/port, deploy command, decision, URL, snippet) into a compaction-proof `FACTS.md` — auto-loaded via `@FACTS.md` and **gitignored** so it can't leak. Per-project. |
-| `/status` | Read-only snapshot: dev mode, coverage target, subagent cap, pinned-fact count, current goal and next task. |
-| `/main-push` · `off` · `status` | Authorize push/merge to the protected branch (`main`/`master`) for a **15-minute release window** (covers the merge **and** the push). The `git-branch-guard` hook blocks main operations by default; `/main-push` is the user-only release valve. |
-| `/versioning` · `on` · `off` · `status` · `<custom scheme>` | Toggle version-naming mode (**off by default**). On → name versions with semantic versioning by significance (PATCH `1.4.7` / MINOR `1.5.0` / MAJOR `2.0.0`) and say which part you bumped. Pass free text to pin a custom scheme instead. **Per-project** (in the project's `QWEN.md`) — different projects can run different schemes. |
-| `/bro` · `свобода` · `ламар` · `off` · `status` | Talk to you like a homie, in one of **two personas**: `свобода` = a S.T.A.L.K.E.R. *Freedom* drifter (always calls you "мэн"), `ламар` = a GTA V *Lamar Davis* street homie ("homie/foo/dog") — casual, slangy, blunt, but still genuinely helpful. Off by default; pinned **globally** until `/bro off`. |
+Each keeps its state in a marked block in `QWEN.md` (or in `FACTS.md`), which is re-attached
+to context every request and so survives compaction. Args are shown after each name.
+
+**`/dev` · `on` · `off` · `status` · `<goal>`** — Development-mode switch: turns the session
+into an **architect that delegates**. With it on, the model plans the work and hands every
+implementation task to a fresh `implementer` subagent instead of coding in its own context —
+which is exactly what lets a big build finish instead of overflowing and breaking after a
+compaction. `on` pins the dev block into the project's `QWEN.md`; `off` removes it; `status`
+reports; and `/dev <goal>` turns it on **and** starts building that goal in the same turn.
+Idempotent — the rest of your `QWEN.md` is left intact.
+· _Example:_ `/dev build a REST API for todos with SQLite + tests`
+
+**`/cover` · `<N>` · `off` · `status`** — Test-first / coverage mode. While on, nothing is
+"done" until it ships passing tests: the model works **red → green → refactor** and must
+**measure** coverage with the project's real tool (`pytest --cov`, `jest --coverage`, `go
+test -cover`, …) and hit the target. `/cover 95` sets 95 %, plain `/cover` defaults to 80 %,
+`/cover off` clears it. Guards against hollow, unverified output.
+· _Example:_ `/cover 90`
+
+**`/maxagents <N>` · `off` · `status`** — Hard cap on how many subagents run **at once**, for
+weak or loaded local hardware. Not just an instruction: a `PreToolUse` hook counts running
+subagents and **blocks** any launch beyond N (`/maxagents 1` = strictly sequential). Default
+is no cap; clear a stale one with `/maxagents off` (a leftover `1` can otherwise cause retry
+loops).
+· _Example:_ `/maxagents 2`
+
+**`/pin <anything>` · `list` · `remove <text>` · `clear`** — Remember any fact you want always
+on hand — a host/port, a deploy command, a decision, a URL, a code snippet. It lands in a
+project `FACTS.md` that's auto-loaded every session via an `@FACTS.md` include (so it survives
+compaction) and is **gitignored** so it can't leak into the repo. `list` shows them,
+`remove <text>` drops matching lines, `clear` wipes all.
+· _Example:_ `/pin deploy = ssh -p 12578 mark@host && ./deploy-dev.sh`
+
+**`/status`** — Read-only snapshot of this project's toolkit state: dev mode on/off, coverage
+target, subagent cap, how many facts are pinned, and — from `.qwen/PROGRESS.md` — the current
+goal and the next unchecked task. Changes nothing.
+
+**`/main-push` · `off` · `status`** — The user-only release valve for the protected branch. By
+default the `git-branch-guard` hook blocks every push/merge to `main`/`master`; running
+`/main-push` opens a **15-minute window** that authorizes the whole release (the merge **and**
+the push). `off` revokes it early, `status` checks it. Because only you can run a slash
+command, this makes "yes, really release to main" un-fakeable by the model.
+
+**`/versioning` · `on` · `off` · `status` · `<custom scheme>`** — Version-naming policy,
+**off by default** and **per-project** (pinned in the project's `QWEN.md`, so different
+projects can use different schemes in parallel). On, the model names versions with semantic
+versioning by significance — **PATCH** for small fixes (`1.4.7`), **MINOR** for notable
+features (`1.5.0`), **MAJOR** for breaking changes (`2.0.0`) — and says which part it bumped.
+Pass free text to pin your own scheme instead.
+· _Examples:_ `/versioning` · `/versioning use CalVer like 2026.07`
+
+**`/bro` · `свобода` · `ламар` · `off` · `status`** — Talk to you like a homie instead of a
+formal assistant, in one of two personas: `свобода` = a S.T.A.L.K.E.R. *Freedom* drifter who
+always calls you "мэн", `ламар` = a GTA-V *Lamar Davis* street homie ("homie/foo/dog").
+Casual, slangy and blunt, but still genuinely accurate and helpful — the vibe is a wrapper,
+never an excuse to slack. Off by default; pinned **globally** until `/bro off`.
 
 ### Skills (model- and user-invocable)
 
-| Skill | What it does |
-| ----- | ------------ |
-| `/brainstorm` | Clarifies and pressure-tests requirements **before** building (scope, success criteria, edge cases, constraints) so a small context isn't spent building the wrong thing. Produces an agreed spec, then hands to `/plan`. |
-| `/plan` | Turns a fuzzy/large request into a dependency-ordered task list in `.qwen/PROGRESS.md`. Explores via the read-only `scout`. Produces a plan, not code. |
-| `/implement` | Orchestrator: captures the goal, decomposes it, runs **each task in a fresh `implementer` subagent**, then verifies end-to-end with the canonical command. For any multi-step build. |
-| `/checkpoint` | Curates the important state into `.qwen/PROGRESS.md` so it survives lossy auto-compression. `/checkpoint restore` reloads it. |
-| `/gitflow` | The git branch & deploy discipline, applied proactively on any commit/push/merge/deploy: **new work → `dev` by default; `main`/`master` only on explicit approval**. Backed at engine level by the `git-branch-guard` hook + `/main-push`. |
-| `/audit` | Security review (architecture + code): hardcoded secrets, authz, injection, SSRF, weak crypto, risky deps — findings by severity, fixes the safe ones. |
-| `/review` | Correctness & quality pass over the current diff — bugs, edge cases, contract mismatches, dead/over-complex code (separate from `/audit`, which is security). Reports by severity, fixes the safe ones, re-runs tests. |
-| `/commit` | Stages deliberately and writes a clean Conventional-Commits message from the **actual diff**; respects `gitflow` (lands on `dev`, never `main` without release). |
-| `/docs` | Keeps docs in sync with the code after a change — `README.md` **and** `README.ru.md` (bilingual parity), usage examples, help text — accurate over comprehensive. |
-| `/changelog` | Builds a human `CHANGELOG.md` entry from the git log since the last tag, grouped Keep-a-Changelog style (Added/Changed/Fixed/…). |
-| `/toolkit-update` | **Installs or updates this toolkit itself** from GitHub with one command (fetch + run the cross-platform installer + verify). Install and update are the same command. |
+Unlike commands, the model can also invoke these **on its own** when they're relevant (or you
+can run `/name`). Arguments in `<…>` are optional.
+
+**`/brainstorm`** — Pins down *what* to build before any code. Clarifies and pressure-tests
+the requirements — scope, success criteria, edge cases, constraints, what's explicitly out —
+so a small context isn't spent building the wrong thing. Produces an agreed spec, then hands
+off to `/plan`.
+
+**`/plan`** — Turns a fuzzy or large request into a concrete, **dependency-ordered task list**
+in `.qwen/PROGRESS.md`, exploring an unfamiliar codebase first via the read-only `scout`
+subagent. Produces a plan, not code — the durable starting point a build resumes from after
+any restart or compaction.
+
+**`/implement`** — The orchestrator for any multi-step build. Captures the goal, decomposes it
+into right-sized tasks (≈ one module + its tests each), runs **each task in a fresh
+`implementer` subagent**, ticks it off in `.qwen/PROGRESS.md`, and finishes with an
+end-to-end check using the project's canonical command — actually **running** every named
+entry point, not just importing it. Delegating instead of coding inline is what lets big
+projects finish on a small context.
+
+**`/checkpoint` · `restore`** — Curates the important state (goal, decisions, file map,
+done/todo) into `.qwen/PROGRESS.md` so it survives lossy auto-compaction; `/checkpoint
+restore` reloads it into context after a compaction or in a fresh session.
+
+**`/gitflow`** — The git branch & deploy discipline, applied proactively whenever you
+commit/push/merge/deploy: **new work → `dev` by default; `main`/`master` only on your explicit
+approval**, with a sane deploy order (dev → test → confirm → main → prod). Backed at the
+engine level by the `git-branch-guard` hook and released via `/main-push`.
+
+**`/audit`** — A **security** review of architecture and code: hardcoded secrets, broken
+authz, injection, SSRF, weak crypto, risky dependencies. Reports findings by severity and
+fixes the clearly-safe ones. Run it before shipping anything touching auth, the network,
+files, secrets or a database.
+
+**`/review` · `<path>`** — A **correctness & quality** pass over the current diff (distinct
+from `/audit`'s security focus): real bugs, mishandled edge cases, contract mismatches with
+the spec, dead or over-complex code. Reports by severity, fixes the safe unambiguous ones,
+and re-runs the tests to confirm they're still green.
+
+**`/commit` · `<hint>`** — Stages the right files deliberately (not a blind `git add -A`) and
+writes a clean **Conventional-Commits** message derived from the actual diff, not a guess.
+Respects `gitflow` — commits to `dev`/a feature branch, never straight to `main` — won't
+commit secrets, and doesn't push unless you ask.
+
+**`/docs` · `<what changed>`** — Keeps documentation in sync with the code after a change:
+`README.md` **and** `README.ru.md` kept in bilingual parity, usage examples that actually run,
+help text and command tables. Accurate over comprehensive — it verifies names/flags against
+the code and won't document things that don't exist.
+
+**`/changelog` · `<version>`** — Builds a human-readable `CHANGELOG.md` entry from the git log
+since the last tag, grouped Keep-a-Changelog style (Added / Changed / Fixed / …), rewriting
+commit subjects into user-facing lines and proposing the next semver. Grounded in real
+commits — no invented entries.
+
+**`/toolkit-update`** — Installs or updates **this toolkit itself** from GitHub in one command:
+fetches the latest, runs the cross-platform installer, and verifies. Install and update are
+the same operation; works from anywhere (needs `git` + `node`).
 
 ### Subagents (isolated context)
 
