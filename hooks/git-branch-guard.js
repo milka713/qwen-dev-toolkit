@@ -3,7 +3,7 @@
 // Enforces the toolkit's git discipline at the engine level instead of trusting a small
 // model to remember it: new work goes to `dev`; the protected branches (main/master) are
 // touched by an OUTWARD/irreversible action (push to main, or merge into main) ONLY when
-// the user has explicitly authorized it via `/mainok` (which drops a short-lived token).
+// the user has explicitly authorized it via `/main-push` (which drops a short-lived token).
 //
 // Blocks, on run_shell_command:
 //   - `git push` that targets main/master (explicit `origin main`, `HEAD:main`, `:main`,
@@ -12,7 +12,7 @@
 //   - `git merge` / `git rebase` while checked out ON main/master
 //   - a one-liner that switches to main/master and then merges/pushes
 // Allows everything else (all pushes to dev/feature branches, all read-only git, and any
-// main operation once `/mainok` has authorized it — the token is consumed on use).
+// main operation once `/main-push` has authorized it — the token is consumed on use).
 'use strict';
 const fs = require('fs');
 const { execFileSync } = require('child_process');
@@ -78,7 +78,7 @@ if (!reason &&
 
 if (!reason) process.exit(0); // allow
 
-// Explicit user authorization? /mainok drops a short-lived token that opens a 15-minute
+// Explicit user authorization? /main-push drops a short-lived token that opens a 15-minute
 // release window (NOT consumed on use, so one authorization covers the merge AND the push).
 const path = require('path');
 const QHOME = process.env.QWEN_HOME || path.join(process.env.HOME || require('os').homedir(), '.qwen');
@@ -97,6 +97,6 @@ process.stdout.write(JSON.stringify({
     permissionDecisionReason:
       'qwen-dev-toolkit git-flow guard blocked this: it is ' + reason + '. Policy: all new work goes to the `dev` branch; `main`/`master` is only updated on the user\'s EXPLICIT approval. ' +
       'What to do instead: commit/push to `dev` (create it from the current work if it does not exist: `git switch -c dev` then push `dev`). ' +
-      'If — and only if — the user has explicitly told you to release to main, do NOT retry this command yourself; ask the user to run `/mainok` first (it opens a 15-minute window that authorizes the main merge and push), then repeat the command.',
+      'If — and only if — the user has explicitly told you to release to main, do NOT retry this command yourself; ask the user to run `/main-push` first (it opens a 15-minute window that authorizes the main merge and push), then repeat the command.',
   },
 }));

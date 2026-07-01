@@ -9,6 +9,44 @@ builds stalling after a context overflow + lossy compaction by making the model 
 
 > 🇺🇸 English · [🇷🇺 Русский](README.ru.md)
 
+## Install / update
+
+**Install and update are the same command** — re-run it any time and it refreshes in place.
+It copies only this toolkit's own files into `~/.qwen`; your other skills, settings, API
+keys and memories are left untouched. Cross-platform: **macOS · Linux · Windows** (one Node
+installer — it wires bash backends on macOS/Linux and Node backends on Windows automatically).
+
+### 🤖 If you're an AI agent
+
+The user pointed you at this repo and asked to install/update the skills? Follow
+**[`INSTALL_FOR_AI.md`](INSTALL_FOR_AI.md)** — step-by-step instructions written for you,
+including how to **verify** it worked. Short version (install *and* update):
+
+```
+git clone --depth 1 https://github.com/milka713/qwen-dev-toolkit
+node qwen-dev-toolkit/install.js
+```
+
+Already inside a checkout? just `node install.js`. Updating an existing checkout? `git pull`
+then re-run. Already running inside qwen-code? invoke **`/toolkit-update`** and it does all of this for you.
+
+### 🧑 If you're a human
+
+Prerequisites: **Node.js** + **qwen-code** (and **git** for the git features). The installer
+checks them and prints what's missing.
+
+```bash
+./install.sh      # macOS / Linux
+install.cmd       # Windows        (or: node install.js  — anywhere)
+```
+
+Then **restart qwen-code**. To update later, re-run the same command (or `/toolkit-update`
+from inside qwen-code). To remove: `./uninstall.sh` / `uninstall.cmd`.
+
+**Verify** (after restart): `/skills` lists `brainstorm, plan, implement, checkpoint,
+gitflow, audit, review, commit, docs, changelog, toolkit-update`; `/agents manage` lists
+`implementer, scout, debugger`; `/status` responds.
+
 ## How it works
 
 - **Delegation** — the main session plans and delegates; all heavy work (reading files,
@@ -33,7 +71,7 @@ not left to the model.
 | `/maxagents <N>` · `off` · `status` | **Hard** cap on how many subagents run **at once** for a constrained local model (`/maxagents 1` = strictly sequential). Enforced deterministically by a `PreToolUse` hook that blocks extra `agent` launches — not just an instruction. Default = no cap. |
 | `/pin <anything>` · `list` · `remove <text>` · `clear` | Remember any info (IP/port, deploy command, decision, URL, snippet) into a compaction-proof `FACTS.md` — auto-loaded via `@FACTS.md` and **gitignored** so it can't leak. Per-project. |
 | `/status` | Read-only snapshot: dev mode, coverage target, subagent cap, pinned-fact count, current goal and next task. |
-| `/mainok` · `off` · `status` | Authorize push/merge to the protected branch (`main`/`master`) for a **15-minute release window** (covers the merge **and** the push). The `git-branch-guard` hook blocks main operations by default; `/mainok` is the user-only release valve. |
+| `/main-push` · `off` · `status` | Authorize push/merge to the protected branch (`main`/`master`) for a **15-minute release window** (covers the merge **and** the push). The `git-branch-guard` hook blocks main operations by default; `/main-push` is the user-only release valve. |
 | `/bro` · `свобода` · `ламар` · `off` · `status` | Talk to you like a homie, in one of **two personas**: `свобода` = a S.T.A.L.K.E.R. *Freedom* drifter (always calls you "мэн"), `ламар` = a GTA V *Lamar Davis* street homie ("homie/foo/dog") — casual, slangy, blunt, but still genuinely helpful. Off by default; pinned **globally** until `/bro off`. |
 
 ### Skills (model- and user-invocable)
@@ -44,8 +82,13 @@ not left to the model.
 | `/plan` | Turns a fuzzy/large request into a dependency-ordered task list in `.qwen/PROGRESS.md`. Explores via the read-only `scout`. Produces a plan, not code. |
 | `/implement` | Orchestrator: captures the goal, decomposes it, runs **each task in a fresh `implementer` subagent**, then verifies end-to-end with the canonical command. For any multi-step build. |
 | `/checkpoint` | Curates the important state into `.qwen/PROGRESS.md` so it survives lossy auto-compression. `/checkpoint restore` reloads it. |
-| `/gitflow` | The git branch & deploy discipline, applied proactively on any commit/push/merge/deploy: **new work → `dev` by default; `main`/`master` only on explicit approval**. Backed at engine level by the `git-branch-guard` hook + `/mainok`. |
+| `/gitflow` | The git branch & deploy discipline, applied proactively on any commit/push/merge/deploy: **new work → `dev` by default; `main`/`master` only on explicit approval**. Backed at engine level by the `git-branch-guard` hook + `/main-push`. |
 | `/audit` | Security review (architecture + code): hardcoded secrets, authz, injection, SSRF, weak crypto, risky deps — findings by severity, fixes the safe ones. |
+| `/review` | Correctness & quality pass over the current diff — bugs, edge cases, contract mismatches, dead/over-complex code (separate from `/audit`, which is security). Reports by severity, fixes the safe ones, re-runs tests. |
+| `/commit` | Stages deliberately and writes a clean Conventional-Commits message from the **actual diff**; respects `gitflow` (lands on `dev`, never `main` without release). |
+| `/docs` | Keeps docs in sync with the code after a change — `README.md` **and** `README.ru.md` (bilingual parity), usage examples, help text — accurate over comprehensive. |
+| `/changelog` | Builds a human `CHANGELOG.md` entry from the git log since the last tag, grouped Keep-a-Changelog style (Added/Changed/Fixed/…). |
+| `/toolkit-update` | **Installs or updates this toolkit itself** from GitHub with one command (fetch + run the cross-platform installer + verify). Install and update are the same command. |
 
 ### Subagents (isolated context)
 
@@ -53,6 +96,7 @@ not left to the model.
 | -------- | ------------ |
 | `implementer` | Drives **one** task to a verified state: reads real files, implements fully (no stubs), verifies with the **canonical** command from the repo root (fixes packaging if a check only passes via a path trick). Returns a short summary. |
 | `scout` | Read-only explorer — returns a compact digest (key files, wiring, conventions, real build/test commands) instead of bulk-reading into the main context. |
+| `debugger` | Root-cause debugger — reproduces a failing test/error in its own context, finds the *real* cause (not the symptom), applies the minimal fix, verifies the repro + suite, returns a diagnosis. |
 
 ### Hooks (`~/.qwen/settings.json`)
 
@@ -61,7 +105,7 @@ not left to the model.
 | `SessionStart` → `session-start-restore.js` | Re-injects `.qwen/PROGRESS.md` at session start / after compaction, so the model recovers the goal and next steps. |
 | `PreCompact` → `pre-compact-steer.js` | Steers the built-in compressor to keep the goal, decisions, file list and done/todo. |
 | `PreToolUse` → `secret-guard.js` | **Blocks** any write/edit/command containing a hardcoded credential (private keys, AWS/OpenAI/GitHub/Slack/HF tokens, …) or that commits a secret file (`.env`, `id_rsa`, `*.pem`). Env-var usage and placeholders pass. |
-| `PreToolUse` → `git-branch-guard.js` | **Blocks** any `git push`/`merge`/`rebase` that would touch `main`/`master` (explicit target, or while checked out on it, or a switch-then-merge one-liner). Pushes to `dev`/feature branches and read-only git pass. Released for one operation by `/mainok`. |
+| `PreToolUse` → `git-branch-guard.js` | **Blocks** any `git push`/`merge`/`rebase` that would touch `main`/`master` (explicit target, or while checked out on it, or a switch-then-merge one-liner). Pushes to `dev`/feature branches and read-only git pass. Released for one operation by `/main-push`. |
 | `UserPromptSubmit` → `skill-reminder.js` | Small local models under-trigger model-invoked skills; this injects a short, targeted reminder (e.g. "looks security-related → `/audit`") only when the prompt clearly matches, so the right skill actually fires. Silent on trivial prompts. |
 | `PreToolUse`/`PostToolUse`/`SessionStart` → `agent-limit.js` | Enforces `/maxagents` deterministically: counts running subagents and **denies** `agent` launches beyond the cap (concurrency-safe via a lock), decrements when one finishes, resets each session. No cap set → no-op. |
 
@@ -79,33 +123,6 @@ no session-only QWEN.md.
 | `/pin` memory | `<project>/FACTS.md` (gitignored) | **Project** |
 | `/dev` & `/cover` flags | block in `<project>/QWEN.md` | **Project** (sticky until `off`) |
 | Task state | `<project>/.qwen/PROGRESS.md` | **Project** |
-
-## Install
-
-```bash
-./install.sh          # full install into ~/.qwen, then restart qwen-code
-```
-
-Copies skills/subagents/commands/hooks into `~/.qwen` and idempotently merges the hook +
-auto-memory settings and the guidance — without touching your existing keys or settings.
-Safe to re-run.
-
-Alternatives: `qwen extensions install https://github.com/milka713/qwen-dev-toolkit`
-(skills + subagents + commands + guidance; run `./install.sh` too for the hooks), or copy
-the dirs into `~/.qwen/` manually.
-
-**Verify** (after restart): `/skills` lists `brainstorm, plan, implement, checkpoint,
-gitflow, audit`; `/agents manage` lists `implementer, scout`; `/status` responds.
-
-### Updating
-
-```bash
-git pull && ./install.sh        # idempotent; cleans up files renamed/removed in old releases
-```
-
-`install.sh` overwrites only this toolkit's own files and config blocks (your keys, other
-settings, memories, and `.qwen/PROGRESS.md` are untouched), so re-running it is the update.
-Extension users: `qwen extensions update qwen-dev-toolkit`. Current version is in `VERSION`.
 
 ## Usage
 
@@ -144,8 +161,8 @@ You mostly talk to it in plain language; the skills and guards fire on their own
       main is never touched — the git-branch-guard hook blocks that by default.
 
 > выкати в main             (or "release to main")
-    ← it asks you to run /mainok first (main is protected)
-> /mainok                   ← you open a 15-min release window
+    ← it asks you to run /main-push first (main is protected)
+> /main-push                   ← you open a 15-min release window
 > выкати в main             ← now it merges dev → main and pushes
 ```
 
@@ -232,9 +249,11 @@ small, quick model so the classifier answers in ~300 ms and never waits on the m
 or skip the classifier entirely with `yolo` + a `permissions.deny` guardrail list (`deny`
 outranks everything, even in yolo).
 
-## Requirements & uninstall
+## Requirements
 
-- qwen-code (tested on **0.19.x**) + Node.js. Any provider; designed for small-context local models.
-- `./uninstall.sh` removes only this toolkit's files and config blocks; your other settings, env vars and `.qwen/PROGRESS.md` stay intact.
+- **qwen-code** (tested on **0.19.x**) + **Node.js**; **git** for the git features. Any
+  provider; designed for small-context local models. Runs on macOS, Linux and Windows.
+- Uninstall (removes only this toolkit's files/blocks; your other settings, env vars and
+  `.qwen/PROGRESS.md` stay intact): `./uninstall.sh` (macOS/Linux) or `uninstall.cmd` (Windows).
 
 MIT — see [LICENSE](LICENSE).

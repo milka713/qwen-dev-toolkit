@@ -1,49 +1,6 @@
 #!/usr/bin/env bash
-# Removes qwen-dev-toolkit: deletes its skills/agents/hook scripts, strips its hook
-# entries and QWEN.md block from your config. Leaves your other settings, env vars,
-# memory and any .qwen/PROGRESS.md files untouched.
-set -euo pipefail
-QHOME="${QWEN_HOME:-$HOME/.qwen}"
-
-rm -rf "$QHOME/skills/implement" "$QHOME/skills/checkpoint" "$QHOME/skills/plan" \
-       "$QHOME/skills/audit" "$QHOME/skills/brainstorm"
-rm -f  "$QHOME/agents/implementer.md" "$QHOME/agents/scout.md"
-rm -f  "$QHOME/commands/dev.md" "$QHOME/commands/cover.md" "$QHOME/commands/pin.md" \
-       "$QHOME/commands/status.md" "$QHOME/commands/maxagents.md" \
-       "$QHOME/commands/_mode-toggle.sh" "$QHOME/commands/_devmode.block" \
-       "$QHOME/commands/_covermode.block" "$QHOME/commands/_pin.sh" \
-       "$QHOME/commands/_status.sh" "$QHOME/commands/_cover.sh" \
-       "$QHOME/commands/_maxagents.sh" "$QHOME/commands/bro.md" \
-       "$QHOME/commands/_bro.sh" "$QHOME/commands/_dev-toggle.sh"
-rm -f  "$QHOME/hooks/session-start-restore.js" "$QHOME/hooks/pre-compact-steer.js" \
-       "$QHOME/hooks/secret-guard.js" "$QHOME/hooks/skill-reminder.js" \
-       "$QHOME/hooks/agent-limit.js"
-echo "  ✓ removed skills, commands, subagents, hook scripts"
-
-node - "$QHOME" <<'NODE'
-const fs = require('fs'), path = require('path');
-const qhome = process.argv[2];
-const file = path.join(qhome, 'settings.json');
-let s; try { s = JSON.parse(fs.readFileSync(file, 'utf8')); } catch (_) { process.exit(0); }
-const names = new Set(['restore-progress', 'steer-compaction', 'secret-guard', 'skill-reminder',
-  'agent-limit-reset', 'agent-limit-pre', 'agent-limit-post']);
-for (const ev of Object.keys(s.hooks || {})) {
-  s.hooks[ev] = (s.hooks[ev] || []).filter(g => !(g.hooks || []).some(h => names.has(h.name)));
-  if (!s.hooks[ev].length) delete s.hooks[ev];
-}
-if (s.hooks && !Object.keys(s.hooks).length) delete s.hooks;
-fs.writeFileSync(file, JSON.stringify(s, null, 2) + '\n');
-console.log('  ✓ removed hook entries from settings.json (memory setting left as-is)');
-NODE
-
-node - "$QHOME" <<'NODE'
-const fs = require('fs'), path = require('path');
-const file = path.join(process.argv[2], 'QWEN.md');
-let cur; try { cur = fs.readFileSync(file, 'utf8'); } catch (_) { process.exit(0); }
-let out = cur.replace(/\n*<!-- qwen-dev-toolkit:start -->[\s\S]*?<!-- qwen-dev-toolkit:end -->\n*/, '\n');
-out = out.replace(/\n*<!-- bromode:start -->[\s\S]*?<!-- bromode:end -->\n*/, '\n'); // /bro persona block
-fs.writeFileSync(file, out.replace(/\n{3,}/g, '\n\n').trimEnd() + '\n');
-console.log('  ✓ removed QWEN.md guidance + bro-mode block');
-NODE
-
-echo "Done. Restart qwen-code."
+# Thin wrapper for macOS / Linux — the real uninstaller is the cross-platform uninstall.js.
+# Windows: run  uninstall.cmd  (or  node uninstall.js).
+set -e
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec node "$DIR/uninstall.js" "$@"
