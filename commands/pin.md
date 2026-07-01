@@ -7,7 +7,7 @@ The change below was applied deterministically by the shell — act on its resul
 !{bash "$HOME/.qwen/commands/_pin.sh" {{args}}}
 
 Based on `PIN_RESULT`:
-- A fact was **pinned**: confirm briefly what is now remembered, and note it stays in context across compaction/restarts and is gitignored (won't be committed). If it's clearly a duplicate, say so instead of re-adding.
+- A fact was **pinned**: confirm briefly what is now remembered, and note it stays in context across compaction/restarts and is gitignored (won't be committed). The shell appends without checking — if the new pin duplicates an existing one, say so and offer to drop the older line (`/pin remove <text>`).
 - **list**: present the pinned memory.
 - **remove/clear**: confirm what was removed.
 
