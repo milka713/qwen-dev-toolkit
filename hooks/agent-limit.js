@@ -36,7 +36,12 @@ function withLock(fn) {
   // Atomic lock via mkdir; serializes concurrent hook processes from one turn.
   for (let i = 0; i < 200; i++) {
     try { fs.mkdirSync(lockDir); break; }
-    catch (_) { /* busy */ const until = Date.now() + 5; while (Date.now() < until) {} }
+    catch (_) {
+      // Steal a stale lock left by a crashed hook process, else it lives forever
+      // and every later call spins the full timeout and runs unserialized.
+      try { if (Date.now() - fs.statSync(lockDir).mtimeMs > 10000) { fs.rmdirSync(lockDir); continue; } } catch (_) {}
+      const until = Date.now() + 5; while (Date.now() < until) {}
+    }
   }
   try { return fn(); } finally { try { fs.rmdirSync(lockDir); } catch (_) {} }
 }
@@ -66,7 +71,7 @@ process.stdout.write(JSON.stringify({
     hookEventName: 'PreToolUse',
     permissionDecision: 'deny',
     permissionDecisionReason:
-      `Subagent limit reached: at most ${cap} subagent(s) may run at once on this machine (set via /maxagents), and ${decision.running} ` +
+      `Subagent limit reached: at most ${cap} subagent(s) may run at once in this project (set via /maxagents), and ${decision.running} ` +
       `is/are already running. Do NOT launch this subagent now — wait for a running one to finish, then launch the next. ` +
       `Run them sequentially (or in batches of ${cap}) rather than all at once.`,
   },
