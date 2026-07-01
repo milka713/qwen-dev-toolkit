@@ -1,8 +1,10 @@
 ---
 name: review
 description: Correctness- and quality-focused code review of the current diff (bugs, edge cases, dead code, over-complication) — separate from /audit, which is security. Use PROACTIVELY after a build or before a commit/PR, or when the user says "review", "проверь код", "отревьюй". Reports findings by severity and fixes the safe, unambiguous ones. Invoke with /review or /review <path-or-scope>.
+argument-hint: '[path or scope]'
 priority: 20
 allowedTools:
+  - agent
   - run_shell_command
   - read_file
   - read_many_files
@@ -18,7 +20,7 @@ A focused review of what changed, aimed at bugs and needless complexity — **no
 
 ## Scope
 
-Default to the **current change set**: `git diff` (unstaged + staged) plus recently added files. If the user named a path/scope, review that. If the tree is clean and nothing was named, review the most recent commit (`git show`). Don't bulk-read the whole repo — review the delta and just enough surrounding code to judge it.
+Default to the **current change set**: `git diff HEAD` (staged + unstaged) plus untracked new files from `git status --short`. If the user named a path/scope, review that. If the tree is clean and nothing was named, review the most recent commit (`git show`). Don't bulk-read the whole repo — review the delta and just enough surrounding code to judge it.
 
 ## What to look for (in priority order)
 
@@ -30,11 +32,12 @@ Default to the **current change set**: `git diff` (unstaged + staged) plus recen
 
 ## How to run it
 
-1. Get the diff and read the changed regions (and the functions they call/are called by, if needed to judge correctness).
-2. For a **large or multi-file** change, delegate the reading to the read-only `scout` subagent for a digest, or spin one `implementer`/`general-purpose` review per area — keep your own context lean.
-3. Produce findings, each as: **severity** (🔴 bug / 🟠 likely bug / 🟡 quality) — file:line — one-sentence problem — concrete failing input or scenario — suggested fix.
-4. **Fix the safe ones now**: unambiguous bugs and clear simplifications, via `edit`. After fixing, **re-run the project's tests** (canonical command from repo root) to confirm still-green. Leave anything judgment-heavy or risky as a listed recommendation for the user, don't guess.
-5. If a `/cover` coverage-mode block is active, also flag untested changed lines.
+1. Get the diff, then read the changed regions **in the actual files** — a diff hunk alone lacks the context to judge correctness. Follow the functions they call / are called by when needed.
+2. **Verify before flagging.** The "unhandled" case may be handled by the caller, a validator, or a default — check the surrounding code first. Every finding needs a concrete failing input or scenario; if you can't name one, it's not a bug finding.
+3. For a **large or multi-file** change, delegate the reading to read-only `scout` subagents (`agent` tool, `subagent_type: "scout"`, one per area) asking for *candidate* findings with file:line evidence — then verify the candidates yourself. Don't use code-writing subagents to review.
+4. Produce findings, each as: **severity** (🔴 bug / 🟠 likely bug / 🟡 quality) — file:line — one-sentence problem — concrete failing input or scenario — suggested fix.
+5. **Fix the safe ones now**: unambiguous bugs and clear simplifications, via `edit`. After fixing, **re-run the project's tests** (canonical command from repo root; if there are none, at least the build/typecheck) to confirm still-green. Leave anything judgment-heavy or risky as a listed recommendation for the user, don't guess.
+6. If a `/cover` coverage-mode block is active, also flag untested changed lines. If you stumble on a **security** issue, don't drop it because it's out of scope — report it and point at `/audit`.
 
 ## Report
 
