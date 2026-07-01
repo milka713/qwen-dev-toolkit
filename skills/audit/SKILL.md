@@ -1,6 +1,6 @@
 ---
 name: audit
-description: Security review at the architecture and code level — find hardcoded secrets, secrets about to be committed, authn/authz gaps, injection (SQL/command/path), unsafe deserialization, SSRF, missing input validation, weak crypto, and risky dependencies. Use PROACTIVELY before shipping, before a commit/push, after building an auth/network/file/DB feature, or when the user asks to check security. Invoke with /audit or /audit <focus or path>.
+description: Security review at the architecture and code level — find hardcoded secrets, secrets about to be committed, authn/authz gaps, injection (SQL/command/path), XSS, unsafe deserialization, SSRF, missing input validation, weak crypto, and risky dependencies. Use PROACTIVELY before shipping, before a commit/push, after building an auth/network/file/DB feature, or when the user asks to check security ("is this safe?", "проверь безопасность"). Invoke with /audit or /audit <focus or path>.
 argument-hint: '[focus area or path]'
 priority: 20
 allowedTools:
@@ -15,52 +15,71 @@ allowedTools:
 
 # /audit — security review (architecture + code)
 
-Review the project (or the recent changes / the path the user named) for security problems, think like an attacker, and report findings ordered by severity. Fix the clearly-safe ones; flag the rest with a concrete remediation.
+Review the project (or the recent changes / the path the user named) for security problems, think like an attacker, fix the clearly-safe findings, and report everything by severity.
+
+## Ground rules
+
+- **Every finding needs evidence**: file:line, the untrusted entry point, and how attacker data reaches the sink. If you can't show that path, it's not a vulnerability — at most a one-line LOW/INFO hardening note.
+- **Verify before flagging.** A check that's absent from the diff may live in middleware, a decorator, or the caller — open the surrounding code and confirm it's really missing.
+- Plain bugs with no security angle belong to `/review` — skip them here.
+- **Never print a discovered secret value** in output or the report; identify it by file:line and type only.
 
 ## Step 1 — Scope
 
 - If the user gave a path or focus, start there.
-- Otherwise prefer the **recent diff** (`git diff`, `git diff --staged`, `git diff HEAD`); fall back to the whole tree if there's no diff.
-- For a large codebase, delegate the breadth-first hunt to a read-only `scout` subagent (or several) and aggregate — keep your own context lean.
+- Otherwise audit the **recent change set** (`git diff HEAD` plus untracked new files). Step 2 still covers the whole repo.
+- No diff and nothing named → the whole tree.
+- For a large codebase, delegate the hunt to read-only `scout` subagents — one per area (auth, input→sink paths, secrets/config, dependencies) — each returning *candidate* findings with file:line evidence. Verify the candidates yourself before reporting; don't relay them blind.
 
-## Step 2 — Secrets & repo hygiene (do this first, every time)
+## Step 2 — Secrets & repo hygiene (always, whole repo)
 
-1. Hunt for hardcoded credentials in tracked files: API keys, tokens, private keys, passwords, connection strings with embedded passwords. Use targeted greps (`-----BEGIN`, `AKIA`, `sk-`, `api_key`, `password`, `secret`, `token=`).
-2. Check nothing secret is staged or committed: inspect `git status`, and whether `.env`, `*.pem`, `*.key`, `id_rsa`, `credentials*` are tracked. If any secret file is tracked, that's a **critical** finding — it must be removed from the index and added to `.gitignore` (and, if already pushed, the secret rotated and history scrubbed).
-3. Confirm there's a `.gitignore` covering `.env`, key material, and local secret files.
+1. High-signal scan of tracked files:
+   `git grep -nE -- '-----BEGIN [A-Z ]*PRIVATE KEY|AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{36}|github_pat_|glpat-|xox[baprs]-|sk-[A-Za-z0-9_-]{20,}|AIza[0-9A-Za-z_-]{35}|sk_live_[A-Za-z0-9]{20,}|hf_[A-Za-z0-9]{30,}'`
+   then a broader pass for `password/secret/api_key/token = "…"` assignments. Judge every hit: placeholders (`YOUR_KEY_HERE`, `example`, `xxx`), test fixtures, and env-var indirection are **fine**; values that look real are findings.
+2. Secret **files** tracked by git: `git ls-files | grep -E '(^|/)\.env($|\.)|\.(pem|key|p12|pfx)$|id_rsa|id_ed25519|credentials'` — any hit is **CRITICAL**.
+3. `git status`: nothing secret staged; `.gitignore` covers `.env*`, key material, and local secret files.
+4. A real secret that is (or ever was) committed stays compromised after deletion. The fix, in order: **rotate the credential first**, then untrack the file, gitignore it, and (if pushed) scrub history.
 
 ## Step 3 — Architecture-level review
 
-Reason about the design, not just lines:
+Reason about the design, not just lines. For each dimension, look for where untrusted data enters and what it can reach:
 
-- **AuthN/AuthZ:** is every sensitive operation actually authenticated and authorized? Look for missing checks, IDOR (object access by id with no ownership check), trusting client-supplied roles, JWT verified properly (signature + expiry + audience), session handling.
-- **Trust boundaries & input:** is all external input (HTTP params, headers, files, env, message payloads) validated and treated as untrusted? Where does untrusted data reach a sink?
-- **Injection sinks:** SQL built by string concatenation (use parameterized queries), shell commands built from input (`os.system`/`exec`/backticks), path traversal from user input, template/SSTI, deserialization of untrusted data.
-- **SSRF / outbound:** user-controlled URLs fetched server-side; unrestricted redirects.
-- **Secrets handling:** secrets read from env/secret-manager (good) vs hardcoded; secrets logged or returned in errors.
-- **Crypto:** no MD5/SHA1 for passwords (use bcrypt/argon2), no ECB, no hardcoded IV/salt, TLS verification not disabled.
-- **Transport & config:** debug mode off in prod, permissive CORS (`*` with credentials), security headers, default/weak credentials.
-- **Dependencies:** obviously outdated or known-risky packages; run the ecosystem audit if cheap (`npm audit`, `pip-audit`).
-- **Static analysis:** if `semgrep` or `codeql` is installed, run a quick automated pass (e.g. `semgrep --config auto`) and fold its findings into the report; otherwise rely on the manual review above. Don't block on installing heavy tooling.
+- **AuthN/AuthZ:** every sensitive operation both authenticated *and* authorized; IDOR (object fetched by client-supplied id with no ownership check); trusting client-sent roles/flags; JWT signature + expiry + audience actually verified; session handling.
+- **Trust boundaries:** all external input (HTTP params/headers/cookies, file uploads, env, queue messages) treated as untrusted; mass assignment (request body bound straight to a model/ORM object).
+- **Injection sinks:** SQL built by string concatenation (→ parameterized queries); shell commands from input (`os.system`, `exec`, backticks, `shell=True`); path traversal from user input into fs calls; template injection/SSTI; deserializing untrusted data (`pickle`, `yaml.load`, `eval`).
+- **XSS:** user data rendered unescaped into HTML (`|safe`, `dangerouslySetInnerHTML`, string-built markup).
+- **SSRF / outbound:** user-controlled URLs fetched server-side; open redirects.
+- **Secrets handling:** read from env/secret manager (good) vs hardcoded; leaked into logs, error messages, or client responses.
+- **Crypto:** MD5/SHA1 for passwords (→ bcrypt/argon2), ECB mode, hardcoded IV/salt/key, TLS verification disabled, homegrown crypto.
+- **Config:** debug mode reachable in prod, CORS `*` with credentials, missing security headers, default/weak credentials.
+- **Dependencies:** run the cheap ecosystem audit if the tool is already available (`npm audit --omit=dev`, `pip-audit`, `cargo audit`); note obviously abandoned or suspicious packages. Don't install heavy tooling.
+- **Static analysis:** if `semgrep` is already installed, run `semgrep --config auto --quiet`, then verify its findings against the code before folding them in. Don't block on it.
 
-## Step 4 — Report
+## Step 4 — Fix the clearly-safe ones
 
-Group findings by severity and make each one actionable:
+Directly apply low-risk, unambiguous fixes: move a hardcoded secret to an env var (add a placeholder to `.env.example`, ensure `.gitignore`), parameterize a query, escape output, add an authorization check that mirrors an existing pattern in the codebase, replace a weak hash, disable a debug flag. Then run the project's test/build command to confirm nothing broke.
+
+Leave anything architectural, behavior-changing, or judgment-heavy as a recommendation — don't guess. Don't touch code unrelated to a finding.
+
+## Step 5 — Report
+
+Severity is defined by **who can exploit it**:
+
+- **CRITICAL** — exploitable by an unauthenticated attacker, or a real secret in the repo.
+- **HIGH** — exploitable by an authenticated user, or under realistic conditions.
+- **MEDIUM** — needs unusual preconditions, or a defense-in-depth gap (verbose errors, missing header).
+- **LOW/INFO** — hardening advice. Code that never runs in production (tests, local dev scripts) is downgraded accordingly.
 
 ```
-CRITICAL — <what> @ <file:line> — <why it's exploitable> — <fix>
+CRITICAL — <what> @ <file:line> — <who can exploit it and how> — <fix, or "FIXED: what was done">
 HIGH     — ...
 MEDIUM   — ...
 LOW/INFO — ...
 ```
 
-Be specific (file:line, the exact sink, the concrete fix). Don't pad with generic advice; if the code is clean on a dimension, say so briefly.
+Mark what you fixed (and that tests still pass) vs what needs the user's decision. If a dimension is clean, say so in one line — don't invent nitpicks. End with the single most urgent action for the user (e.g. "rotate the AWS key now").
 
-## Step 5 — Fix the safe ones
-
-Directly apply low-risk, unambiguous fixes: move a hardcoded secret to an environment variable (and add it to `.gitignore`/`.env.example`), parameterize a SQL query, add a missing authorization check that mirrors an existing pattern, replace a weak hash. Leave anything risky or architectural as a clearly-described recommendation for the user to decide. Verify fixes don't break the build/tests.
-
-> Note: a deterministic `secret-guard` hook also blocks hardcoded secrets at write time — but this audit is the architectural backstop and catches what's already in the tree.
+> Note: the deterministic `secret-guard` hook blocks hardcoded secrets at write time — this audit is the architectural backstop that catches what's already in the tree.
 
 ---
 The user's focus/path argument, if any, follows.
