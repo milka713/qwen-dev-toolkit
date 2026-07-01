@@ -155,6 +155,9 @@ the same operation; works from anywhere (needs `git` + `node`).
 | `implementer` | Drives **one** task to a verified state: reads real files, implements fully (no stubs), verifies with the **canonical** command from the repo root (fixes packaging if a check only passes via a path trick). Returns a short summary. |
 | `scout` | Read-only explorer — returns a compact digest (key files, wiring, conventions, real build/test commands) instead of bulk-reading into the main context. |
 | `debugger` | Root-cause debugger — reproduces a failing test/error in its own context, finds the *real* cause (not the symptom), applies the minimal fix, verifies the repro + suite, returns a diagnosis. |
+| `tester` | Independent **black-box** verifier — derives checks from the spec (not the code) and runs each acceptance criterion literally from a clean repo root; catches what implementers' self-written tests miss (a promised export that isn't there, a CLI that doesn't run). Reports per-criterion PASS/FAIL, fixes nothing. |
+| `researcher` | Read-only library/API researcher — pins the version the project actually uses, verifies against official docs and the locally installed package, and returns a compact digest (real signatures, one working example, caveats) so nobody codes against a half-remembered API. |
+| `verifier` | Adversarial fact-checker for **one** claim (a suspected bug, vulnerability, or "requirement met") — tries to *refute* it first (finds the validator/caller/test that handles the case), returns CONFIRMED / REFUTED / PLAUSIBLE with file:line evidence. Used to validate `/review` and `/audit` candidates. |
 
 ### Hooks (`~/.qwen/settings.json`)
 
@@ -321,7 +324,7 @@ from inside qwen-code). To remove: `./uninstall.sh` / `uninstall.cmd`.
 
 **Verify** (after restart): `/skills` lists `brainstorm, plan, implement, checkpoint,
 gitflow, audit, review, commit, docs, changelog, toolkit-update`; `/agents manage` lists
-`implementer, scout, debugger`; `/status` responds.
+`implementer, scout, debugger, tester, researcher, verifier`; `/status` responds.
 
 ## A typical end-to-end session
 

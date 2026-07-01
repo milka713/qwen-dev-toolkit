@@ -71,7 +71,7 @@ for (const s of SKILLS) {
   const dst = path.join(QHOME, 'skills', s, 'SKILL.md');
   if (isWin) fs.writeFileSync(dst, winSkillBody(read(srcF))); else copy(srcF, dst);
 }
-const AGENTS = ['implementer', 'scout', 'debugger'];
+const AGENTS = ['implementer', 'scout', 'debugger', 'tester', 'researcher', 'verifier'];
 for (const a of AGENTS) { const f = path.join(SRC, 'agents', a + '.md'); if (exists(f)) copy(f, path.join(QHOME, 'agents', a + '.md')); }
 for (const h of fs.readdirSync(path.join(SRC, 'hooks')).filter((f) => f.endsWith('.js'))) copy(path.join(SRC, 'hooks', h), path.join(QHOME, 'hooks', h));
 
@@ -162,5 +162,5 @@ console.log('  ✓ hooks    (restore, compaction-steer, secret-guard, git-branch
 // ---- 7) done -------------------------------------------------------------
 console.log('\nDone. Restart qwen-code (or start a new session) to load everything.');
 console.log('Verify:  /skills  →  implement, plan, checkpoint, audit, brainstorm, gitflow, commit, review, docs, changelog, toolkit-update');
-console.log('         /agents manage  →  implementer, scout, debugger');
+console.log('         /agents manage  →  implementer, scout, debugger, tester, researcher, verifier');
 console.log('         /status  and  /main-push status  →  respond');

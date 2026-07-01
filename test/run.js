@@ -34,6 +34,25 @@ for (const f of jsFiles) {
   ok('node --check ' + path.relative(ROOT, f), r.status === 0, (r.stderr || '').split('\n')[0]);
 }
 
+// ---- manifest consistency ----------------------------------------------------
+// Every agent file and skill dir must be listed in both install.js and uninstall.js,
+// and frontmatter names must match the file/dir names — else installs silently drift.
+console.log('— manifest consistency —');
+const agentNames = fs.readdirSync(path.join(ROOT, 'agents')).filter((f) => f.endsWith('.md')).map((f) => f.replace(/\.md$/, ''));
+const skillNames = fs.readdirSync(path.join(ROOT, 'skills')).filter((d) => fs.existsSync(path.join(ROOT, 'skills', d, 'SKILL.md')));
+const installSrc = fs.readFileSync(path.join(ROOT, 'install.js'), 'utf8');
+const uninstallSrc = fs.readFileSync(path.join(ROOT, 'uninstall.js'), 'utf8');
+const unlisted = [];
+for (const a of agentNames) { if (!installSrc.includes(`'${a}'`)) unlisted.push('install.js:' + a); if (!uninstallSrc.includes(`'${a}'`)) unlisted.push('uninstall.js:' + a); }
+ok('every agents/*.md is in install+uninstall manifests', unlisted.length === 0, unlisted.join(', '));
+const unlistedS = [];
+for (const s of skillNames) { if (!installSrc.includes(`'${s}'`)) unlistedS.push('install.js:' + s); if (!uninstallSrc.includes(`'${s}'`)) unlistedS.push('uninstall.js:' + s); }
+ok('every skills/ dir is in install+uninstall manifests', unlistedS.length === 0, unlistedS.join(', '));
+const badFm = [];
+for (const a of agentNames) { const b = fs.readFileSync(path.join(ROOT, 'agents', a + '.md'), 'utf8'); if (!b.startsWith('---') || !b.includes('name: ' + a + '\n') || !b.includes('tools:')) badFm.push(a); }
+for (const s of skillNames) { const b = fs.readFileSync(path.join(ROOT, 'skills', s, 'SKILL.md'), 'utf8'); if (!b.startsWith('---') || !b.includes('name: ' + s + '\n')) badFm.push(s); }
+ok('agent/skill frontmatter names match files', badFm.length === 0, badFm.join(', '));
+
 // ---- secret-guard ----------------------------------------------------------
 console.log('— secret-guard —');
 const sg = path.join(ROOT, 'hooks', 'secret-guard.js');
@@ -130,7 +149,7 @@ const qh2 = tmp();
 const ri = cp.spawnSync('node', [path.join(ROOT, 'install.js')], { env: { ...process.env, QWEN_HOME: qh2 }, encoding: 'utf8' });
 ok('install exits 0', ri.status === 0, (ri.stderr || '').slice(0, 160));
 ok('skills installed', fs.existsSync(path.join(qh2, 'skills', 'implement', 'SKILL.md')));
-ok('agents installed', fs.existsSync(path.join(qh2, 'agents', 'debugger.md')));
+ok('agents installed', fs.existsSync(path.join(qh2, 'agents', 'debugger.md')) && fs.existsSync(path.join(qh2, 'agents', 'tester.md')));
 ok('hooks wired into settings.json', fs.readFileSync(path.join(qh2, 'settings.json'), 'utf8').includes('git-branch-guard'));
 ok('QWEN.md guidance added', fs.readFileSync(path.join(qh2, 'QWEN.md'), 'utf8').includes('qwen-dev-toolkit:start'));
 const ru = cp.spawnSync('node', [path.join(ROOT, 'uninstall.js')], { env: { ...process.env, QWEN_HOME: qh2 }, encoding: 'utf8' });
