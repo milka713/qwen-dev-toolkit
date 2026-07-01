@@ -29,10 +29,15 @@ case "$norm" in
     if [ -f "$FACTS" ]; then printf '%s\n\n' "$HEADER" > "$FACTS"; echo "PIN_RESULT: cleared all pinned memory in FACTS.md."
     else echo "PIN_RESULT: nothing to clear."; fi
     ;;
+  remove|forget)
+    echo "PIN_RESULT: usage — /pin remove <text of the pinned line to remove>."
+    ;;
   remove\ *|forget\ *)
+    # Only fact lines ("- ...") are candidates — never the header.
     pat="${ARG#* }"
-    if [ -f "$FACTS" ] && grep -qiF -- "$pat" "$FACTS"; then
-      grep -ivF -- "$pat" "$FACTS" > "$FACTS.ptmp" && mv "$FACTS.ptmp" "$FACTS"
+    if [ -f "$FACTS" ] && grep '^- ' "$FACTS" 2>/dev/null | grep -qiF -- "$pat"; then
+      lc="$(printf '%s' "$pat" | tr '[:upper:]' '[:lower:]')"
+      awk -v pat="$lc" '{ if ($0 ~ /^- / && index(tolower($0), pat)) next; print }' "$FACTS" > "$FACTS.ptmp" && mv "$FACTS.ptmp" "$FACTS"
       echo "PIN_RESULT: removed pinned lines matching: $pat"
     else echo "PIN_RESULT: no pinned line matches: $pat"; fi
     ;;
