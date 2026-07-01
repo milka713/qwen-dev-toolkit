@@ -176,6 +176,31 @@ tries to launch several subagents, each extra one is denied and a small model ma
 retrying the same launch. Clear it with `/maxagents off` if you're not deliberately
 capping.
 
+### Auto mode with a queued or shared model
+
+`tools.approvalMode: "auto"` vets risky actions (shell, subagent launches, writes outside
+the workspace) with a small LLM classifier — safe → approved, risky → blocked/asked. That
+classifier has short per-call timeouts by default (**stage 1 ≈ 10 s, stage 2 ≈ 30 s**),
+sized for a fast dedicated model. If your local model sits behind an access **queue** (it's
+busy serving someone else), qwen-code can't tell "queued" from "slow": the classifier call
+waits in line, blows past 10 s, and **fails closed** (`Classifier stage 1 unavailable`) —
+blocking the action even though nothing is wrong.
+
+Raise the classifier timeouts to tolerate the queue. There's no true "disable" (values
+below 1000 ms fall back to the default), so use a large value — it's effectively off while
+still aborting a genuinely dead call:
+
+```json
+{ "permissions": { "autoMode": { "classifier": {
+  "timeouts": { "stage1Ms": 1200000, "stage2Ms": 1200000 }
+} } } }
+```
+
+(20 minutes each above.) Two alternatives: point a **fast model** (`/model --fast`) at a
+small, quick model so the classifier answers in ~300 ms and never waits on the main model;
+or skip the classifier entirely with `yolo` + a `permissions.deny` guardrail list (`deny`
+outranks everything, even in yolo).
+
 ## Requirements & uninstall
 
 - qwen-code (tested on **0.19.x**) + Node.js. Any provider; designed for small-context local models.
