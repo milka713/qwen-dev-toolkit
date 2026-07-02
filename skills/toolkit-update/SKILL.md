@@ -18,14 +18,15 @@ Repo: `https://github.com/milka713/qwen-dev-toolkit`
 1. **Check prerequisites.** Confirm `git --version` and `node --version` both work. If `git` is missing, tell the user how to install it and stop. (`qwen` is obviously present — you're running in it.)
 2. **Get the latest source** into a stable cache dir so updates are fast:
    - Cache path: `<HOME>/.qwen/.src/qwen-dev-toolkit` (use `$HOME` on macOS/Linux, `%USERPROFILE%` on Windows — or just let git use an absolute path).
-   - If that dir already exists, update it: `git -C "<cache>" pull --ff-only`.
-   - If not, create the parent and clone: `git clone --depth 1 https://github.com/milka713/qwen-dev-toolkit "<cache>"`.
+   - If that dir already exists: note the current version (`read <cache>/VERSION`), then `git -C "<cache>" pull --ff-only`.
+   - If not: `mkdir -p "$HOME/.qwen/.src"`, then `git clone --depth 1 https://github.com/milka713/qwen-dev-toolkit "<cache>"`.
+   - **If the clone/pull fails** (offline, GitHub unreachable): report it and stop — or, if a cached copy exists, ask the user whether to (re)install that cached version instead. Never present a stale install as "updated".
 3. **Run the cross-platform installer** from the cache dir:
    - macOS/Linux: `node "<cache>/install.js"` (or `bash "<cache>/install.sh"`).
    - Windows: `node "<cache>/install.js"` (or `"<cache>/install.cmd"`).
    - The installer copies only this toolkit's own files, merges its hook/memory settings and its `QWEN.md` block, and **never deletes any other skills/commands you have** or touches your keys/settings.
-4. **Read the installer output** and confirm it reported the skills, agents, commands and hooks, plus `settings.json merged` and `QWEN.md guidance updated`. If it flagged a missing dependency (e.g. `git`), relay that.
-5. **Report** the installed version (from the `v<version>` line the installer prints, or `<cache>/VERSION`) and remind the user to **restart qwen-code / start a new session** for the changes to load.
+4. **Read the installer output** and confirm it reported the skills, agents, commands and hooks, plus `settings.json merged` and `QWEN.md guidance updated/added`. If it flagged a missing dependency (e.g. `git`), relay that.
+5. **Report** what happened, grounded in `<cache>/VERSION`: fresh install ("installed v1.6.1"), an update ("updated v1.6.0 → v1.6.1" — you noted the old version in step 2), or already current ("already at v1.6.1, files refreshed"). Remind the user to **restart qwen-code / start a new session** for the changes to load.
 
 ## Notes
 

@@ -54,7 +54,7 @@ write_lamar() {
 }
 
 enable() { # $1 = freedom|lamar
-  touch "$F"
+  mkdir -p "$QHOME"; touch "$F"
   if has; then remove; fi
   if [ "$1" = lamar ]; then write_lamar
     echo "BRO_RESULT: bro mode ON — персона Ламар (GTA V homie). Теперь общаюсь с тобой по-уличному, кореш. Закреплено глобально; сменить на свободовца: /bro свобода; выключить: /bro off."

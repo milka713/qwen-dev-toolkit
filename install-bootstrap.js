@@ -45,4 +45,4 @@ if (!exists(path.join(CACHE, '.git'))) {
 
 console.log('Running installer …\n');
 const r = run('node', [path.join(CACHE, 'install.js')]);
-process.exit(r.status || 0);
+process.exit(r.status == null ? 1 : r.status); // null status = spawn failure, not success

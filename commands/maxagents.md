@@ -8,7 +8,7 @@ The limit was applied deterministically by the shell below — act on its result
 !{bash "$HOME/.qwen/commands/_maxagents.sh" {{args}}}
 
 Based on `MAXAGENTS_RESULT`:
-- A limit was **set** to N: confirm to the user that from now on you'll run at most N subagents at a time (and if N=1, strictly sequentially), still decomposing work into small tasks but never exceeding N awaitable subagents in one response.
+- A limit was **set** to N: confirm to the user that from now on you'll run at most N subagents at a time (and if N=1, strictly sequentially), still decomposing work into small tasks but never exceeding N awaitable subagents in one response. The `agent-limit` hook enforces this deterministically — if an agent launch gets denied, await a running subagent instead of retrying in the same response.
 - Limit **removed**: confirm subagents will run as the work needs again (sequential by default).
 - **status / usage**: report it.
 

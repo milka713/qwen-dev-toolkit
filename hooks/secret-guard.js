@@ -15,6 +15,16 @@ const tool = input.tool_name || '';
 // Only guard tools that can write code or run commands.
 if (!/^(write_file|edit|replace|run_shell_command)$/.test(tool)) process.exit(0);
 
+// Writing a secret into a local gitignored .env file is exactly the pattern this guard
+// tells the model to use — don't block the sanctioned destination itself. (.env.example
+// and friends stay guarded: those files get committed.)
+if (/^(write_file|edit|replace)$/.test(tool)) {
+  const ti0 = input.tool_input || {};
+  const fp = String(ti0.file_path || ti0.path || ti0.absolute_path || '');
+  const base = fp.split(/[\\/]/).pop() || '';
+  if (/^\.env(\..+)?$/.test(base) && !/example|sample|template|dist/i.test(base)) process.exit(0);
+}
+
 // Collect the raw string values from tool_input (robust to exact field names across
 // write_file/edit/run_shell_command) and scan them — scanning raw strings, not a
 // JSON.stringify, keeps real quotes intact so quote-based patterns still match.
@@ -29,7 +39,7 @@ if (!text) process.exit(0);
 
 // High-confidence credential patterns (low false-positive).
 const SECRETS = [
-  [/-----BEGIN (?:RSA |EC |OPENSSH |DSA |PGP )?PRIVATE KEY-----/, 'a private key'],
+  [/-----BEGIN (?:RSA |EC |OPENSSH |DSA |PGP |ENCRYPTED )?PRIVATE KEY-----/, 'a private key'],
   [/\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/, 'an AWS access key id'],
   [/\bsk-ant-[A-Za-z0-9_-]{20,}/, 'an Anthropic API key'],
   [/\bsk-(?:proj-)?[A-Za-z0-9_-]{20,}/, 'an OpenAI API key'],
