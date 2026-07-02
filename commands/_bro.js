@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 'use strict';
-// Node port of _bro.sh — two-persona homie toggle pinned in the GLOBAL ~/.qwen/QWEN.md.
+// Node port of _bro.sh — two-persona homie toggle pinned in the PROJECT QWEN.md.
 //   Свободовец (STALKER Freedom, calls you "мэн") | Ламар (GTA V homie).
-const { fs, path, readF, writeF, appendF, exists, norm, hasMarker, removeBlock, qHome, rawArg } = require('./_qdt.js');
+const { fs, path, readF, writeF, appendF, exists, norm, hasMarker, removeBlock, rawArg } = require('./_qdt.js');
 
-const F = path.join(qHome(), 'QWEN.md');
+const F = 'QWEN.md';
 const M = 'bromode';
 const n = norm(rawArg(2));
 
@@ -48,10 +48,10 @@ function enable(kind) {
   if (hasMarker(F, M)) removeBlock(F, M);
   if (kind === 'lamar') {
     appendF(F, LAMAR.join('\n') + '\n');
-    console.log('BRO_RESULT: bro mode ON — персона Ламар (GTA V homie). Теперь общаюсь с тобой по-уличному, кореш. Закреплено глобально; сменить на свободовца: /bro свобода; выключить: /bro off.');
+    console.log('BRO_RESULT: bro mode ON — персона Ламар (GTA V homie). Теперь общаюсь с тобой по-уличному, кореш. Закреплено в проекте; сменить на свободовца: /bro свобода; выключить: /bro off.');
   } else {
     appendF(F, FREEDOM.join('\n') + '\n');
-    console.log('BRO_RESULT: bro mode ON — персона Свободовец (STALKER Freedom). Теперь зову тебя мэн и общаюсь по-вольному. Закреплено глобально; сменить на Ламара: /bro ламар; выключить: /bro off.');
+    console.log('BRO_RESULT: bro mode ON — персона Свободовец (STALKER Freedom). Теперь зову тебя мэн и общаюсь по-вольному. Закреплено в проекте; сменить на Ламара: /bro ламар; выключить: /bro off.');
   }
 }
 

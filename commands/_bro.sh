@@ -2,7 +2,7 @@
 # /bro backend — deterministic "talk to me like a homie" persona toggle, TWO flavors:
 #   1) Свободовец (S.T.A.L.K.E.R. Freedom faction) — always calls the user "мэн".
 #   2) Ламар (GTA V homie / Lamar Davis vibe) — Los Santos street bro.
-# Pins/removes a single bromode block in the GLOBAL ~/.qwen/QWEN.md, so the persona
+# Pins/removes a single bromode block in the PROJECT QWEN.md, so the persona
 # applies in every project (it is about how the model talks to YOU, not project-specific).
 # Default is OFF. Args:
 #   ""|on|1|свобода|freedom|stalker|мэн      -> Freedom persona (default when just /bro)
@@ -10,7 +10,7 @@
 #   off                                      -> disable
 #   status                                   -> report current persona
 set -u
-QHOME="${QWEN_HOME:-$HOME/.qwen}"; F="$QHOME/QWEN.md"; M="bromode"
+F="QWEN.md"; M="bromode"
 norm="$(printf '%s' "${*:-}" | tr '[:upper:]' '[:lower:]' | xargs 2>/dev/null || printf '%s' "${*:-}")"
 
 has() { grep -qF "${M}:start" "$F" 2>/dev/null; }
@@ -54,12 +54,12 @@ write_lamar() {
 }
 
 enable() { # $1 = freedom|lamar
-  mkdir -p "$QHOME"; touch "$F"
+  touch "$F"
   if has; then remove; fi
   if [ "$1" = lamar ]; then write_lamar
-    echo "BRO_RESULT: bro mode ON — персона Ламар (GTA V homie). Теперь общаюсь с тобой по-уличному, кореш. Закреплено глобально; сменить на свободовца: /bro свобода; выключить: /bro off."
+    echo "BRO_RESULT: bro mode ON — персона Ламар (GTA V homie). Теперь общаюсь с тобой по-уличному, кореш. Закреплено в проекте; сменить на свободовца: /bro свобода; выключить: /bro off."
   else write_freedom
-    echo "BRO_RESULT: bro mode ON — персона Свободовец (STALKER Freedom). Теперь зову тебя мэн и общаюсь по-вольному. Закреплено глобально; сменить на Ламара: /bro ламар; выключить: /bro off."
+    echo "BRO_RESULT: bro mode ON — персона Свободовец (STALKER Freedom). Теперь зову тебя мэн и общаюсь по-вольному. Закреплено в проекте; сменить на Ламара: /bro ламар; выключить: /bro off."
   fi
 }
 

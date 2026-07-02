@@ -85,7 +85,7 @@ Pass free text to pin your own scheme instead.
 formal assistant, in one of two personas: `свобода` = a S.T.A.L.K.E.R. *Freedom* drifter who
 always calls you "мэн", `ламар` = a GTA-V *Lamar Davis* street homie ("homie/foo/dog").
 Casual, slangy and blunt, but still genuinely accurate and helpful — the vibe is a wrapper,
-never an excuse to slack. Off by default; pinned **globally** until `/bro off`.
+never an excuse to slack. Off by default; pinned **per-project** until `/bro off`.
 
 ### Skills (model- and user-invocable)
 
@@ -182,7 +182,7 @@ no session-only QWEN.md.
 | ----- | -------- | ----- |
 | Skills, subagents, commands, hooks, guidance | `~/.qwen/…` | **Global** |
 | `/pin` memory | `<project>/FACTS.md` (gitignored) | **Project** |
-| `/dev`, `/cover`, `/versioning` flags | block in `<project>/QWEN.md` | **Project** (sticky until `off`) |
+| `/dev`, `/bro`, `/cover`, `/versioning` flags | block in `<project>/QWEN.md` | **Project** (sticky until `off`) |
 | Task state | `<project>/.qwen/PROGRESS.md` | **Project** |
 
 ## Usage
@@ -283,6 +283,18 @@ small, quick model so the classifier answers in ~300 ms and never waits on the m
 or skip the classifier entirely with `yolo` + a `permissions.deny` guardrail list (`deny`
 outranks everything, even in yolo).
 
+**A reasoning model breaks the classifier a second way** — and raising the timeout won't fix
+it. Stage 1 caps the reply at ~32 tokens, but a thinking model spends that budget on its
+`<think>` phase and returns **empty content** → parsed as `unavailable` → blocked. The
+classifier (or the fast model it uses) has to answer *without* thinking. On a llama.cpp
+server that's a server-side default (`--chat-template-kwargs '{"enable_thinking":false}'`,
+which also stops your **main** agent from reasoning) or a **separate non-reasoning fast
+model**. Note that small purpose-built guard models (Llama Guard, Qwen3Guard, ShieldGemma)
+classify *content harm*, not *destructive commands* — they won't catch `rm -rf /`. So if you
+want the main agent to keep its reasoning, the robust path is **`yolo` + a hardened
+`permissions.deny`** (disk wipes, `dd`, `mkfs`, pipe-to-shell, key reads, …) backed by the
+`secret-guard` / `git-branch-guard` hooks, which fire in **every** mode including yolo.
+
 ## Requirements
 
 - **qwen-code** (tested on **0.19.x**) + **Node.js**; **git** for the git features. Any
@@ -328,35 +340,74 @@ gitflow, audit, review, commit, docs, changelog, toolkit-update`; `/agents manag
 
 ## A typical end-to-end session
 
-You mostly talk to it in plain language; the skills and guards fire on their own.
+You mostly talk to it in plain language; the skills and guards fire on their own. The
+subagents (`implementer`, `scout`, `tester`, `researcher`, `verifier`, `debugger`) are
+**launched by the model itself** as a skill runs — you never call them by hand. This walks
+the full loop and shows *when* to reach for each command.
 
 ```text
-> /brainstorm a URL shortener service in Python
-    ← agrees the scope, success criteria and edge cases, writes them down
+# ── one-time project setup (sticky, per-project) ───────────────────────────
+> /pin model server 10.0.0.5:8080     # record infra facts it keeps forgetting (gitignored, compaction-proof)
+> /maxagents 2                        # weak/shared box: cap parallel subagents so you don't overload the server
+> /cover 80                           # optional: make every build test-first, ≥80% measured coverage
 
-> /dev build it
-    ← becomes the architect: plans the modules, delegates each one to a fresh
-      implementer subagent, ticking tasks in .qwen/PROGRESS.md as they land.
-      A context overflow + compaction mid-build? SessionStart reloads PROGRESS.md
-      and it continues from the first unchecked task — no lost work.
+# ── 1. shape the work ──────────────────────────────────────────────────────
+> /brainstorm <your fuzzy idea>          # e.g. "a URL shortener service in Python"
+    ← use for a FUZZY idea. It interviews you, agrees scope + acceptance criteria + edge
+      cases, and writes the spec into .qwen/PROGRESS.md so it survives compaction.
 
-> запушь готовое            (or "push it")
-    ← gitflow kicks in: creates `dev` if missing, commits, pushes to origin/dev.
-      main is never touched — the git-branch-guard hook blocks that by default.
+> /plan add a redirect endpoint with click analytics
+    ← use for a CONCRETE but non-trivial task. Explores the repo via the scout subagent and
+      decomposes it into small, dependency-ordered tasks in .qwen/PROGRESS.md. Design, not code.
 
-> выкати в main             (or "release to main")
-    ← it asks you to run /main-push first (main is protected)
-> /main-push                   ← you open a 15-min release window
-> выкати в main             ← now it merges dev → main and pushes
+# ── 2. build ───────────────────────────────────────────────────────────────
+> /dev build it                       # (or /implement to just execute an existing plan)
+    ← development mode ON (per-project, sticky): the model becomes an ARCHITECT and delegates
+      each task to a fresh implementer subagent — it never writes source itself. It pulls a
+      researcher digest for unfamiliar libraries, ticks PROGRESS.md as tasks land, and closes
+      with an independent tester subagent that checks the acceptance criteria literally.
+      Compaction mid-build? SessionStart reloads PROGRESS.md; it resumes at the first unchecked task.
+
+> /status                             # anytime: what mode is on, the goal, the next unchecked task
+> /checkpoint                         # before a risky step or a break: snapshot state (/checkpoint restore to reload)
+
+# ── 3. verify ──────────────────────────────────────────────────────────────
+> /review                             # general code review of the diff (bugs, edge cases) — scouts propose, verifier confirms
+> /audit                              # security-focused pass (authz, injection, secrets) — every finding verified before it's reported
+
+# ── 4. document ────────────────────────────────────────────────────────────
+> /docs                               # sync README/docs to what changed (mirrors your translated README too)
+> /changelog                          # roll changes into CHANGELOG.md (breaking changes surfaced first)
+
+# ── 5. ship ────────────────────────────────────────────────────────────────
+> запушь готовое           (or "commit & push")
+    ← /commit writes a Conventional Commit; gitflow creates `dev` if missing and pushes to
+      origin/dev. main is never touched (git-branch-guard blocks it); secret-guard blocks any
+      key that tries to slip into a commit.
+
+> выкати в main            (or "release to main")   # main is protected — it asks you to authorize
+> /versioning              # (if you tag releases) confirm the bump scheme first
+> /main-push               ← opens a 15-minute release window
+> выкати в main            ← now it merges dev → main and pushes
+
+> /dev off                            # back to a single agent for quick Q&A
 ```
 
-The point: you never have to remember the branch rules, re-state the plan after a
-compaction, or babysit which subagent does what — that's what the toolkit handles.
+**Rules of thumb:** `/brainstorm` when the idea is vague → `/plan` when it's concrete but
+big → `/dev` (or `/implement`) to build → `/review` for correctness, `/audit` for security →
+`/docs` + `/changelog` → commit/push (dev) → `/main-push` then release (main). The point: you
+never have to remember the branch rules, re-state the plan after a compaction, or babysit
+which subagent does what — the toolkit handles it.
 
-## Development
+Other, as needed: **`/bro`** changes the tone/persona (per-project, like `/dev`);
+**`/toolkit-update`** pulls the latest toolkit.
 
-Changing the toolkit itself? Run the dependency-free test harness first: `node test/run.js`
-— it exercises the hooks' allow/deny behavior, `/pin` backend parity (bash + Node), and a
-full installer round-trip, all in temp dirs (your real `~/.qwen` is never touched).
+## Contributing to the toolkit itself
+
+This section is **not** about `/dev` mode — it's for anyone editing the toolkit's own source
+(the skills, hooks, and installer in this repo) and opening a PR. Changed something here? Run
+the dependency-free test harness first: `node test/run.js` — it exercises the hooks'
+allow/deny behavior, `/pin` backend parity (bash + Node), and a full installer round-trip,
+all in temp dirs (your real `~/.qwen` is never touched).
 
 MIT — see [LICENSE](LICENSE).
