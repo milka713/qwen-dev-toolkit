@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # /versioning backend — deterministic version-naming policy toggle, PER-PROJECT (writes the
 # project's ./QWEN.md, so different projects can use different schemes in parallel).
-# Default OFF. When ON, the model names versions with semver by significance (patch/minor/
-# major) and states the bump. A free-text argument pins a CUSTOM naming scheme instead.
-# Args: ""|on -> semantic default ; off -> disable ; status ; <text> -> custom scheme.
+# Semantic versioning is the GLOBAL default (stated in ~/.qwen/QWEN.md), so this command sets
+# a PER-PROJECT override: a CUSTOM naming scheme, or OFF to opt a project out of the default.
+# Args: ""|on -> re-pin semantic ; off -> opt-out block ; status ; <text> -> custom scheme.
 set -u
 F="QWEN.md"; M="versioning"
 ARG="${*:-}"
@@ -13,6 +13,7 @@ has() { grep -qF "${M}:start" "$F" 2>/dev/null; }
 remove() { sed "/${M}:start/,/${M}:end/d" "$F" > "$F.vtmp" && mv "$F.vtmp" "$F"; }
 scheme() {
   if grep -qF 'versioning: custom' "$F" 2>/dev/null; then echo custom
+  elif grep -qF 'versioning: off' "$F" 2>/dev/null; then echo off
   elif grep -qF 'versioning: default' "$F" 2>/dev/null; then echo default
   else echo none; fi
 }
@@ -40,17 +41,27 @@ write_custom() {
     'Always state the concrete version explicitly when reporting a release, and say which part you bumped and why. (Turn off with /versioning off.)' \
     '<!-- versioning:end -->' >> "$F"
 }
+write_off() {
+  printf '%s\n' \
+    '' \
+    '<!-- versioning:start -->' \
+    '<!-- versioning: off -->' \
+    '## 🏷️ Version naming — OFF (this project)' \
+    'This project opts OUT of the global semantic-versioning default: use no special version-naming policy here. (Re-enable with /versioning on.)' \
+    '<!-- versioning:end -->' >> "$F"
+}
 
 case "$norm" in
   off)
-    if has; then remove; echo "VERSIONING_RESULT: version-naming mode OFF — back to normal."
-    else echo "VERSIONING_RESULT: version-naming mode was already OFF."; fi
+    touch "$F"; has && remove; write_off
+    echo "VERSIONING_RESULT: version-naming OFF for THIS project — overrides the global semantic-versioning default here. /versioning on to restore semver."
     ;;
   status)
     case "$(scheme)" in
       default) echo "VERSIONING_RESULT: ON (semantic versioning by significance).";;
       custom)  echo "VERSIONING_RESULT: ON (custom scheme).";;
-      *)       echo "VERSIONING_RESULT: OFF (default).";;
+      off)     echo "VERSIONING_RESULT: OFF for this project (overrides the global semantic default).";;
+      *)       echo "VERSIONING_RESULT: ON (semantic — global default; no project override).";;
     esac
     ;;
   ""|on)

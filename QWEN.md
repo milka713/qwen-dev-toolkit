@@ -94,6 +94,10 @@ noise makes memory useless.
 - **Git:** new work lands on `dev` or a feature branch; `main`/`master` changes only on
   the user's explicit approval via `/main-push` (the `/gitflow` policy — a guard hook
   enforces it, don't fight the hook).
+- **Versioning:** name versions with semantic versioning by significance — PATCH (`1.4.7`)
+  for a small fix, MINOR (`1.5.0`) for a notable feature, MAJOR (`2.0.0`) for a breaking
+  change — and state which part you bumped and why. `/versioning <scheme>` overrides this
+  for a project; `/versioning off` opts a project out.
 - **Security:** never hardcode secrets or commit them — read them from env vars / a
   secrets manager and keep them in a gitignored `.env` (a `secret-guard` hook enforces
   this and will block such writes). Run `/audit` before shipping security-sensitive

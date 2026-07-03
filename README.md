@@ -73,12 +73,12 @@ default the `git-branch-guard` hook blocks every push/merge to `main`/`master`; 
 the push). `off` revokes it early, `status` checks it. Because only you can run a slash
 command, this makes "yes, really release to main" un-fakeable by the model.
 
-**`/versioning` · `on` · `off` · `status` · `<custom scheme>`** — Version-naming policy,
-**off by default** and **per-project** (pinned in the project's `QWEN.md`, so different
-projects can use different schemes in parallel). On, the model names versions with semantic
-versioning by significance — **PATCH** for small fixes (`1.4.7`), **MINOR** for notable
+**`/versioning` · `on` · `off` · `status` · `<custom scheme>`** — Version-naming policy.
+Semantic versioning is **on by default** (stated in the global `QWEN.md`): the model names
+versions by significance — **PATCH** for small fixes (`1.4.7`), **MINOR** for notable
 features (`1.5.0`), **MAJOR** for breaking changes (`2.0.0`) — and says which part it bumped.
-Pass free text to pin your own scheme instead.
+This command sets a **per-project** override in the project's `QWEN.md`: pass free text to pin
+your own scheme, or `off` to opt that project out of the default.
 · _Examples:_ `/versioning` · `/versioning use CalVer like 2026.07`
 
 **`/bro` · `свобода` · `ламар` · `off` · `status`** — Talk to you like a homie instead of a
