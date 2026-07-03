@@ -1,6 +1,6 @@
 {
   "name": "qwen-dev-toolkit",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "description": "Architect-and-delegate workflow for qwen-code on small-context local models: implementer/scout subagents, durable .qwen/PROGRESS.md checkpointing, and compaction-survival hooks. Stops big projects stalling at ~15% after a context overflow.",
   "contextFileName": "QWEN.md"
 }

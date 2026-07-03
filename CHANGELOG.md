@@ -4,6 +4,17 @@ All notable changes to qwen-dev-toolkit are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com); versions follow semver.
 (Releases before 1.7.0 predate this file and are not backfilled — see the git history.)
 
+## [1.8.0] - 2026-07-03
+
+### Changed
+- **Semantic versioning is now on by default** in every project — the rule lives in the global `QWEN.md` working agreement, next to the existing git branch-flow rule (`dev`-default, `main` only via `/main-push`). `/versioning` becomes a *per-project override* of that default: `off` now pins an explicit opt-out block (previously a no-op once the default is global), while a custom scheme and `on` are unchanged; `status` reports the global-default vs project-override state.
+- **`/bro` is now pinned per-project** in the project's `QWEN.md` (matching `/dev`) instead of the global `~/.qwen/QWEN.md`, so a persona no longer follows you across every project. Both backends (`_bro.sh` / `_bro.js`), `bro.md`, and the scope table were updated.
+
+### Documentation
+- Reworked the end-to-end walkthrough (EN + RU) into an annotated development lifecycle that covers most commands and *when* to reach for each.
+- Added the reasoning-model gotcha to the auto-mode section: a thinking model spends the classifier's tiny token budget on its `<think>` phase and returns empty content, so raising timeouts can't fix it — the robust path is `yolo` + a hardened `permissions.deny` backed by the guard hooks.
+- Renamed the "Development" section to "Contributing to the toolkit itself" to disambiguate it from `/dev` mode; annotated the `/brainstorm` example as a placeholder.
+
 ## [1.7.0] - 2026-07-01
 
 ### Added
