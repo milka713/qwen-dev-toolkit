@@ -14,7 +14,7 @@ const QHOME = process.env.QWEN_HOME || path.join(os.homedir(), '.qwen');
 const rm = (p) => { try { fs.rmSync(p, { recursive: true, force: true }); } catch (_) {} };
 const read = (p) => { try { return fs.readFileSync(p, 'utf8'); } catch (_) { return null; } };
 
-const SKILLS = ['implement', 'plan', 'checkpoint', 'audit', 'brainstorm', 'gitflow', 'commit', 'review', 'docs', 'changelog', 'toolkit-update'];
+const SKILLS = ['implement', 'plan', 'checkpoint', 'audit', 'brainstorm', 'gitflow', 'commit', 'review', 'docs', 'changelog', 'release', 'toolkit-update'];
 for (const s of SKILLS) rm(path.join(QHOME, 'skills', s));
 for (const a of ['implementer', 'scout', 'debugger', 'tester', 'researcher', 'verifier']) rm(path.join(QHOME, 'agents', a + '.md'));
 

@@ -34,6 +34,7 @@ This is a **hard workflow policy**, not a suggestion. It protects the stable bra
   3. `git push origin main`
   4. `git switch dev` — never keep working on `main`.
   If a step is blocked because the window expired, ask the user to run `/main-push` again — don't retry blindly.
+  - **If this main update is a release** (the `VERSION` file changed): cut the tag + GitHub Release with **`/release`** so the published release never lags the code. `/release check` reports whether main is ahead of the latest tag.
 - **Before any push:** sanity-check you are not about to push `main` unintentionally — `git rev-parse --abbrev-ref HEAD` if unsure.
 
 ## Standing hygiene (applies alongside this flow)

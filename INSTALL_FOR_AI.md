@@ -61,7 +61,7 @@ Run these and confirm each works; if one is missing, tell the user how to instal
 3. **Version** — read `VERSION` in the repo and report it as the installed version.
 4. **Live check (after a restart)** — tell the user to restart qwen-code / start a new
    session, then `/skills` should list `implement, plan, checkpoint, audit, brainstorm,
-   gitflow, commit, review, docs, changelog, toolkit-update` and `/agents manage` should
+   gitflow, commit, review, docs, changelog, release, toolkit-update` and `/agents manage` should
    list `implementer, scout, debugger, tester, researcher, verifier`. (Skills load at startup, so the current session
    won't see them until it restarts.)
 

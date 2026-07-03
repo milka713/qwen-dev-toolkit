@@ -144,6 +144,12 @@ since the last tag, grouped Keep-a-Changelog style (Added / Changed / Fixed / �
 commit subjects into user-facing lines and proposing the next semver. Grounded in real
 commits — no invented entries.
 
+**`/release` · `check` · `<version>`** — Cuts a version release so the published tag / GitHub
+Release never lags the code. Detects drift (latest tag vs the `VERSION` file vs the commits on
+`main`) and, when a bump is ready, creates the annotated git tag and a GitHub Release with
+notes from `CHANGELOG.md`. `/release check` reports the sync state without changing anything;
+it refuses to release stale code (commits after the tagged version) or from `dev`.
+
 **`/toolkit-update`** — Installs or updates **this toolkit itself** from GitHub in one command:
 fetches the latest, runs the cross-platform installer, and verifies. Install and update are
 the same operation; works from anywhere (needs `git` + `node`).
@@ -335,7 +341,7 @@ Then **restart qwen-code**. To update later, re-run the same command (or `/toolk
 from inside qwen-code). To remove: `./uninstall.sh` / `uninstall.cmd`.
 
 **Verify** (after restart): `/skills` lists `brainstorm, plan, implement, checkpoint,
-gitflow, audit, review, commit, docs, changelog, toolkit-update`; `/agents manage` lists
+gitflow, audit, review, commit, docs, changelog, release, toolkit-update`; `/agents manage` lists
 `implementer, scout, debugger, tester, researcher, verifier`; `/status` responds.
 
 ## A typical end-to-end session
@@ -389,13 +395,14 @@ the full loop and shows *when* to reach for each command.
 > /versioning              # (if you tag releases) confirm the bump scheme first
 > /main-push               ← opens a 15-minute release window
 > выкати в main            ← now it merges dev → main and pushes
+> /release                 ← cut the tag + GitHub Release from CHANGELOG so the published release matches main
 
 > /dev off                            # back to a single agent for quick Q&A
 ```
 
 **Rules of thumb:** `/brainstorm` when the idea is vague → `/plan` when it's concrete but
 big → `/dev` (or `/implement`) to build → `/review` for correctness, `/audit` for security →
-`/docs` + `/changelog` → commit/push (dev) → `/main-push` then release (main). The point: you
+`/docs` + `/changelog` → commit/push (dev) → `/main-push` then release (main) → `/release` to tag & publish. The point: you
 never have to remember the branch rules, re-state the plan after a compaction, or babysit
 which subagent does what — the toolkit handles it.
 

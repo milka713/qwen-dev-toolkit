@@ -25,6 +25,7 @@ const rules = [
   [/\b(please remember|remember:|remember (that|this|for|to|the|my|our|about|:)|note (that|this|down|:)|keep in mind|don'?t forget|save (this|that|the)|jot down|make a note)/, 'suggest the user run `/pin <fact>` to keep it compaction-proof in context (you can also save it to memory)'],
   [/\b(context (is )?(full|getting (full|long|big))|losing track|you forgot|compact(ion)?|running low on context)\b/, 'invoke the `/checkpoint` skill (save durable state before it overflows)'],
   [/\b(update (the )?(docs|readme|documentation)|обнови (доки|док|readme))\b/, 'invoke the `/docs` skill (sync the documentation with the code)'],
+  [/\b(cut (a|the) release|publish (a|the )?release|make (a|the) release|tag (a|the) (new )?(version|release)|github release|выпусти релиз|нарежь релиз|нарезать релиз|опубликуй релиз|создай релиз|сделай релиз)\b/, 'invoke the `/release` skill (cut the tag + GitHub Release from CHANGELOG so the published release matches the code; `/release check` just audits drift)'],
   [/\b(look up|check the docs|read the docs|which version of|how (do|to) (i |you )?use)\b/, 'delegate a `researcher` subagent for a version-pinned API digest instead of answering from memory'],
 ];
 

@@ -63,7 +63,7 @@ const qhomeFwdEarly = QHOME.replace(/\\/g, '/');
 const winSkillBody = (body) =>
   body.replace(/bash "\$HOME\/\.qwen\/commands\/([^"]+)\.sh"/g, 'node "' + qhomeFwdEarly + '/commands/$1.js"')
       .replace(/"\$HOME\/\.qwen\//g, '"' + qhomeFwdEarly + '/'); // remaining quoted args (e.g. a block file)
-const SKILLS = ['implement', 'plan', 'checkpoint', 'audit', 'brainstorm', 'gitflow', 'commit', 'review', 'docs', 'changelog', 'toolkit-update'];
+const SKILLS = ['implement', 'plan', 'checkpoint', 'audit', 'brainstorm', 'gitflow', 'commit', 'review', 'docs', 'changelog', 'release', 'toolkit-update'];
 for (const s of SKILLS) {
   const srcF = path.join(SRC, 'skills', s, 'SKILL.md');
   if (!exists(srcF)) continue;
@@ -161,6 +161,6 @@ console.log('  ✓ hooks    (restore, compaction-steer, secret-guard, git-branch
 
 // ---- 7) done -------------------------------------------------------------
 console.log('\nDone. Restart qwen-code (or start a new session) to load everything.');
-console.log('Verify:  /skills  →  implement, plan, checkpoint, audit, brainstorm, gitflow, commit, review, docs, changelog, toolkit-update');
+console.log('Verify:  /skills  →  implement, plan, checkpoint, audit, brainstorm, gitflow, commit, review, docs, changelog, release, toolkit-update');
 console.log('         /agents manage  →  implementer, scout, debugger, tester, researcher, verifier');
 console.log('         /status  and  /main-push status  →  respond');

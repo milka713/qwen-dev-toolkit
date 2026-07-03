@@ -32,7 +32,7 @@ Turn commits into a changelog entry a person would actually want to read — gro
    - ...
    ```
    Newest version on top; **never rewrite past released sections**.
-5. **Report.** Show the new entry and state the version chosen and why. If the repo tracks its version in a file (`VERSION`, `package.json`), offer to bump it to match. Do not tag or commit unless asked — that's the user's / `/gitflow`'s call.
+5. **Report.** Show the new entry and state the version chosen and why. If the repo tracks its version in a file (`VERSION`, `package.json`, `qwen-extension.json`), offer to bump it to match. Do not commit unless asked (`/gitflow`'s call), and do not tag or publish a release here — once the bump lands on `main`, **`/release`** cuts the tag + GitHub Release from this entry so the release never lags the code.
 
 ## Guardrails
 
