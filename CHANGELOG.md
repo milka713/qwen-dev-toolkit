@@ -8,6 +8,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com); versions foll
 
 ### Added
 - **`/release` skill** — cuts a version release so the published git tag / GitHub Release never lags the code. It detects drift between the latest tag, the `VERSION` file, and the commits on `main`; refuses to release stale code (commits after the tagged version) or from `dev`; and, when a bump is ready, creates the annotated tag plus a GitHub Release with notes extracted from the matching `CHANGELOG.md` section. `/release check` reports the sync state without changing anything.
+- **`release-guard` hook** — a deterministic PreToolUse backstop so the release check doesn't depend on the model remembering: when a push advances `main`/`master` with the release out of step (a bumped `VERSION` with no matching tag, or commits past the released tag with no bump), it injects a non-blocking reminder to run `/release` (or `/changelog` then `/release`). Silent when the release is in sync.
 
 ### Changed
 - `/gitflow`'s main-release sequence and `/changelog` now hand off to `/release` as the final step, and the `skill-reminder` hook nudges `/release` on release-y prompts — closing the loop that previously left a bumped `VERSION` untagged.

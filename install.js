@@ -107,7 +107,7 @@ console.log('\nInstalled:');
 console.log(`  ✓ skills   (${SKILLS.join(', ')})`);
 console.log(`  ✓ agents   (${AGENTS.join(', ')})`);
 console.log('  ✓ commands (/dev, /cover, /pin, /status, /maxagents, /bro, /main-push, /versioning)  [' + (isWin ? 'Node backends' : 'bash backends') + ']');
-console.log('  ✓ hooks    (restore, compaction-steer, secret-guard, git-branch-guard, skill-reminder, agent-limit)');
+console.log('  ✓ hooks    (restore, compaction-steer, secret-guard, git-branch-guard, release-guard, skill-reminder, agent-limit)');
 
 // ---- 5) merge hooks + memory into settings.json --------------------------
 (function mergeSettings() {
@@ -133,6 +133,7 @@ console.log('  ✓ hooks    (restore, compaction-steer, secret-guard, git-branch
   setHook('PreCompact', 'pre-compact-steer.js', 'steer-compaction');
   setHook('PreToolUse', 'secret-guard.js', 'secret-guard', 'write_file|edit|replace|run_shell_command');
   setHook('PreToolUse', 'git-branch-guard.js', 'git-branch-guard', 'run_shell_command');
+  setHook('PreToolUse', 'release-guard.js', 'release-guard', 'run_shell_command');
   setHook('PreToolUse', 'agent-limit.js pre', 'agent-limit-pre', 'agent');
   setHook('PostToolUse', 'agent-limit.js post', 'agent-limit-post', 'agent');
   setHook('UserPromptSubmit', 'skill-reminder.js', 'skill-reminder');

@@ -126,6 +126,28 @@ fs.writeFileSync(path.join(gh, '.main-approval'), '');
 ok('token window authorizes main push', gbRun('git push origin main', devRepo) === '');
 fs.unlinkSync(path.join(gh, '.main-approval'));
 
+// ---- release-guard -------------------------------------------------------------
+console.log('— release-guard —');
+const rg = path.join(ROOT, 'hooks', 'release-guard.js');
+const rgRun = (command, dir) =>
+  runNode(rg, { input: JSON.stringify({ tool_name: 'run_shell_command', tool_input: { command, directory: dir } }) }).stdout;
+const gitC = (d, ...a) => cp.spawnSync('git', ['-c', 'user.email=t@t', '-c', 'user.name=t', ...a], { cwd: d, env: { ...process.env, ...gitEnv } });
+const relRepo = () => {
+  const d = tmp();
+  cp.spawnSync('git', ['init', '-q', '-b', 'main'], { cwd: d, env: { ...process.env, ...gitEnv } });
+  fs.writeFileSync(path.join(d, 'VERSION'), '1.0.0\n');
+  gitC(d, 'add', '-A'); gitC(d, 'commit', '-q', '-m', 'v1');
+  return d;
+};
+const rr = relRepo();
+const rgOut = rgRun('git push origin main', rr);
+ok('untagged VERSION on main push reminds', rgOut.includes('release-guard') && rgOut.includes('/release'));
+gitC(rr, 'tag', 'v1.0.0');
+ok('tagged & in-sync stays silent', rgRun('git push origin main', rr) === '');
+gitC(rr, 'commit', '-q', '--allow-empty', '-m', 'more');
+ok('code past released tag reminds to bump', rgRun('git push origin main', rr).includes('/changelog'));
+ok('push to dev stays silent', rgRun('git push origin dev', relRepo()) === '');
+
 // ---- /pin backends -------------------------------------------------------------
 console.log('— /pin backends —');
 for (const impl of (isWin ? ['js'] : ['sh', 'js'])) {

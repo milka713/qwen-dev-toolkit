@@ -13,6 +13,8 @@ allowedTools:
 
 The stable branch and the published release must agree: you should never have new code on `main` under an old tag, nor a `VERSION` bump that was never tagged or released. This skill detects that drift and cuts a correct release. It is the step that closes the loop `/changelog` and `/gitflow` deliberately leave to a release action.
 
+You don't have to remember to run it: the deterministic **`release-guard`** hook fires on every push that advances `main`/`master` and injects a reminder whenever the release is out of step with the code. This skill is what you run in response.
+
 ## 1. Read the state (always — this is all `/release check` does)
 
 Gather deterministically, never guess:
