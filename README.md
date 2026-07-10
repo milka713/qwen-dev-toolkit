@@ -2,6 +2,19 @@
 
 # qwen-dev-toolkit
 
+> ### 💬 If you're an AI agent — start here
+>
+> The user pointed you at this repo and asked to install or update the skills? Follow
+> **[`INSTALL_FOR_AI.md`](INSTALL_FOR_AI.md)** — step-by-step install + verify instructions
+> written for you. They also cover disabling qwen-code's **stream-idle timeout** (kills
+> requests after 240 s of stream silence — poison for slow / queued local servers) on
+> macOS, Linux and Windows. Short version:
+>
+> ```
+> git clone --depth 1 https://github.com/milka713/qwen-dev-toolkit
+> node qwen-dev-toolkit/install.js
+> ```
+
 A **skills pack** for [qwen-code](https://github.com/QwenLM/qwen-code) on **local /
 small-context models** (e.g. a llama.cpp server with a ~90–100k window). Its core stops big
 builds stalling after a context overflow + lossy compaction by making the model an
@@ -241,6 +254,28 @@ wrong. For a **custom OpenAI-compatible provider**, put them under the provider 
   (this is separate from a run's overall budget). Raise it generously — `1800000` (30 min)
   — so long generations under load complete instead of erroring with `Request timeout`.
 
+### The stream-idle timeout (requests dying at exactly 240 s of silence)
+
+qwen-code ≥ 0.19.3 aborts a streaming request after **240 s without a new SSE chunk**
+(120 s in 0.19.3–0.19.7) with an error like
+`[API Error: No stream activity for 240000ms after 1 chunks]`. On a shared local server
+that silence is usually **legitimate** — the request is waiting in the server's FIFO queue
+or prefilling a 100k context — and the automatic retry just re-enters the same queue, so
+healthy requests keep dying. There is **no settings.json option** for this (a per-provider
+setting is proposed upstream in
+[QwenLM/qwen-code#5975](https://github.com/QwenLM/qwen-code/issues/5975)); it's controlled
+only by the `QWEN_STREAM_IDLE_TIMEOUT_MS` environment variable — `0` disables it, any other
+value is a new window in ms (the per-request `timeout` above still bounds the whole call):
+
+- **macOS (zsh):** `echo 'export QWEN_STREAM_IDLE_TIMEOUT_MS=0' >> ~/.zshrc`, then open a
+  new terminal (or `source ~/.zshrc`).
+- **Linux / Ubuntu server (bash):** `echo 'export QWEN_STREAM_IDLE_TIMEOUT_MS=0' >> ~/.bashrc`,
+  then re-login. For qwen running under a systemd unit add
+  `Environment=QWEN_STREAM_IDLE_TIMEOUT_MS=0` to the unit instead.
+- **Windows:** PowerShell:
+  `[Environment]::SetEnvironmentVariable('QWEN_STREAM_IDLE_TIMEOUT_MS','0','User')`
+  (or cmd: `setx QWEN_STREAM_IDLE_TIMEOUT_MS 0`), then open a new terminal.
+
 ### Loop protection
 
 Small local models sometimes get stuck repeating the same tool call or output. qwen-code
@@ -316,17 +351,10 @@ installer — it wires bash backends on macOS/Linux and Node backends on Windows
 
 ### 💬 If you're an AI agent
 
-The user pointed you at this repo and asked to install/update the skills? Follow
-**[`INSTALL_FOR_AI.md`](INSTALL_FOR_AI.md)** — step-by-step instructions written for you,
-including how to **verify** it worked. Short version:
-
-```
-git clone --depth 1 https://github.com/milka713/qwen-dev-toolkit
-node qwen-dev-toolkit/install.js
-```
-
-Already inside a checkout? just `node install.js`. Updating an existing checkout? `git pull`
-then re-run. Already running inside qwen-code? invoke **`/toolkit-update`** and it does all of this for you.
+See the banner at the top of this README, or go straight to
+**[`INSTALL_FOR_AI.md`](INSTALL_FOR_AI.md)**. Already inside a checkout? just `node install.js`.
+Updating an existing checkout? `git pull` then re-run. Already running inside qwen-code?
+invoke **`/toolkit-update`** and it does all of this for you.
 
 ### 🧑 If you're a human
 

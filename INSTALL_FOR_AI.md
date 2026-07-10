@@ -47,6 +47,24 @@ Run these and confirm each works; if one is missing, tell the user how to instal
    - `Done. Restart qwen-code …`.
    If it printed a missing-dependency line (`✗ …`), install that dependency and re-run.
 
+4. **If the model backend is a slow / shared / queued local server** (llama.cpp, Ollama,
+   LM Studio — anything where a request can wait or prefill for minutes): disable
+   qwen-code's **stream-idle timeout**. qwen-code ≥ 0.19.3 aborts any streaming request
+   after **240 s without a new SSE chunk** (120 s in 0.19.3–0.19.7) with
+   `[API Error: No stream activity for 240000ms …]`; on a queued server that silence is
+   legitimate, and the auto-retry re-enters the same queue. There is no settings.json
+   option — set the `QWEN_STREAM_IDLE_TIMEOUT_MS` environment variable to `0` (disable)
+   persistently, using the platform you are actually on:
+   - **macOS (zsh):** append `export QWEN_STREAM_IDLE_TIMEOUT_MS=0` to `~/.zshrc`.
+   - **Linux / Ubuntu server (bash):** append `export QWEN_STREAM_IDLE_TIMEOUT_MS=0` to
+     `~/.bashrc` (if qwen runs as a systemd service, add
+     `Environment=QWEN_STREAM_IDLE_TIMEOUT_MS=0` to the unit instead).
+   - **Windows:** run `setx QWEN_STREAM_IDLE_TIMEOUT_MS 0` (cmd) or
+     `[Environment]::SetEnvironmentVariable('QWEN_STREAM_IDLE_TIMEOUT_MS','0','User')`
+     (PowerShell).
+   It takes effect in **new** terminals/sessions. Tell the user you set it and why.
+   (Skip this step for fast cloud providers — there the default is fine.)
+
 ## Verify it actually worked (do this, don't assume)
 
 1. **Files on disk** — confirm these exist (use the user's home dir; `~` = `$HOME` on
@@ -68,5 +86,6 @@ Run these and confirm each works; if one is missing, tell the user how to instal
 ## Report to the user
 
 State: install or update, the version, that verification passed (files + settings present),
-and the reminder to restart qwen-code so the new skills load. If anything failed, say
-exactly which step and the error — do not report success you did not verify.
+whether you disabled the stream-idle timeout (step 4) and where, and the reminder to
+restart qwen-code so the new skills load. If anything failed, say exactly which step and
+the error — do not report success you did not verify.
