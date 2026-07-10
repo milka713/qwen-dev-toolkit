@@ -9,3 +9,4 @@ node_modules/
 # qwen-code runtime state that may appear if you test inside this repo
 .qwen/PROGRESS.md
 .qwen/worktrees/
+.qwen/.agentcount
