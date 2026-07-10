@@ -14,6 +14,9 @@
 > git clone --depth 1 https://github.com/milka713/qwen-dev-toolkit
 > node qwen-dev-toolkit/install.js
 > ```
+>
+> Already inside a checkout? just `node install.js`. Updating? `git pull`, then re-run.
+> Already running inside qwen-code? invoke **`/toolkit-update`** — it does all of this for you.
 
 A **skills pack** for [qwen-code](https://github.com/QwenLM/qwen-code) on **local /
 small-context models** (e.g. a llama.cpp server with a ~90–100k window). Its core stops big
@@ -349,14 +352,7 @@ It copies only this toolkit's own files into `~/.qwen`; your other skills, setti
 keys and memories are left untouched. Cross-platform: **macOS · Linux · Windows** (one Node
 installer — it wires bash backends on macOS/Linux and Node backends on Windows automatically).
 
-### 💬 If you're an AI agent
-
-See the banner at the top of this README, or go straight to
-**[`INSTALL_FOR_AI.md`](INSTALL_FOR_AI.md)**. Already inside a checkout? just `node install.js`.
-Updating an existing checkout? `git pull` then re-run. Already running inside qwen-code?
-invoke **`/toolkit-update`** and it does all of this for you.
-
-### 🧑 If you're a human
+(AI agent? — see the banner at the top of this README / [`INSTALL_FOR_AI.md`](INSTALL_FOR_AI.md).)
 
 Prerequisites: **Node.js** + **qwen-code** (and **git** for the git features). The installer
 checks them and prints what's missing.

@@ -47,14 +47,18 @@ Run these and confirm each works; if one is missing, tell the user how to instal
    - `Done. Restart qwen-code …`.
    If it printed a missing-dependency line (`✗ …`), install that dependency and re-run.
 
-4. **If the model backend is a slow / shared / queued local server** (llama.cpp, Ollama,
-   LM Studio — anything where a request can wait or prefill for minutes): disable
-   qwen-code's **stream-idle timeout**. qwen-code ≥ 0.19.3 aborts any streaming request
-   after **240 s without a new SSE chunk** (120 s in 0.19.3–0.19.7) with
-   `[API Error: No stream activity for 240000ms …]`; on a queued server that silence is
-   legitimate, and the auto-retry re-enters the same queue. There is no settings.json
-   option — set the `QWEN_STREAM_IDLE_TIMEOUT_MS` environment variable to `0` (disable)
-   persistently, using the platform you are actually on:
+4. **Optional — ask the user first.** If the model backend is a slow / shared / queued
+   local server (llama.cpp, Ollama, LM Studio — anything where a request can wait or
+   prefill for minutes), offer to disable qwen-code's **stream-idle timeout**. This is
+   **not a required part of the install**: it changes the user's shell/system environment,
+   so describe it in one sentence and get their consent before touching anything (skip it
+   silently if the backend is a fast cloud provider). Background: qwen-code ≥ 0.19.3
+   aborts any streaming request after **240 s without a new SSE chunk** (120 s in
+   0.19.3–0.19.7) with `[API Error: No stream activity for 240000ms …]`; on a queued
+   server that silence is legitimate, and the auto-retry re-enters the same queue. There
+   is no settings.json option — with the user's OK, set the `QWEN_STREAM_IDLE_TIMEOUT_MS`
+   environment variable to `0` (disable) persistently, using the platform you are
+   actually on:
    - **macOS (zsh):** append `export QWEN_STREAM_IDLE_TIMEOUT_MS=0` to `~/.zshrc`.
    - **Linux / Ubuntu server (bash):** append `export QWEN_STREAM_IDLE_TIMEOUT_MS=0` to
      `~/.bashrc` (if qwen runs as a systemd service, add
@@ -62,8 +66,9 @@ Run these and confirm each works; if one is missing, tell the user how to instal
    - **Windows:** run `setx QWEN_STREAM_IDLE_TIMEOUT_MS 0` (cmd) or
      `[Environment]::SetEnvironmentVariable('QWEN_STREAM_IDLE_TIMEOUT_MS','0','User')`
      (PowerShell).
-   It takes effect in **new** terminals/sessions. Tell the user you set it and why.
-   (Skip this step for fast cloud providers — there the default is fine.)
+   It takes effect in **new** terminals/sessions. Tell the user what you set and where.
+   If the user declines, don't set it — just mention the variable name so they can do it
+   later.
 
 ## Verify it actually worked (do this, don't assume)
 
