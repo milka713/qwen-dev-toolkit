@@ -239,7 +239,8 @@ wrong. For a **custom OpenAI-compatible provider**, put them under the provider 
       "id": "...", "name": "...", "baseUrl": "http://HOST:PORT/v1", "envKey": "OPENAI_API_KEY",
       "generationConfig": {
         "contextWindowSize": 120000,
-        "timeout": 1800000
+        "timeout": 1800000,
+        "samplingParams": { "max_tokens": 16384 }
       }
     }]
   }
@@ -256,6 +257,20 @@ wrong. For a **custom OpenAI-compatible provider**, put them under the provider 
   model call when the server is slow or shared with other work, killing a build mid-task
   (this is separate from a run's overall budget). Raise it generously — `1800000` (30 min)
   — so long generations under load complete instead of erroring with `Request timeout`.
+- **`samplingParams.max_tokens`** — without it, auto-compaction fires **way too early**
+  (at roughly a third of your window, e.g. ~40–50k of a 115k window). Reason: when
+  computing the compaction threshold qwen reserves an *escalated* output budget for the
+  model's reply — `min(max(64000, known output limit), contextWindowSize/2)` — and for a
+  GGUF-style id the lookup normalizes the model name to the part after the last `:`
+  (`unsloth/Qwen3.6-…-GGUF:Q5_K_XL` → `q5_k_xl`), matches nothing, and the reserve balloons
+  to **half the window**. An explicit `max_tokens` replaces that whole reserve: with a 115k
+  window, `"samplingParams": { "max_tokens": 16384 }` moves the auto-compact trigger from
+  ~40k to ~69k (`0.7 × (contextWindowSize − max_tokens)`). The value is also sent verbatim
+  on the wire, capping each reply (16k is plenty for coding; it overrides llama.cpp's `-n`).
+  Want compaction even later? Raise the 0.7 factor with the top-level setting
+  `"context": { "autoCompactThreshold": 0.85 }` (~84k in this example) — just leave
+  headroom, since one turn's tool results can add tens of thousands of tokens between
+  checks.
 
 ### The stream-idle timeout (requests dying at exactly 240 s of silence)
 

@@ -70,6 +70,22 @@ Run these and confirm each works; if one is missing, tell the user how to instal
    If the user declines, don't set it — just mention the variable name so they can do it
    later.
 
+5. **Optional — ask the user first.** If the provider's model id is GGUF-style (ends in a
+   `:QUANT` suffix, e.g. `unsloth/Qwen3.6-27B-…-GGUF:Q5_K_XL`), offer to add an explicit
+   output cap to the same provider entry in the user's `~/.qwen/settings.json`:
+   ```json
+   "generationConfig": { "samplingParams": { "max_tokens": 16384 } }
+   ```
+   Why: without it, qwen-code computes the auto-compaction threshold by reserving
+   `min(max(64000, known output limit), contextWindowSize/2)` for the reply, and a
+   GGUF-style id normalizes to the part after the last `:` (`q5_k_xl`) which matches no
+   known model — so the reserve balloons to **half the context window** and compaction
+   fires at roughly a third of it (~40–50k on a 115k window). An explicit `max_tokens`
+   replaces the reserve; 16384 moves the trigger to `0.7 × (contextWindowSize − 16384)`
+   (~69k on 115k). It also caps each reply at that many tokens on the wire — fine for
+   coding. This edits the user's settings file, so describe the change in one sentence and
+   get their consent; if they decline, just name the setting so they can do it later.
+
 ## Verify it actually worked (do this, don't assume)
 
 1. **Files on disk** — confirm these exist (use the user's home dir; `~` = `$HOME` on
