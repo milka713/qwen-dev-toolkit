@@ -95,11 +95,15 @@ for (const md of fs.readdirSync(cmdDir).filter((f) => f.endsWith('.md'))) {
 }
 // backends: bash set on posix, node set on windows; _devmode.block on both.
 const backendExt = isWin ? '.js' : '.sh';
+// Node files needed on EVERY OS: _qdt.js (shared helper) and any _*.js that is the real
+// logic behind a thin .sh wrapper (e.g. _autocompact.sh just execs _autocompact.js —
+// JSON editing needs a real parser, and Node is a hard toolkit prerequisite anyway).
+const ALWAYS_COPY = new Set(['_qdt.js', '_autocompact.js']);
 for (const f of fs.readdirSync(cmdDir)) {
   if (f.endsWith('.md')) continue;
   const isBackend = f.startsWith('_') && (f.endsWith('.sh') || f.endsWith('.js'));
-  if (isBackend && !f.endsWith(backendExt)) continue;          // skip the other OS's backends
-  copy(path.join(cmdDir, f), path.join(QHOME, 'commands', f)); // _qdt.js, _*.<ext>, _devmode.block
+  if (isBackend && !f.endsWith(backendExt) && !ALWAYS_COPY.has(f)) continue; // skip the other OS's backends
+  copy(path.join(cmdDir, f), path.join(QHOME, 'commands', f)); // _*.<ext>, ALWAYS_COPY, _devmode.block
 }
 if (!isWin) { for (const f of fs.readdirSync(path.join(QHOME, 'commands')).filter((x) => x.endsWith('.sh'))) { try { fs.chmodSync(path.join(QHOME, 'commands', f), 0o755); } catch (_) {} } }
 

@@ -177,6 +177,17 @@ ok('skills installed', fs.existsSync(path.join(qh2, 'skills', 'implement', 'SKIL
 ok('agents installed', fs.existsSync(path.join(qh2, 'agents', 'debugger.md')) && fs.existsSync(path.join(qh2, 'agents', 'tester.md')));
 ok('hooks wired into settings.json', fs.readFileSync(path.join(qh2, 'settings.json'), 'utf8').includes('git-branch-guard'));
 ok('QWEN.md guidance added', fs.readFileSync(path.join(qh2, 'QWEN.md'), 'utf8').includes('qwen-dev-toolkit:start'));
+// /autocompact: the .sh is a thin wrapper over the Node logic, so BOTH files must land
+// on POSIX; and a fresh install must default auto-compaction to OFF (threshold 1).
+ok('autocompact Node logic installed alongside the wrapper',
+  fs.existsSync(path.join(qh2, 'commands', '_autocompact.js')) &&
+  (process.platform === 'win32' || fs.existsSync(path.join(qh2, 'commands', '_autocompact.sh'))));
+ok('auto-compaction OFF by default on fresh install',
+  JSON.parse(fs.readFileSync(path.join(qh2, 'settings.json'), 'utf8')).context.autoCompactThreshold === 1);
+{
+  const st = cp.spawnSync('node', [path.join(ROOT, 'commands', '_autocompact.js'), 'status'], { env: { ...process.env, QWEN_HOME: qh2 }, encoding: 'utf8' });
+  ok('autocompact status reads the installed default', (st.stdout || '').includes('auto-compaction OFF'));
+}
 const ru = cp.spawnSync('node', [path.join(ROOT, 'uninstall.js')], { env: { ...process.env, QWEN_HOME: qh2 }, encoding: 'utf8' });
 ok('uninstall exits 0', ru.status === 0);
 ok('uninstall removes skills', !fs.existsSync(path.join(qh2, 'skills', 'implement')));
