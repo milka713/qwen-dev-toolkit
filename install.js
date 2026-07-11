@@ -19,6 +19,14 @@ const SRC = __dirname;
 const QHOME = process.env.QWEN_HOME || path.join(os.homedir(), '.qwen');
 const isWin = process.platform === 'win32';
 const VERSION = read(path.join(SRC, 'VERSION')).trim() || '?';
+// --reset (also bare "reset"): in addition to the normal install/update below, sweep any
+// toolkit-managed marker block out of the GLOBAL QWEN.md that current versions only ever
+// pin PROJECT-locally. This exists because a flag's scope has moved before (/bro: global
+// in versions <1.8.0, project-local from 1.8.0 on) and left orphaned blocks behind that no
+// command manages anymore — e.g. a stale "/bro свобода" that keeps applying everywhere
+// even though /bro now only affects the current project. Safe to re-run; a no-op when
+// there is nothing stale.
+const DO_RESET = process.argv.slice(2).some((a) => /^(--)?reset$/i.test(a));
 
 function read(p) { try { return fs.readFileSync(p, 'utf8'); } catch (_) { return ''; } }
 function exists(p) { try { fs.statSync(p); return true; } catch (_) { return false; } }
@@ -173,6 +181,33 @@ console.log('  ✓ hooks    (restore, compaction-steer, compact-warn, secret-gua
   fs.writeFileSync(file, (bodyOut ? bodyOut + '\n\n' : '') + block + '\n');
   console.log('  ✓ QWEN.md guidance ' + (had ? 'updated' : 'added'));
 })();
+
+// ---- 6.5) --reset: sweep project-scope marker blocks out of the GLOBAL QWEN.md ----
+// Known toggles that pin a "<!-- NAME:start -->...<!-- NAME:end -->" block into
+// PROJECT QWEN.md today. If one of these is instead found in the GLOBAL file, it is a
+// leftover from before that flag's scope moved (or was hand-pasted into the wrong file)
+// — no current command reads/manages it there, so it silently applies everywhere forever
+// until removed. Only acts on the GLOBAL file; project QWEN.md files are never touched by
+// this step (their blocks are legitimate and owned by /dev, /bro, /cover, /maxagents,
+// /versioning as normal).
+if (DO_RESET) {
+  const PROJECT_SCOPE_MARKERS = ['bromode', 'covermode', 'devmode', 'maxagents', 'versioning'];
+  const file = path.join(QHOME, 'QWEN.md');
+  let cur = read(file);
+  const removed = [];
+  for (const m of PROJECT_SCOPE_MARKERS) {
+    const re = new RegExp('\\n?<!-- ' + m + ':start -->[\\s\\S]*?<!-- ' + m + ':end -->\\n?', 'g');
+    if (re.test(cur)) { removed.push(m); cur = cur.replace(re, '\n'); }
+  }
+  if (removed.length) {
+    cur = cur.replace(/\n{3,}/g, '\n\n').replace(/^\n+/, '');
+    fs.writeFileSync(file, cur);
+    console.log('  ✓ reset: removed stale global block(s) — ' + removed.join(', ') +
+      ' (these are project-local now; re-set them per project with /bro, /cover, /dev, /maxagents, /versioning)');
+  } else {
+    console.log('  ✓ reset: no stale project-scope blocks found in the global QWEN.md');
+  }
+}
 
 // ---- 7) done -------------------------------------------------------------
 console.log('\nDone. Restart qwen-code (or start a new session) to load everything.');

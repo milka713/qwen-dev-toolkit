@@ -193,6 +193,56 @@ ok('uninstall exits 0', ru.status === 0);
 ok('uninstall removes skills', !fs.existsSync(path.join(qh2, 'skills', 'implement')));
 ok('uninstall strips hook entries', !fs.readFileSync(path.join(qh2, 'settings.json'), 'utf8').includes('git-branch-guard'));
 
+// ---- /toolkit-update reset — sweep project-scope blocks out of the GLOBAL QWEN.md -----
+// Simulates the exact drift this exists for: an older toolkit version pinned /bro globally
+// (pre-1.8.0); the block is still sitting in ~/.qwen/QWEN.md even though no current command
+// manages it there. Build a global QWEN.md with all five known marker blocks plus the
+// user's own unrelated prose, to check the sweep is both complete and surgical.
+console.log('— /toolkit-update reset —');
+const MARKERS = ['bromode', 'covermode', 'devmode', 'maxagents', 'versioning'];
+const seedStale = (file) => {
+  const blocks = MARKERS.map((m) =>
+    `<!-- ${m}:start -->\nstale ${m} content from an old toolkit version\n<!-- ${m}:end -->\n`
+  ).join('\n');
+  fs.writeFileSync(file, `# my own notes\nI wrote this myself, keep it.\n\n${blocks}\nmore of my own notes at the end.\n`);
+};
+
+// (a) plain update must NOT touch stale blocks it doesn't own — only --reset may remove them.
+const qh3 = tmp();
+fs.mkdirSync(qh3, { recursive: true });
+seedStale(path.join(qh3, 'QWEN.md'));
+cp.spawnSync('node', [path.join(ROOT, 'install.js')], { env: { ...process.env, QWEN_HOME: qh3 }, encoding: 'utf8' });
+{
+  const body = fs.readFileSync(path.join(qh3, 'QWEN.md'), 'utf8');
+  ok('plain update leaves stale global blocks alone (no --reset)', MARKERS.every((m) => body.includes(`${m}:start`)));
+}
+
+// (b) --reset removes exactly the known stale blocks, keeps the user's own prose and the
+// fresh guidance block, and is idempotent on a second run.
+const qh4 = tmp();
+fs.mkdirSync(qh4, { recursive: true });
+seedStale(path.join(qh4, 'QWEN.md'));
+const r1 = cp.spawnSync('node', [path.join(ROOT, 'install.js'), '--reset'], { env: { ...process.env, QWEN_HOME: qh4 }, encoding: 'utf8' });
+ok('reset exits 0', r1.status === 0, (r1.stderr || '').slice(0, 160));
+ok('reset reports the removed blocks', /removed stale global block\(s\)/.test(r1.stdout) && MARKERS.every((m) => r1.stdout.includes(m)));
+{
+  const body = fs.readFileSync(path.join(qh4, 'QWEN.md'), 'utf8');
+  ok('reset removes all 5 stale marker blocks', MARKERS.every((m) => !body.includes(`${m}:start`)));
+  ok('reset keeps the user\'s own prose', body.includes('I wrote this myself, keep it.') && body.includes('more of my own notes at the end.'));
+  ok('reset keeps the fresh toolkit guidance block', body.includes('qwen-dev-toolkit:start'));
+}
+const r2 = cp.spawnSync('node', [path.join(ROOT, 'install.js'), 'reset'], { env: { ...process.env, QWEN_HOME: qh4 }, encoding: 'utf8' }); // bare "reset" form too
+ok('bare "reset" (no dashes) is also accepted', r2.status === 0 && /no stale project-scope blocks found/.test(r2.stdout));
+
+// (c) a global reset must NEVER touch a project's own QWEN.md — different file entirely,
+// install.js only ever reads/writes QHOME/QWEN.md, but assert the byte-for-byte guarantee.
+const projDir = tmp();
+const projFile = path.join(projDir, 'QWEN.md');
+fs.writeFileSync(projFile, '<!-- bromode:start -->\nlegit CURRENT project-level persona, must survive\n<!-- bromode:end -->\n');
+const before = fs.readFileSync(projFile, 'utf8');
+cp.spawnSync('node', [path.join(ROOT, 'install.js'), '--reset'], { env: { ...process.env, QWEN_HOME: tmp() }, cwd: projDir, encoding: 'utf8' });
+ok('reset never touches a project QWEN.md', fs.readFileSync(projFile, 'utf8') === before);
+
 // ---- summary ------------------------------------------------------------------
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

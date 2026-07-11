@@ -177,9 +177,18 @@ Release never lags the code. Detects drift (latest tag vs the `VERSION` file vs 
 notes from `CHANGELOG.md`. `/release check` reports the sync state without changing anything;
 it refuses to release stale code (commits after the tagged version) or from `dev`.
 
-**`/toolkit-update`** — Installs or updates **this toolkit itself** from GitHub in one command:
-fetches the latest, runs the cross-platform installer, and verifies. Install and update are
-the same operation; works from anywhere (needs `git` + `node`).
+**`/toolkit-update` · `reset`** — Installs or updates **this toolkit itself** from GitHub in
+one command: fetches the latest, runs the cross-platform installer, and verifies. Install
+and update are the same operation; works from anywhere (needs `git` + `node`).
+`/toolkit-update reset` does all of that **plus** a deterministic cleanup: some toggles used
+to be pinned globally in older versions and are per-project now (e.g. `/bro` before v1.8.0)
+— a block left behind in the *global* `~/.qwen/QWEN.md` from before that change keeps
+applying to every project forever, since no current command manages it there. `reset` sweeps
+those specific known blocks (`bromode`/`covermode`/`devmode`/`maxagents`/`versioning`) out of
+the global file — never touches a project's own `QWEN.md` — and reports exactly what it
+removed. The actual sweep lives in `install.js`, not in the model's judgment, so it's exact
+every time.
+· _Example:_ `/toolkit-update reset`
 
 ### Subagents (isolated context)
 

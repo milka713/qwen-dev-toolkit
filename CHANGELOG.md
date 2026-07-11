@@ -4,6 +4,14 @@ All notable changes to qwen-dev-toolkit are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com); versions follow semver.
 (Releases before 1.7.0 predate this file and are not backfilled — see the git history.)
 
+## [1.11.0] - 2026-07-11
+
+### Added
+- **`/toolkit-update reset`** — a deterministic cleanup pass, on top of the normal install/update, that sweeps this toolkit's known marker blocks (`bromode`, `covermode`, `devmode`, `maxagents`, `versioning`) out of the **global** `~/.qwen/QWEN.md` if found there. Fixes the case where an older version pinned a toggle globally (e.g. `/bro` before v1.8.0) and the block never got cleaned up when that toggle became per-project, so it kept silently applying to every project. The sweep itself lives in `install.js` (`--reset` / bare `reset` argv flag), not in the model's judgment — it's exact and reports precisely which blocks it removed; it never touches a project's own `QWEN.md`. 8 new tests cover: plain update leaves stale blocks alone, reset removes exactly the known blocks while preserving the user's own prose and the guidance block, idempotency, both flag spellings, and the project-file isolation guarantee.
+
+### Changed
+- README (RU): removed an informal word ("халява") from the auto-compaction explanation.
+
 ## [1.10.0] - 2026-07-11
 
 ### Added
