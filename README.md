@@ -177,18 +177,27 @@ Release never lags the code. Detects drift (latest tag vs the `VERSION` file vs 
 notes from `CHANGELOG.md`. `/release check` reports the sync state without changing anything;
 it refuses to release stale code (commits after the tagged version) or from `dev`.
 
-**`/toolkit-update` · `reset`** — Installs or updates **this toolkit itself** from GitHub in
-one command: fetches the latest, runs the cross-platform installer, and verifies. Install
-and update are the same operation; works from anywhere (needs `git` + `node`).
-`/toolkit-update reset` does all of that **plus** a deterministic cleanup: some toggles used
-to be pinned globally in older versions and are per-project now (e.g. `/bro` before v1.8.0)
-— a block left behind in the *global* `~/.qwen/QWEN.md` from before that change keeps
-applying to every project forever, since no current command manages it there. `reset` sweeps
-those specific known blocks (`bromode`/`covermode`/`devmode`/`maxagents`/`versioning`) out of
-the global file — never touches a project's own `QWEN.md` — and reports exactly what it
-removed. The actual sweep lives in `install.js`, not in the model's judgment, so it's exact
-every time.
-· _Example:_ `/toolkit-update reset`
+**`/toolkit-update`** — Installs or updates **this toolkit itself** from GitHub in one
+command: fetches the latest, runs the cross-platform installer, and verifies. Install and
+update are the same operation; works from anywhere (needs `git` + `node`). This is purely
+about getting the **latest released code** — for cleaning up settings a toggle left behind
+in the wrong place, see `/toolkit-reset` below (a separate, unrelated command).
+
+**`/toolkit-reset` · `confirm`** — Deterministic cleanup for settings an *older* toolkit
+version left behind in the wrong (global) place — e.g. some toggles used to be pinned
+globally and are per-project now (`/bro` before v1.8.0): a block left in the *global*
+`~/.qwen/QWEN.md` from before that change keeps applying to every project forever, since no
+current command manages it there anymore. `/toolkit-reset` sweeps those specific known
+blocks (`bromode`/`covermode`/`devmode`/`maxagents`/`versioning`) out of the global file —
+never touches a project's own `QWEN.md` — and reports exactly what it found or removed.
+Pure local cleanup, no network, unrelated to `/toolkit-update`. **Requires confirmation, and
+that confirmation is not optional or skippable by the model:** plain `/toolkit-reset`
+*previews* what would be removed and opens a 15-minute approval window, changing nothing;
+only `/toolkit-reset confirm`, typed by you within that window, actually removes anything.
+A `toolkit-reset-guard` hook enforces the window at the engine level — even a model that
+tried to call the confirm step directly via a shell command, skipping you, would be denied,
+the same way `git-branch-guard` backstops `/main-push`.
+· _Example:_ `/toolkit-reset` then, if the preview looks right, `/toolkit-reset confirm`
 
 ### Subagents (isolated context)
 
@@ -211,6 +220,7 @@ every time.
 | `PreToolUse` → `secret-guard.js` | **Blocks** any write/edit/command containing a hardcoded credential (private keys, AWS/OpenAI/GitHub/Slack/HF tokens, …) or that commits a secret file (`.env`, `id_rsa`, `*.pem`). Env-var usage and placeholders pass. |
 | `PreToolUse` → `git-branch-guard.js` | **Blocks** any `git push`/`merge`/`rebase` that would touch `main`/`master` (explicit target, or while checked out on it, or a switch-then-merge one-liner). Pushes to `dev`/feature branches and read-only git pass. Released for one operation by `/main-push`. |
 | `PreToolUse` → `release-guard.js` | **Reminds** (never blocks) when a push advances `main`/`master` but the release would lag the code — a bumped `VERSION` with no matching tag, or commits past the released tag with no bump — injecting a note to run `/release` (or `/changelog` then `/release`). This is the deterministic backstop that makes `/release` fire even if the model forgets it. Silent when the release is in sync. |
+| `PreToolUse` → `toolkit-reset-guard.js` | **Blocks** an attempt to run `/toolkit-reset`'s confirm step without a valid 15-minute approval window — closes the gap where a model could otherwise call the backend script directly via a shell command instead of waiting for you to type `/toolkit-reset confirm` yourself. Preview-only calls (no `confirm`) always pass. |
 | `UserPromptSubmit` → `skill-reminder.js` | Small local models under-trigger model-invoked skills; this injects a short, targeted reminder (e.g. "looks security-related → `/audit`") only when the prompt clearly matches, so the right skill actually fires. Silent on trivial prompts. |
 | `PreToolUse`/`PostToolUse`/`SessionStart` → `agent-limit.js` | Enforces `/maxagents` deterministically: counts running subagents and **denies** `agent` launches beyond the cap (concurrency-safe via a lock), decrements when one finishes, resets each session. No cap set → no-op. |
 
@@ -290,8 +300,8 @@ wrong. For a **custom OpenAI-compatible provider**, put them under the provider 
   ~40k to ~69k (`0.7 × (contextWindowSize − max_tokens)`). The value is also sent verbatim
   on the wire, capping each reply (16k is plenty for coding; it overrides llama.cpp's `-n`).
 
-**Why the compaction trigger sits well below the window** (and why cranking it up is a
-trade, not a free win): before compaction may fire, the *next* request still has to fit —
+**Why the compaction trigger sits well below the window** (and why cranking it up trades
+stability for capacity): before compaction may fire, the *next* request still has to fit —
 the whole history **plus** the reply reserve (`max_tokens`); and the compaction itself is
 one more LLM call that must fit the full uncompressed history **plus** up to 20 000 tokens
 of summary output (`SUMMARY_RESERVE`), with a further 13 000-token buffer

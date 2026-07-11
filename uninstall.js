@@ -33,7 +33,7 @@ console.log('  ✓ removed skills, commands, subagents, hook scripts');
 (function () {
   const file = path.join(QHOME, 'settings.json');
   let s; try { s = JSON.parse(fs.readFileSync(file, 'utf8')); } catch (_) { return; }
-  const names = new Set(['restore-progress', 'steer-compaction', 'secret-guard', 'git-branch-guard', 'release-guard', 'skill-reminder', 'agent-limit-reset', 'agent-limit-pre', 'agent-limit-post']);
+  const names = new Set(['restore-progress', 'steer-compaction', 'compact-warn', 'secret-guard', 'git-branch-guard', 'release-guard', 'toolkit-reset-guard', 'skill-reminder', 'agent-limit-reset', 'agent-limit-pre', 'agent-limit-post']);
   for (const ev of Object.keys(s.hooks || {})) {
     s.hooks[ev] = (s.hooks[ev] || []).filter((g) => !(g.hooks || []).some((h) => names.has(h.name)));
     if (!s.hooks[ev].length) delete s.hooks[ev];

@@ -19,14 +19,6 @@ const SRC = __dirname;
 const QHOME = process.env.QWEN_HOME || path.join(os.homedir(), '.qwen');
 const isWin = process.platform === 'win32';
 const VERSION = read(path.join(SRC, 'VERSION')).trim() || '?';
-// --reset (also bare "reset"): in addition to the normal install/update below, sweep any
-// toolkit-managed marker block out of the GLOBAL QWEN.md that current versions only ever
-// pin PROJECT-locally. This exists because a flag's scope has moved before (/bro: global
-// in versions <1.8.0, project-local from 1.8.0 on) and left orphaned blocks behind that no
-// command manages anymore — e.g. a stale "/bro свобода" that keeps applying everywhere
-// even though /bro now only affects the current project. Safe to re-run; a no-op when
-// there is nothing stale.
-const DO_RESET = process.argv.slice(2).some((a) => /^(--)?reset$/i.test(a));
 
 function read(p) { try { return fs.readFileSync(p, 'utf8'); } catch (_) { return ''; } }
 function exists(p) { try { fs.statSync(p); return true; } catch (_) { return false; } }
@@ -106,7 +98,7 @@ const backendExt = isWin ? '.js' : '.sh';
 // Node files needed on EVERY OS: _qdt.js (shared helper) and any _*.js that is the real
 // logic behind a thin .sh wrapper (e.g. _autocompact.sh just execs _autocompact.js —
 // JSON editing needs a real parser, and Node is a hard toolkit prerequisite anyway).
-const ALWAYS_COPY = new Set(['_qdt.js', '_autocompact.js']);
+const ALWAYS_COPY = new Set(['_qdt.js', '_autocompact.js', '_toolkit-reset.js']);
 for (const f of fs.readdirSync(cmdDir)) {
   if (f.endsWith('.md')) continue;
   const isBackend = f.startsWith('_') && (f.endsWith('.sh') || f.endsWith('.js'));
@@ -118,8 +110,8 @@ if (!isWin) { for (const f of fs.readdirSync(path.join(QHOME, 'commands')).filte
 console.log('\nInstalled:');
 console.log(`  ✓ skills   (${SKILLS.join(', ')})`);
 console.log(`  ✓ agents   (${AGENTS.join(', ')})`);
-console.log('  ✓ commands (/dev, /cover, /pin, /status, /maxagents, /bro, /main-push, /versioning, /autocompact)  [' + (isWin ? 'Node backends' : 'bash backends') + ']');
-console.log('  ✓ hooks    (restore, compaction-steer, compact-warn, secret-guard, git-branch-guard, release-guard, skill-reminder, agent-limit)');
+console.log('  ✓ commands (/dev, /cover, /pin, /status, /maxagents, /bro, /main-push, /versioning, /autocompact, /toolkit-reset)  [' + (isWin ? 'Node backends' : 'bash backends') + ']');
+console.log('  ✓ hooks    (restore, compaction-steer, compact-warn, secret-guard, git-branch-guard, release-guard, toolkit-reset-guard, skill-reminder, agent-limit)');
 
 // ---- 5) merge hooks + memory into settings.json --------------------------
 (function mergeSettings() {
@@ -147,6 +139,7 @@ console.log('  ✓ hooks    (restore, compaction-steer, compact-warn, secret-gua
   setHook('PreToolUse', 'secret-guard.js', 'secret-guard', 'write_file|edit|replace|run_shell_command');
   setHook('PreToolUse', 'git-branch-guard.js', 'git-branch-guard', 'run_shell_command');
   setHook('PreToolUse', 'release-guard.js', 'release-guard', 'run_shell_command');
+  setHook('PreToolUse', 'toolkit-reset-guard.js', 'toolkit-reset-guard', 'run_shell_command');
   setHook('PreToolUse', 'agent-limit.js pre', 'agent-limit-pre', 'agent');
   setHook('PostToolUse', 'agent-limit.js post', 'agent-limit-post', 'agent');
   setHook('UserPromptSubmit', 'skill-reminder.js', 'skill-reminder');
@@ -181,33 +174,6 @@ console.log('  ✓ hooks    (restore, compaction-steer, compact-warn, secret-gua
   fs.writeFileSync(file, (bodyOut ? bodyOut + '\n\n' : '') + block + '\n');
   console.log('  ✓ QWEN.md guidance ' + (had ? 'updated' : 'added'));
 })();
-
-// ---- 6.5) --reset: sweep project-scope marker blocks out of the GLOBAL QWEN.md ----
-// Known toggles that pin a "<!-- NAME:start -->...<!-- NAME:end -->" block into
-// PROJECT QWEN.md today. If one of these is instead found in the GLOBAL file, it is a
-// leftover from before that flag's scope moved (or was hand-pasted into the wrong file)
-// — no current command reads/manages it there, so it silently applies everywhere forever
-// until removed. Only acts on the GLOBAL file; project QWEN.md files are never touched by
-// this step (their blocks are legitimate and owned by /dev, /bro, /cover, /maxagents,
-// /versioning as normal).
-if (DO_RESET) {
-  const PROJECT_SCOPE_MARKERS = ['bromode', 'covermode', 'devmode', 'maxagents', 'versioning'];
-  const file = path.join(QHOME, 'QWEN.md');
-  let cur = read(file);
-  const removed = [];
-  for (const m of PROJECT_SCOPE_MARKERS) {
-    const re = new RegExp('\\n?<!-- ' + m + ':start -->[\\s\\S]*?<!-- ' + m + ':end -->\\n?', 'g');
-    if (re.test(cur)) { removed.push(m); cur = cur.replace(re, '\n'); }
-  }
-  if (removed.length) {
-    cur = cur.replace(/\n{3,}/g, '\n\n').replace(/^\n+/, '');
-    fs.writeFileSync(file, cur);
-    console.log('  ✓ reset: removed stale global block(s) — ' + removed.join(', ') +
-      ' (these are project-local now; re-set them per project with /bro, /cover, /dev, /maxagents, /versioning)');
-  } else {
-    console.log('  ✓ reset: no stale project-scope blocks found in the global QWEN.md');
-  }
-}
 
 // ---- 7) done -------------------------------------------------------------
 console.log('\nDone. Restart qwen-code (or start a new session) to load everything.');

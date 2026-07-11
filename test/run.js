@@ -48,6 +48,13 @@ ok('every agents/*.md is in install+uninstall manifests', unlisted.length === 0,
 const unlistedS = [];
 for (const s of skillNames) { if (!installSrc.includes(`'${s}'`)) unlistedS.push('install.js:' + s); if (!uninstallSrc.includes(`'${s}'`)) unlistedS.push('uninstall.js:' + s); }
 ok('every skills/ dir is in install+uninstall manifests', unlistedS.length === 0, unlistedS.join(', '));
+// Every hook name install.js wires via setHook(...) must also be in uninstall.js's strip
+// set, or `uninstall`/a fresh reinstall leaves a dangling settings.json entry behind
+// silently (this exact gap shipped once — compact-warn was wired in install.js but never
+// added to uninstall.js's names Set).
+const hookNames = [...installSrc.matchAll(/setHook\([^,]+,\s*'[^']*'\s*,\s*'([^']+)'/g)].map((m) => m[1]);
+const missingHooks = hookNames.filter((h) => !uninstallSrc.includes(`'${h}'`));
+ok('every install.js setHook() name is in uninstall.js\'s strip set', missingHooks.length === 0, missingHooks.join(', '));
 const badFm = [];
 for (const a of agentNames) { const b = fs.readFileSync(path.join(ROOT, 'agents', a + '.md'), 'utf8'); if (!b.startsWith('---') || !b.includes('name: ' + a + '\n') || !b.includes('tools:')) badFm.push(a); }
 for (const s of skillNames) { const b = fs.readFileSync(path.join(ROOT, 'skills', s, 'SKILL.md'), 'utf8'); if (!b.startsWith('---') || !b.includes('name: ' + s + '\n')) badFm.push(s); }
@@ -188,17 +195,24 @@ ok('auto-compaction OFF by default on fresh install',
   const st = cp.spawnSync('node', [path.join(ROOT, 'commands', '_autocompact.js'), 'status'], { env: { ...process.env, QWEN_HOME: qh2 }, encoding: 'utf8' });
   ok('autocompact status reads the installed default', (st.stdout || '').includes('auto-compaction OFF'));
 }
+// /toolkit-reset: same dual-backend shape as /autocompact, plus its own guard hook.
+ok('toolkit-reset Node logic installed alongside the wrapper',
+  fs.existsSync(path.join(qh2, 'commands', '_toolkit-reset.js')) &&
+  (process.platform === 'win32' || fs.existsSync(path.join(qh2, 'commands', '_toolkit-reset.sh'))));
+ok('toolkit-reset-guard hook wired into settings.json', fs.readFileSync(path.join(qh2, 'settings.json'), 'utf8').includes('toolkit-reset-guard'));
 const ru = cp.spawnSync('node', [path.join(ROOT, 'uninstall.js')], { env: { ...process.env, QWEN_HOME: qh2 }, encoding: 'utf8' });
 ok('uninstall exits 0', ru.status === 0);
 ok('uninstall removes skills', !fs.existsSync(path.join(qh2, 'skills', 'implement')));
 ok('uninstall strips hook entries', !fs.readFileSync(path.join(qh2, 'settings.json'), 'utf8').includes('git-branch-guard'));
+ok('uninstall strips toolkit-reset-guard entry too', !fs.readFileSync(path.join(qh2, 'settings.json'), 'utf8').includes('toolkit-reset-guard'));
 
-// ---- /toolkit-update reset — sweep project-scope blocks out of the GLOBAL QWEN.md -----
+// ---- /toolkit-reset — sweep global marker-block drift, gated by a real confirm step ----
 // Simulates the exact drift this exists for: an older toolkit version pinned /bro globally
 // (pre-1.8.0); the block is still sitting in ~/.qwen/QWEN.md even though no current command
-// manages it there. Build a global QWEN.md with all five known marker blocks plus the
-// user's own unrelated prose, to check the sweep is both complete and surgical.
-console.log('— /toolkit-update reset —');
+// manages it there. Unrelated to /toolkit-update (no network) — a standalone command with
+// a mandatory preview -> confirm flow so a model can't silently mutate settings.
+console.log('— /toolkit-reset —');
+const tkReset = path.join(ROOT, 'commands', '_toolkit-reset.js');
 const MARKERS = ['bromode', 'covermode', 'devmode', 'maxagents', 'versioning'];
 const seedStale = (file) => {
   const blocks = MARKERS.map((m) =>
@@ -206,42 +220,90 @@ const seedStale = (file) => {
   ).join('\n');
   fs.writeFileSync(file, `# my own notes\nI wrote this myself, keep it.\n\n${blocks}\nmore of my own notes at the end.\n`);
 };
+const tkRun = (arg, qh) => cp.spawnSync('node', [tkReset, ...(arg ? [arg] : [])], { env: { ...process.env, QWEN_HOME: qh }, encoding: 'utf8' });
+const tokenOf = (qh) => path.join(qh, '.toolkit-reset-approval');
 
-// (a) plain update must NOT touch stale blocks it doesn't own — only --reset may remove them.
-const qh3 = tmp();
-fs.mkdirSync(qh3, { recursive: true });
-seedStale(path.join(qh3, 'QWEN.md'));
-cp.spawnSync('node', [path.join(ROOT, 'install.js')], { env: { ...process.env, QWEN_HOME: qh3 }, encoding: 'utf8' });
+// (a) confirm with NO prior preview must refuse — there is no approval window yet.
 {
-  const body = fs.readFileSync(path.join(qh3, 'QWEN.md'), 'utf8');
-  ok('plain update leaves stale global blocks alone (no --reset)', MARKERS.every((m) => body.includes(`${m}:start`)));
+  const qh = tmp(); fs.mkdirSync(qh, { recursive: true }); seedStale(path.join(qh, 'QWEN.md'));
+  const r = tkRun('confirm', qh);
+  ok('confirm with no prior preview is refused', r.status === 0 && /no pending approval/.test(r.stdout));
+  ok('refused confirm leaves QWEN.md untouched', MARKERS.every((m) => fs.readFileSync(path.join(qh, 'QWEN.md'), 'utf8').includes(`${m}:start`)));
 }
 
-// (b) --reset removes exactly the known stale blocks, keeps the user's own prose and the
-// fresh guidance block, and is idempotent on a second run.
-const qh4 = tmp();
-fs.mkdirSync(qh4, { recursive: true });
-seedStale(path.join(qh4, 'QWEN.md'));
-const r1 = cp.spawnSync('node', [path.join(ROOT, 'install.js'), '--reset'], { env: { ...process.env, QWEN_HOME: qh4 }, encoding: 'utf8' });
-ok('reset exits 0', r1.status === 0, (r1.stderr || '').slice(0, 160));
-ok('reset reports the removed blocks', /removed stale global block\(s\)/.test(r1.stdout) && MARKERS.every((m) => r1.stdout.includes(m)));
+// (b) preview: lists what would be removed, mutates NOTHING, opens the approval window.
+const qh5 = tmp(); fs.mkdirSync(qh5, { recursive: true }); seedStale(path.join(qh5, 'QWEN.md'));
 {
-  const body = fs.readFileSync(path.join(qh4, 'QWEN.md'), 'utf8');
-  ok('reset removes all 5 stale marker blocks', MARKERS.every((m) => !body.includes(`${m}:start`)));
-  ok('reset keeps the user\'s own prose', body.includes('I wrote this myself, keep it.') && body.includes('more of my own notes at the end.'));
-  ok('reset keeps the fresh toolkit guidance block', body.includes('qwen-dev-toolkit:start'));
+  const r = tkRun('', qh5);
+  ok('preview exits 0', r.status === 0, (r.stderr || '').slice(0, 160));
+  ok('preview reports PREVIEW and lists all 5 blocks', /PREVIEW/.test(r.stdout) && MARKERS.every((m) => r.stdout.includes(m)));
+  ok('preview does not mutate QWEN.md', MARKERS.every((m) => fs.readFileSync(path.join(qh5, 'QWEN.md'), 'utf8').includes(`${m}:start`)));
+  ok('preview opens the approval token', fs.existsSync(tokenOf(qh5)));
 }
-const r2 = cp.spawnSync('node', [path.join(ROOT, 'install.js'), 'reset'], { env: { ...process.env, QWEN_HOME: qh4 }, encoding: 'utf8' }); // bare "reset" form too
-ok('bare "reset" (no dashes) is also accepted', r2.status === 0 && /no stale project-scope blocks found/.test(r2.stdout));
 
-// (c) a global reset must NEVER touch a project's own QWEN.md — different file entirely,
-// install.js only ever reads/writes QHOME/QWEN.md, but assert the byte-for-byte guarantee.
-const projDir = tmp();
-const projFile = path.join(projDir, 'QWEN.md');
-fs.writeFileSync(projFile, '<!-- bromode:start -->\nlegit CURRENT project-level persona, must survive\n<!-- bromode:end -->\n');
-const before = fs.readFileSync(projFile, 'utf8');
-cp.spawnSync('node', [path.join(ROOT, 'install.js'), '--reset'], { env: { ...process.env, QWEN_HOME: tmp() }, cwd: projDir, encoding: 'utf8' });
-ok('reset never touches a project QWEN.md', fs.readFileSync(projFile, 'utf8') === before);
+// (c) confirm within the window: removes exactly the stale blocks, keeps the user's own
+// prose, and consumes the token (a second confirm right after must refuse again).
+{
+  const r = tkRun('confirm', qh5);
+  ok('confirm exits 0', r.status === 0, (r.stderr || '').slice(0, 160));
+  ok('confirm reports the removed blocks', /removed stale global block\(s\)/.test(r.stdout) && MARKERS.every((m) => r.stdout.includes(m)));
+  const body = fs.readFileSync(path.join(qh5, 'QWEN.md'), 'utf8');
+  ok('confirm removes all 5 stale marker blocks', MARKERS.every((m) => !body.includes(`${m}:start`)));
+  ok('confirm keeps the user\'s own prose', body.includes('I wrote this myself, keep it.') && body.includes('more of my own notes at the end.'));
+  ok('confirm consumes the token', !fs.existsSync(tokenOf(qh5)));
+  const r2 = tkRun('confirm', qh5);
+  ok('a second confirm right after is refused (token already spent)', /no pending approval/.test(r2.stdout));
+}
+
+// (d) an expired token (>15 min old) must be treated as no approval at all.
+{
+  const qh = tmp(); fs.mkdirSync(qh, { recursive: true }); seedStale(path.join(qh, 'QWEN.md'));
+  tkRun('', qh); // open the window
+  const old = new Date(Date.now() - 16 * 60 * 1000);
+  fs.utimesSync(tokenOf(qh), old, old);
+  const r = tkRun('confirm', qh);
+  ok('confirm refuses an expired (>15min) token', /no pending approval/.test(r.stdout));
+}
+
+// (e) nothing stale -> clean report, no token armed for no reason.
+{
+  const qh = tmp(); fs.mkdirSync(qh, { recursive: true }); fs.writeFileSync(path.join(qh, 'QWEN.md'), '# nothing stale here\n');
+  const r = tkRun('', qh);
+  ok('preview reports nothing to reset when clean', /nothing to reset/.test(r.stdout));
+  ok('no token armed when there is nothing to confirm', !fs.existsSync(tokenOf(qh)));
+}
+ok('"status"/"preview" aliases behave like bare preview', /PREVIEW|nothing to reset/.test(tkRun('status', tmp()).stdout));
+ok('unknown arg -> usage, no crash', /usage/.test(tkRun('bogus', tmp()).stdout));
+
+// (f) a reset must NEVER touch a project's own QWEN.md — different file entirely; the
+// script only ever reads/writes QHOME/QWEN.md, but assert the byte-for-byte guarantee.
+{
+  const projDir = tmp();
+  const projFile = path.join(projDir, 'QWEN.md');
+  fs.writeFileSync(projFile, '<!-- bromode:start -->\nlegit CURRENT project-level persona, must survive\n<!-- bromode:end -->\n');
+  const before = fs.readFileSync(projFile, 'utf8');
+  const qh = tmp(); fs.mkdirSync(qh, { recursive: true }); seedStale(path.join(qh, 'QWEN.md'));
+  cp.spawnSync('node', [tkReset], { env: { ...process.env, QWEN_HOME: qh }, cwd: projDir, encoding: 'utf8' });
+  cp.spawnSync('node', [tkReset, 'confirm'], { env: { ...process.env, QWEN_HOME: qh }, cwd: projDir, encoding: 'utf8' });
+  ok('reset never touches a project QWEN.md', fs.readFileSync(projFile, 'utf8') === before);
+}
+
+// ---- toolkit-reset-guard hook — engine-level backstop, model can't skip the window ----
+console.log('— toolkit-reset-guard —');
+const trg = path.join(ROOT, 'hooks', 'toolkit-reset-guard.js');
+{
+  const qh = tmp(); fs.mkdirSync(qh, { recursive: true });
+  const run = (command) => runNode(trg, { input: JSON.stringify({ tool_name: 'run_shell_command', tool_input: { command } }), env: { QWEN_HOME: qh } }).stdout;
+  ok('confirm attempt with no token is denied', run('node ~/.qwen/commands/_toolkit-reset.js confirm').includes('"deny"'));
+  ok('preview-only invocation (no confirm) is always allowed', run('node ~/.qwen/commands/_toolkit-reset.js') === '');
+  ok('unrelated command is a no-op', run('ls -la') === '');
+  ok('unrelated tool is a no-op', runNode(trg, { input: JSON.stringify({ tool_name: 'write_file', tool_input: { command: '_toolkit-reset.js confirm' } }), env: { QWEN_HOME: qh } }).stdout === '');
+  fs.writeFileSync(path.join(qh, '.toolkit-reset-approval'), '');
+  ok('confirm attempt allowed within a valid approval window', run('bash ~/.qwen/commands/_toolkit-reset.sh confirm') === '');
+  const old = new Date(Date.now() - 16 * 60 * 1000);
+  fs.utimesSync(path.join(qh, '.toolkit-reset-approval'), old, old);
+  ok('confirm attempt denied once the approval window expires', run('node _toolkit-reset.js confirm').includes('"deny"'));
+}
 
 // ---- summary ------------------------------------------------------------------
 console.log(`\n${pass} passed, ${fail} failed`);
