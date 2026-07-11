@@ -4,6 +4,11 @@ All notable changes to qwen-dev-toolkit are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com); versions follow semver.
 (Releases before 1.7.0 predate this file and are not backfilled — see the git history.)
 
+## [1.12.0] - 2026-07-11
+
+### Added
+- **Always-on "Integrity over agreement" principle** in the global `QWEN.md` block. Since skills are invoked on demand and hooks are deterministic code, the only primitive that is genuinely *always on* (loaded every session, survives compaction) is the `QWEN.md` guidance block — so the honesty directive lives there, not in a skill. It tells the model to be accurate rather than agreeable: separate fact / inference / opinion, state uncertainty plainly, surface inconvenient truths (failed tests, skipped steps, real risks) without softening or reframing them, disagree directly when the user or a plan is wrong, and never fabricate agreement or confidence — sycophancy is treated as a failure mode, not politeness. Kept to ~7 lines to stay cheap on a small context window. No new command, hook, or install/uninstall wiring: it ships inside the existing merged `QWEN.md` block, so a `/toolkit-update` applies it. One new test asserts the principle is present in the installed block.
+
 ## [1.11.0] - 2026-07-11
 
 ### Added

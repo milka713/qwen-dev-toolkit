@@ -184,6 +184,8 @@ ok('skills installed', fs.existsSync(path.join(qh2, 'skills', 'implement', 'SKIL
 ok('agents installed', fs.existsSync(path.join(qh2, 'agents', 'debugger.md')) && fs.existsSync(path.join(qh2, 'agents', 'tester.md')));
 ok('hooks wired into settings.json', fs.readFileSync(path.join(qh2, 'settings.json'), 'utf8').includes('git-branch-guard'));
 ok('QWEN.md guidance added', fs.readFileSync(path.join(qh2, 'QWEN.md'), 'utf8').includes('qwen-dev-toolkit:start'));
+// the always-on honesty/integrity principle must ship inside the merged QWEN.md block
+ok('QWEN.md carries the integrity principle', fs.readFileSync(path.join(qh2, 'QWEN.md'), 'utf8').includes('Integrity over agreement'));
 // /autocompact: the .sh is a thin wrapper over the Node logic, so BOTH files must land
 // on POSIX; and a fresh install must default auto-compaction to OFF (threshold 1).
 ok('autocompact Node logic installed alongside the wrapper',

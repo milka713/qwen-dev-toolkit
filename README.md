@@ -39,6 +39,13 @@ ships a full set of everyday development skills and commands: git-flow disciplin
 - **Compaction-proof flags** — compaction only summarizes the *conversation*; `QWEN.md`
   is re-attached as system context every request. So a block written to `QWEN.md` (e.g.
   the dev-mode flag) is always present and needs no re-declaring.
+- **Integrity over agreement (always on)** — the `QWEN.md` block carries a standing
+  honesty directive: be accurate, not agreeable. Separate fact / inference / opinion,
+  state uncertainty plainly, surface inconvenient truths (failed tests, skipped steps,
+  real risks) without softening or reframing, disagree directly when the user or a plan
+  is wrong, and never fabricate agreement or confidence. It lives in `QWEN.md` — not a
+  skill — precisely because that's the only primitive that is genuinely *always on*
+  (skills are on-demand; hooks are deterministic code and can't make a judgment call).
 
 ## Components
 
