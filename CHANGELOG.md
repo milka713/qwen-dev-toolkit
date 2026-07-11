@@ -4,6 +4,16 @@ All notable changes to qwen-dev-toolkit are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com); versions follow semver.
 (Releases before 1.7.0 predate this file and are not backfilled — see the git history.)
 
+## [1.10.0] - 2026-07-11
+
+### Added
+- **`/autocompact` command** — control (or disable) qwen-code's auto-compaction deterministically: `off` = never auto-compact (threshold `1.0`, fires only at a completely full window), `on` = stock behavior (`0.7` of the input budget), `<0.3–0.99>` = custom trigger share, `status` = report. Edits `context.autoCompactThreshold` in `~/.qwen/settings.json`; applies after a qwen-code restart. Backends: `_autocompact.js` (single Node logic) + `_autocompact.sh` (thin wrapper — JSON editing needs a real parser and Node is already a toolkit prerequisite).
+- **`compact-warn` hook** (`SessionStart`, matcher `compact`) — compaction-saturation warning: after a compaction it reads the real before/after token counts from the session transcript (`chat_compression` record); if history shrank by **less than 15%**, it tells the model to warn the user that compacting this session further is no longer effective and to suggest `/checkpoint` + a fresh session. Silent on healthy compressions.
+- **README (EN+RU): reliability section** now explains *why* the compaction trigger sits well below the window (reply reserve + 20k summary reserve + 13k per-turn buffer — compacting "at 100%" is impossible by construction) and documents the third knob, `generationConfig.samplingParams.max_tokens`, against the GGUF-id early-compaction trap.
+
+### Changed
+- **Auto-compaction is now OFF by default**: the installer sets `context.autoCompactThreshold: 1` when the user has no explicit value (an existing choice is never overridden). Rationale: compaction is lossy; durable state lives in `.qwen/PROGRESS.md` and `/checkpoint` compacts deliberately. Re-enable stock behavior with `/autocompact on`.
+
 ## [1.9.0] - 2026-07-03
 
 ### Added

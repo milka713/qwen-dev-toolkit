@@ -97,6 +97,17 @@ This command sets a **per-project** override in the project's `QWEN.md`: pass fr
 your own scheme, or `off` to opt that project out of the default.
 · _Examples:_ `/versioning` · `/versioning use CalVer like 2026.07`
 
+**`/autocompact` · `off` · `on` · `<0.3–0.99>` · `status`** — Auto-compaction switch. The
+toolkit **disables qwen's auto-compaction by default** (threshold `1.0` — it can only fire at
+a completely full window): compaction is lossy, durable state lives in `.qwen/PROGRESS.md`,
+and `/checkpoint` compacts deliberately when *you* choose. `on` re-enables the stock behavior
+(trigger at `0.7` of the input budget), a number sets a custom share, `off` returns to the
+toolkit default. Edits `context.autoCompactThreshold` in `~/.qwen/settings.json` (**global**,
+unlike most commands here); applies after a qwen-code restart. Paired with the `compact-warn`
+hook below: when a compaction *does* run and shrinks history by **less than 15%**, you get a
+warning that compacting this session further is pointless — wrap up and start fresh.
+· _Example:_ `/autocompact on`
+
 **`/bro` · `свобода` · `ламар` · `off` · `status`** — Talk to you like a homie instead of a
 formal assistant, in one of two personas: `свобода` = a S.T.A.L.K.E.R. *Freedom* drifter who
 always calls you "мэн", `ламар` = a GTA-V *Lamar Davis* street homie ("homie/foo/dog").
@@ -187,6 +198,7 @@ the same operation; works from anywhere (needs `git` + `node`).
 | ---- | ------------ |
 | `SessionStart` → `session-start-restore.js` | Re-injects `.qwen/PROGRESS.md` at session start / after compaction, so the model recovers the goal and next steps. |
 | `PreCompact` → `pre-compact-steer.js` | Steers the built-in compressor to keep the goal, decisions, file list and done/todo. |
+| `SessionStart(compact)` → `compact-warn.js` | Compaction-saturation warning: after a compaction, reads the real before/after token counts from the session transcript; if the history shrank by **less than 15%**, tells the model to warn you that compacting this session again is no longer effective (what's left is mostly already-compressed summary) and to suggest a fresh session after `/checkpoint`. Silent on healthy compressions. |
 | `PreToolUse` → `secret-guard.js` | **Blocks** any write/edit/command containing a hardcoded credential (private keys, AWS/OpenAI/GitHub/Slack/HF tokens, …) or that commits a secret file (`.env`, `id_rsa`, `*.pem`). Env-var usage and placeholders pass. |
 | `PreToolUse` → `git-branch-guard.js` | **Blocks** any `git push`/`merge`/`rebase` that would touch `main`/`master` (explicit target, or while checked out on it, or a switch-then-merge one-liner). Pushes to `dev`/feature branches and read-only git pass. Released for one operation by `/main-push`. |
 | `PreToolUse` → `release-guard.js` | **Reminds** (never blocks) when a push advances `main`/`master` but the release would lag the code — a bumped `VERSION` with no matching tag, or commits past the released tag with no bump — injecting a note to run `/release` (or `/changelog` then `/release`). This is the deterministic backstop that makes `/release` fire even if the model forgets it. Silent when the release is in sync. |
@@ -204,6 +216,7 @@ no session-only QWEN.md.
 | State | Lives in | Scope |
 | ----- | -------- | ----- |
 | Skills, subagents, commands, hooks, guidance | `~/.qwen/…` | **Global** |
+| `/autocompact` threshold | `context.autoCompactThreshold` in `~/.qwen/settings.json` | **Global** (applies after restart) |
 | `/pin` memory | `<project>/FACTS.md` (gitignored) | **Project** |
 | `/dev`, `/bro`, `/cover`, `/versioning` flags | block in `<project>/QWEN.md` | **Project** (sticky until `off`) |
 | Task state | `<project>/.qwen/PROGRESS.md` | **Project** |
@@ -267,10 +280,28 @@ wrong. For a **custom OpenAI-compatible provider**, put them under the provider 
   window, `"samplingParams": { "max_tokens": 16384 }` moves the auto-compact trigger from
   ~40k to ~69k (`0.7 × (contextWindowSize − max_tokens)`). The value is also sent verbatim
   on the wire, capping each reply (16k is plenty for coding; it overrides llama.cpp's `-n`).
-  Want compaction even later? Raise the 0.7 factor with the top-level setting
-  `"context": { "autoCompactThreshold": 0.85 }` (~84k in this example) — just leave
-  headroom, since one turn's tool results can add tens of thousands of tokens between
-  checks.
+
+**Why the compaction trigger sits well below the window** (and why cranking it up is a
+trade, not a free win): before compaction may fire, the *next* request still has to fit —
+the whole history **plus** the reply reserve (`max_tokens`); and the compaction itself is
+one more LLM call that must fit the full uncompressed history **plus** up to 20 000 tokens
+of summary output (`SUMMARY_RESERVE`), with a further 13 000-token buffer
+(`AUTOCOMPACT_BUFFER`) because the check runs once per turn and a single turn's tool
+results can add tens of thousands of tokens. Compacting "at 100%" is therefore impossible
+by construction — the request that would do it already overflows the server. That's why
+the stock trigger is `0.7` of the input budget, and why every step above it trades real
+stability for a little capacity.
+
+**The toolkit's stance: auto-compaction is OFF by default.** The installer sets
+`context.autoCompactThreshold: 1` (fire only at a literally full window) unless you already
+chose a value. Rationale: compaction is *lossy* by nature, and the toolkit already keeps
+the durable state on disk — `.qwen/PROGRESS.md` + the `SessionStart` restore hook — so the
+deliberate move is `/checkpoint` (compact *when you choose, keeping what matters*) instead
+of a silent lossy squeeze mid-build. Re-enable stock behavior anytime with `/autocompact
+on`, or pick your own trigger (`/autocompact 0.8`). And when a compaction *does* run but
+shrinks history by **less than 15%**, the `compact-warn` hook flags that this session is
+saturated — further compaction frees almost nothing, so finish the step and start a fresh
+session.
 
 ### The stream-idle timeout (requests dying at exactly 240 s of silence)
 

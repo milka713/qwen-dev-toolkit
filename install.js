@@ -106,8 +106,8 @@ if (!isWin) { for (const f of fs.readdirSync(path.join(QHOME, 'commands')).filte
 console.log('\nInstalled:');
 console.log(`  ✓ skills   (${SKILLS.join(', ')})`);
 console.log(`  ✓ agents   (${AGENTS.join(', ')})`);
-console.log('  ✓ commands (/dev, /cover, /pin, /status, /maxagents, /bro, /main-push, /versioning)  [' + (isWin ? 'Node backends' : 'bash backends') + ']');
-console.log('  ✓ hooks    (restore, compaction-steer, secret-guard, git-branch-guard, release-guard, skill-reminder, agent-limit)');
+console.log('  ✓ commands (/dev, /cover, /pin, /status, /maxagents, /bro, /main-push, /versioning, /autocompact)  [' + (isWin ? 'Node backends' : 'bash backends') + ']');
+console.log('  ✓ hooks    (restore, compaction-steer, compact-warn, secret-guard, git-branch-guard, release-guard, skill-reminder, agent-limit)');
 
 // ---- 5) merge hooks + memory into settings.json --------------------------
 (function mergeSettings() {
@@ -130,6 +130,7 @@ console.log('  ✓ hooks    (restore, compaction-steer, secret-guard, git-branch
   };
   setHook('SessionStart', 'session-start-restore.js', 'restore-progress');
   setHook('SessionStart', 'agent-limit.js reset', 'agent-limit-reset');
+  setHook('SessionStart', 'compact-warn.js', 'compact-warn', 'compact');
   setHook('PreCompact', 'pre-compact-steer.js', 'steer-compaction');
   setHook('PreToolUse', 'secret-guard.js', 'secret-guard', 'write_file|edit|replace|run_shell_command');
   setHook('PreToolUse', 'git-branch-guard.js', 'git-branch-guard', 'run_shell_command');
@@ -138,8 +139,17 @@ console.log('  ✓ hooks    (restore, compaction-steer, secret-guard, git-branch
   setHook('PostToolUse', 'agent-limit.js post', 'agent-limit-post', 'agent');
   setHook('UserPromptSubmit', 'skill-reminder.js', 'skill-reminder');
   s.memory = Object.assign({ enableManagedAutoMemory: true, enableManagedAutoDream: true }, s.memory || {});
+  // Toolkit stance: auto-compaction OFF by default (threshold 1.0 = only at a full
+  // window). Compaction is lossy; durable state lives in PROGRESS.md and /checkpoint
+  // compacts deliberately. Set ONLY when the user has no explicit value — an existing
+  // choice (incl. one made via /autocompact) is never overridden by a re-install.
+  s.context = s.context || {};
+  if (s.context.autoCompactThreshold === undefined) s.context.autoCompactThreshold = 1;
   fs.writeFileSync(file, JSON.stringify(s, null, 2) + '\n');
   console.log('  ✓ settings.json merged (hooks + auto-memory); your other keys untouched');
+  console.log('  ✓ auto-compaction: ' + (s.context.autoCompactThreshold >= 1
+    ? 'OFF by default (toolkit stance; /autocompact on re-enables)'
+    : 'kept at your setting (' + s.context.autoCompactThreshold + ')'));
 })();
 
 // ---- 6) merge QWEN.md guidance between markers ---------------------------
