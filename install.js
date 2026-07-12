@@ -98,7 +98,7 @@ const backendExt = isWin ? '.js' : '.sh';
 // Node files needed on EVERY OS: _qdt.js (shared helper) and any _*.js that is the real
 // logic behind a thin .sh wrapper (e.g. _autocompact.sh just execs _autocompact.js —
 // JSON editing needs a real parser, and Node is a hard toolkit prerequisite anyway).
-const ALWAYS_COPY = new Set(['_qdt.js', '_autocompact.js', '_toolkit-reset.js', '_applied.js']);
+const ALWAYS_COPY = new Set(['_qdt.js', '_autocompact.js', '_toolkit-reset.js', '_applied.js', '_hooks.js', '_hookcat.js']);
 for (const f of fs.readdirSync(cmdDir)) {
   if (f.endsWith('.md')) continue;
   const isBackend = f.startsWith('_') && (f.endsWith('.sh') || f.endsWith('.js'));
@@ -110,7 +110,7 @@ if (!isWin) { for (const f of fs.readdirSync(path.join(QHOME, 'commands')).filte
 console.log('\nInstalled:');
 console.log(`  ✓ skills   (${SKILLS.join(', ')})`);
 console.log(`  ✓ agents   (${AGENTS.join(', ')})`);
-console.log('  ✓ commands (/dev, /cover, /pin, /status, /maxagents, /bro, /main-push, /versioning, /autocompact, /toolkit-reset, /reality, /applied)  [' + (isWin ? 'Node backends' : 'bash backends') + ']');
+console.log('  ✓ commands (/dev, /cover, /pin, /status, /maxagents, /bro, /main-push, /versioning, /autocompact, /toolkit-reset, /reality, /applied, /hooks)  [' + (isWin ? 'Node backends' : 'bash backends') + ']');
 console.log('  ✓ hooks    (restore, compaction-steer, compact-warn, secret-guard, git-branch-guard, release-guard, toolkit-reset-guard, skill-reminder, agent-limit)');
 
 // ---- 5) merge hooks + memory into settings.json --------------------------

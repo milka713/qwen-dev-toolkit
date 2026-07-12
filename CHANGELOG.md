@@ -4,6 +4,14 @@ All notable changes to qwen-dev-toolkit are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com); versions follow semver.
 (Releases before 1.7.0 predate this file and are not backfilled — see the git history.)
 
+## [1.14.0] - 2026-07-12
+
+### Added
+- **`/hooks` command** — turn the toolkit's hooks off or on when a guard is too strict and gets in the way, without uninstalling anything. `/hooks` / `status` shows every hook ON/OFF; `/hooks off <name>` disables one; `/hooks on <name>` re-enables; `/hooks off guards` disables all five guards at once; `/hooks off all` / `/hooks on` toggle everything. Mechanism: the hooks stay wired in `settings.json` but each one self-disables by checking `~/.qwen/.hooks-disabled` (a plain name-per-line file that `/hooks` edits) via a new `hooks/_hookutil.js` helper — so re-enabling never has to reconstruct a hook spec, and a disabled guard simply no-ops (exit 0 = allow). The helper is fail-safe: any read error means "not disabled", so a guard stays active by default. **Disabling is sticky** (until you turn it back on) and **loud**: disabled guards are flagged in `/hooks status` and in `/applied` (`⚠ DISABLED`), so you never silently lose protection — turning off `secret-guard` and forgetting is the exact foot-gun this surfaces. A bare `/hooks off` is refused (no accidental blanket disable), and unknown names are rejected. Shared hook catalog (`commands/_hookcat.js`) is the single source of truth for `/hooks` and `/applied`. Global scope (hooks apply to every project); takes effect immediately, no restart.
+
+### Fixed
+- **`uninstall.js` now also removes the `.hooks-disabled` state file** and the new helper/catalog files.
+
 ## [1.13.0] - 2026-07-12
 
 ### Added

@@ -215,6 +215,9 @@ ok('applied Node logic installed alongside the wrapper',
   fs.existsSync(path.join(qh2, 'commands', '_applied.js')) &&
   (process.platform === 'win32' || fs.existsSync(path.join(qh2, 'commands', '_applied.sh'))));
 ok('install records .toolkit-version', fs.readFileSync(path.join(qh2, '.toolkit-version'), 'utf8').trim() === fs.readFileSync(path.join(ROOT, 'VERSION'), 'utf8').trim());
+// /hooks: Node backend + shared catalog on every OS, and the hooks/_hookutil.js self-disable helper
+ok('hooks backend + shared catalog + hook util installed',
+  fs.existsSync(path.join(qh2, 'commands', '_hooks.js')) && fs.existsSync(path.join(qh2, 'commands', '_hookcat.js')) && fs.existsSync(path.join(qh2, 'hooks', '_hookutil.js')));
 // /autocompact: the .sh is a thin wrapper over the Node logic, so BOTH files must land
 // on POSIX; and a fresh install must default auto-compaction to OFF (threshold 1).
 ok('autocompact Node logic installed alongside the wrapper',
@@ -237,6 +240,7 @@ ok('uninstall removes skills', !fs.existsSync(path.join(qh2, 'skills', 'implemen
 ok('uninstall strips hook entries', !fs.readFileSync(path.join(qh2, 'settings.json'), 'utf8').includes('git-branch-guard'));
 ok('uninstall strips toolkit-reset-guard entry too', !fs.readFileSync(path.join(qh2, 'settings.json'), 'utf8').includes('toolkit-reset-guard'));
 ok('uninstall removes the /applied backend files', !fs.existsSync(path.join(qh2, 'commands', '_applied.js')) && !fs.existsSync(path.join(qh2, 'commands', '_applied.sh')));
+ok('uninstall removes the /hooks backend + shared catalog + hook util', !fs.existsSync(path.join(qh2, 'commands', '_hooks.js')) && !fs.existsSync(path.join(qh2, 'commands', '_hookcat.js')) && !fs.existsSync(path.join(qh2, 'hooks', '_hookutil.js')));
 ok('uninstall removes hook script files (compact-warn/toolkit-reset-guard)', !fs.existsSync(path.join(qh2, 'hooks', 'compact-warn.js')) && !fs.existsSync(path.join(qh2, 'hooks', 'toolkit-reset-guard.js')));
 ok('uninstall removes the recorded .toolkit-version', !fs.existsSync(path.join(qh2, '.toolkit-version')));
 
@@ -291,6 +295,49 @@ console.log('— /applied —');
   // global scope reads ~/.qwen/QWEN.md, not the project's
   ok('applied global switches scope', /scope: GLOBAL/.test(run('global')));
   ok('applied global does not show the project-only reality block as ON', /Reality mode\.* OFF/.test(run('global')));
+}
+
+// ---- /hooks — turn guards/automation off & on; hooks self-disable via .hooks-disabled ---
+console.log('— /hooks —');
+{
+  const qhH = tmp();
+  cp.spawnSync('node', [path.join(ROOT, 'install.js')], { env: { ...process.env, QWEN_HOME: qhH }, encoding: 'utf8' });
+  const hk = path.join(ROOT, 'commands', '_hooks.js');
+  const run = (args) => cp.spawnSync('node', [hk, ...args], { env: { ...process.env, QWEN_HOME: qhH }, encoding: 'utf8' }).stdout;
+  const disabledFile = path.join(qhH, '.hooks-disabled');
+  // status lists guards + automation, all ON on a fresh install
+  const st = run(['status']);
+  ok('hooks status lists guards and automation', /Guards \/ prohibitions/.test(st) && /Automation/.test(st) && /secret-guard/.test(st) && /restore-progress/.test(st));
+  ok('hooks all ON by default (no state file)', /All hooks are ON/.test(st) && !fs.existsSync(disabledFile));
+  // disable one -> written to the state file, shown OFF. Use toolkit-reset-guard: its deny
+  // condition (confirm with no approval token) is deterministic, so the self-disable is
+  // provable both ways (baseline denies, disabled allows, re-enabled denies again).
+  const grd = path.join(ROOT, 'hooks', 'toolkit-reset-guard.js');
+  const denyCmd = { tool_name: 'run_shell_command', tool_input: { command: 'node ~/.qwen/commands/_toolkit-reset.js confirm' } };
+  const seg = () => cp.spawnSync('node', [grd], { input: JSON.stringify(denyCmd), env: { ...process.env, QWEN_HOME: qhH }, encoding: 'utf8' }).stdout;
+  ok('baseline: guard blocks before any toggle', /deny/.test(seg()));
+  run(['off', 'toolkit-reset-guard']);
+  ok('off <name> writes the disabled state file', fs.existsSync(disabledFile) && /toolkit-reset-guard/.test(fs.readFileSync(disabledFile, 'utf8')));
+  ok('status shows the guard as OFF', /\[OFF\] toolkit-reset-guard/.test(run(['status'])));
+  ok('disabled guard no longer blocks (self-disabled, allows)', seg() === '');
+  // re-enable and confirm it blocks again (proves the toggle is real, not a broken guard)
+  run(['on', 'toolkit-reset-guard']);
+  ok('on <name> removes it from the state file', !fs.existsSync(disabledFile) || !/toolkit-reset-guard/.test(fs.readFileSync(disabledFile, 'utf8')));
+  ok('re-enabled guard blocks again', /deny/.test(seg()));
+  // off guards disables every guard at once
+  run(['off', 'guards']);
+  const body = fs.readFileSync(disabledFile, 'utf8');
+  ok('off guards disables all five guards', ['secret-guard', 'git-branch-guard', 'release-guard', 'toolkit-reset-guard', 'agent-limit-pre'].every((g) => body.includes(g)));
+  // /applied surfaces the disabled guards loudly
+  const proj = tmp(); fs.mkdirSync(proj, { recursive: true });
+  const ap = cp.spawnSync('node', [path.join(ROOT, 'commands', '_applied.js')], { cwd: proj, env: { ...process.env, QWEN_HOME: qhH }, encoding: 'utf8' }).stdout;
+  ok('applied flags disabled guards', /DISABLED via \/hooks/.test(ap) && /guard\(s\) currently DISABLED/.test(ap));
+  // on (no arg) restores everything and clears the file
+  run(['on']);
+  ok('on clears all disabled state', !fs.existsSync(disabledFile));
+  // guardrails: unknown name and a bare "off" are refused without mutating
+  ok('unknown hook name is rejected', /unknown hook/.test(run(['off', 'bogus'])) && !fs.existsSync(disabledFile));
+  ok('bare "off" is refused (no accidental nuke)', /specify what to turn off/.test(run(['off'])) && !fs.existsSync(disabledFile));
 }
 
 // ---- /toolkit-reset — sweep global marker-block drift, gated by a real confirm step ----

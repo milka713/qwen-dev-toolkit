@@ -5,6 +5,7 @@
 // points at the durable disk copy. Output contract: JSON with
 // hookSpecificOutput.additionalContext to stdout.
 'use strict';
+try { if (require('./_hookutil.js').disabled('steer-compaction')) process.exit(0); } catch (_) {}
 const fs = require('fs');
 const path = require('path');
 

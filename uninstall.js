@@ -18,16 +18,17 @@ const SKILLS = ['implement', 'plan', 'checkpoint', 'audit', 'brainstorm', 'gitfl
 for (const s of SKILLS) rm(path.join(QHOME, 'skills', s));
 for (const a of ['implementer', 'scout', 'debugger', 'tester', 'researcher', 'verifier']) rm(path.join(QHOME, 'agents', a + '.md'));
 
-const CMD_MD = ['dev', 'cover', 'pin', 'status', 'maxagents', 'bro', 'main-push', 'versioning', 'reality', 'autocompact', 'toolkit-reset', 'applied'];
-const CMD_BACKENDS = ['_qdt', '_mode-toggle', '_cover', '_pin', '_status', '_maxagents', '_bro', '_main-push', '_versioning', '_reality', '_autocompact', '_toolkit-reset', '_applied'];
+const CMD_MD = ['dev', 'cover', 'pin', 'status', 'maxagents', 'bro', 'main-push', 'versioning', 'reality', 'autocompact', 'toolkit-reset', 'applied', 'hooks'];
+const CMD_BACKENDS = ['_qdt', '_mode-toggle', '_cover', '_pin', '_status', '_maxagents', '_bro', '_main-push', '_versioning', '_reality', '_autocompact', '_toolkit-reset', '_applied', '_hooks', '_hookcat'];
 for (const c of CMD_MD) rm(path.join(QHOME, 'commands', c + '.md'));
 for (const b of CMD_BACKENDS) { rm(path.join(QHOME, 'commands', b + '.sh')); rm(path.join(QHOME, 'commands', b + '.js')); }
 rm(path.join(QHOME, 'commands', '_devmode.block'));
 rm(path.join(QHOME, '.toolkit-version'));
+rm(path.join(QHOME, '.hooks-disabled'));
 // legacy names from older releases
 for (const f of ['mainok.md', '_mainok.sh', '_mainok.js', '_dev-toggle.sh', '_covermode.block']) rm(path.join(QHOME, 'commands', f));
 
-for (const h of ['session-start-restore.js', 'pre-compact-steer.js', 'secret-guard.js', 'git-branch-guard.js', 'release-guard.js', 'skill-reminder.js', 'agent-limit.js', 'compact-warn.js', 'toolkit-reset-guard.js']) rm(path.join(QHOME, 'hooks', h));
+for (const h of ['session-start-restore.js', 'pre-compact-steer.js', 'secret-guard.js', 'git-branch-guard.js', 'release-guard.js', 'skill-reminder.js', 'agent-limit.js', 'compact-warn.js', 'toolkit-reset-guard.js', '_hookutil.js']) rm(path.join(QHOME, 'hooks', h));
 console.log('  ✓ removed skills, commands, subagents, hook scripts');
 
 // strip our hook entries from settings.json (keep everything else, incl. memory setting)

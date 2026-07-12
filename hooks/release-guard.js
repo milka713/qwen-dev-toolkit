@@ -8,6 +8,7 @@
 // so a fast, forgetful model can't ship a bumped VERSION that was never tagged/released.
 // Output: hookSpecificOutput.additionalContext (allow + note), or exit 0 (silent, in sync).
 'use strict';
+try { if (require('./_hookutil.js').disabled('release-guard')) process.exit(0); } catch (_) {}
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');

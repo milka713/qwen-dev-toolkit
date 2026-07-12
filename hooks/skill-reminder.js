@@ -6,6 +6,7 @@
 // prompt clearly matches, and stays short to preserve the tiny context budget.
 // Output: hookSpecificOutput.additionalContext, or exit 0 (no injection).
 'use strict';
+try { if (require('./_hookutil.js').disabled('skill-reminder')) process.exit(0); } catch (_) {}
 const fs = require('fs');
 
 let prompt = '';

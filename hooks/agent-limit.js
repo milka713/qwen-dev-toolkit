@@ -10,6 +10,7 @@
 //   post  — PostToolUse on `agent`: decrement (a launched agent finished).
 //   reset — SessionStart: clear the counter (avoid leaks across sessions).
 'use strict';
+try { if (require('./_hookutil.js').disabled('agent-limit-' + (process.argv[2] || ''))) process.exit(0); } catch (_) {}
 const fs = require('fs');
 const path = require('path');
 

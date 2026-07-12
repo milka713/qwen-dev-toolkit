@@ -8,6 +8,7 @@
 // would be costly to carry on every single request.)
 // Output contract: print JSON with hookSpecificOutput.additionalContext to stdout.
 'use strict';
+try { if (require('./_hookutil.js').disabled('restore-progress')) process.exit(0); } catch (_) {}
 const fs = require('fs');
 const path = require('path');
 

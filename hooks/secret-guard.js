@@ -6,6 +6,7 @@
 // engine level instead of relying on the model to remember.
 // Output: deny via hookSpecificOutput.permissionDecision; otherwise exit 0 (allow).
 'use strict';
+try { if (require('./_hookutil.js').disabled('secret-guard')) process.exit(0); } catch (_) {}
 const fs = require('fs');
 
 let input = {};

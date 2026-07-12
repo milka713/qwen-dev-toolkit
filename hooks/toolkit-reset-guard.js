@@ -11,6 +11,7 @@
 // either the model trying to bypass confirmation, or a stale/expired window — both denied.
 // Read-only preview calls (no "confirm" arg) are always allowed; they don't mutate anything.
 'use strict';
+try { if (require('./_hookutil.js').disabled('toolkit-reset-guard')) process.exit(0); } catch (_) {}
 const fs = require('fs');
 const path = require('path');
 const os = require('os');

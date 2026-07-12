@@ -34,19 +34,8 @@ if (has('versioning')) {
 modes.push(['Versioning', versioning]);
 
 // ---- hooks & guards (always from GLOBAL settings.json — they apply everywhere) --
-const KNOWN = {
-  'restore-progress':    ['SessionStart', 'auto', 're-injects .qwen/PROGRESS.md after compaction / on a new session'],
-  'agent-limit-reset':   ['SessionStart', 'auto', 'resets the subagent counter at session start'],
-  'compact-warn':        ['SessionStart', 'auto', 'warns when a compaction saved <15% (compacting further is ineffective)'],
-  'steer-compaction':    ['PreCompact', 'auto', 'steers what compaction keeps (goal/plan over churn)'],
-  'skill-reminder':      ['UserPromptSubmit', 'auto', 'nudges the matching skill when a prompt clearly fits one'],
-  'agent-limit-post':    ['PostToolUse', 'auto', 'decrements the subagent counter after a subagent finishes'],
-  'secret-guard':        ['PreToolUse', 'guard', 'blocks writing or committing hardcoded secrets'],
-  'git-branch-guard':    ['PreToolUse', 'guard', 'blocks changes to main/master without /main-push approval'],
-  'release-guard':       ['PreToolUse', 'guard', 'blocks release/tag/publish actions outside the /release flow'],
-  'toolkit-reset-guard': ['PreToolUse', 'guard', 'blocks "/toolkit-reset confirm" with no active approval window'],
-  'agent-limit-pre':     ['PreToolUse', 'guard', 'blocks launching more subagents than /maxagents allows'],
-};
+const cat = require('./_hookcat.js');
+const KNOWN_NAMES = new Set(cat.NAMES);
 const settingsFile = path.join(qHome(), 'settings.json');
 let installedNames = [];
 let settingsReadable = true;
@@ -57,9 +46,10 @@ try {
   }
 } catch (_) { settingsReadable = false; }
 const present = new Set(installedNames);
-const guards = Object.keys(KNOWN).filter((k) => KNOWN[k][1] === 'guard' && present.has(k));
-const autos = Object.keys(KNOWN).filter((k) => KNOWN[k][1] === 'auto' && present.has(k));
-const others = installedNames.filter((k) => !(k in KNOWN)).length;
+const disabledHooks = cat.readDisabled();
+const guards = cat.HOOKS.filter((h) => h.kind === 'guard' && present.has(h.name));
+const autos = cat.HOOKS.filter((h) => h.kind === 'auto' && present.has(h.name));
+const others = installedNames.filter((k) => !KNOWN_NAMES.has(k)).length;
 
 // ---- version ----------------------------------------------------------------
 let version = readF(path.join(qHome(), '.toolkit-version')).trim();
@@ -79,13 +69,15 @@ if (!settingsReadable) {
   out.push('Hooks & guards: could not read ~/.qwen/settings.json (none applied, or unreadable).');
 } else {
   out.push('Guards / prohibitions (global — can BLOCK a tool call in every project, incl. this one):');
-  if (guards.length) for (const g of guards) out.push(`  ⛔ ${g.padEnd(20, '.')} ${KNOWN[g][2]}`);
+  if (guards.length) for (const g of guards) out.push(`  ${disabledHooks.has(g.name) ? '▫' : '⛔'} ${g.name.padEnd(20, '.')} ${g.desc}${disabledHooks.has(g.name) ? '   ⚠ DISABLED via /hooks' : ''}`);
   else out.push('  (none installed)');
   out.push('');
   out.push('Automation hooks (global — non-blocking):');
-  if (autos.length) for (const a of autos) out.push(`  • ${a.padEnd(20, '.')} ${KNOWN[a][0]} — ${KNOWN[a][2]}`);
+  if (autos.length) for (const a of autos) out.push(`  • ${a.name.padEnd(20, '.')} ${a.event} — ${a.desc}${disabledHooks.has(a.name) ? '   (off via /hooks)' : ''}`);
   else out.push('  (none installed)');
   if (others) { out.push(''); out.push(`  (+ ${others} other hook(s) in settings.json, not from this toolkit)`); }
+  const offGuards = guards.filter((g) => disabledHooks.has(g.name)).map((g) => g.name);
+  if (offGuards.length) { out.push(''); out.push(`  ⚠ ${offGuards.length} guard(s) currently DISABLED: ${offGuards.join(', ')} — re-enable with /hooks on <name>.`); }
 }
 out.push('');
 out.push(`Toolkit version: ${version || '(unknown)'}`);

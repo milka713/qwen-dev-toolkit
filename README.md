@@ -91,6 +91,16 @@ subagent cap), and the non-blocking **automation hooks**. `/applied` shows this 
 (in `~/.qwen/settings.json`) and apply to every project, so they show in both. Changes nothing.
 · _Example:_ `/applied global`
 
+**`/hooks` · `off <name|guards|all>` · `on [<name>]`** — Turn the toolkit's hooks off/on when a
+guard is too strict and gets in the way, without uninstalling. `/hooks status` lists every hook
+ON/OFF; `/hooks off git-branch-guard` disables one; `/hooks off guards` disables all five guards
+at once; `/hooks on` re-enables everything. Off hooks stay wired but self-disable via
+`~/.qwen/.hooks-disabled` (effective immediately, no restart). Disabling is **sticky and loud** —
+a disabled guard is flagged here and in `/applied` (`⚠ DISABLED`) so you never silently lose
+protection (e.g. `secret-guard` off = nothing stops a committed secret). Bare `/hooks off` is
+refused. Global scope.
+· _Example:_ `/hooks off git-branch-guard`
+
 **`/main-push` · `off` · `status`** — The user-only release valve for the protected branch. By
 default the `git-branch-guard` hook blocks every push/merge to `main`/`master`; running
 `/main-push` opens a **15-minute window** that authorizes the whole release (the merge **and**

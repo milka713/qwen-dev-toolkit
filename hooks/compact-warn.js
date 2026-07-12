@@ -9,6 +9,7 @@
 // Output contract: JSON with hookSpecificOutput.additionalContext to stdout; silent
 // exit 0 in every other case (healthy compression, no record, any parse error).
 'use strict';
+try { if (require('./_hookutil.js').disabled('compact-warn')) process.exit(0); } catch (_) {}
 const fs = require('fs');
 
 const MIN_REDUCTION = 0.15; // warn when a compaction frees less than this share

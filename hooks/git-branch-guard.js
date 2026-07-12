@@ -15,6 +15,7 @@
 // main operation once `/main-push` has authorized it — the token opens a 15-minute
 // window and is NOT consumed per command, so one authorization covers merge + push).
 'use strict';
+try { if (require('./_hookutil.js').disabled('git-branch-guard')) process.exit(0); } catch (_) {}
 const fs = require('fs');
 const { execFileSync } = require('child_process');
 
