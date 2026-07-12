@@ -105,7 +105,7 @@ process.stdout.write(JSON.stringify({
     hookEventName: 'PreToolUse',
     permissionDecision: 'deny',
     permissionDecisionReason:
-      'qwen-dev-toolkit git-flow guard blocked this: it is ' + reason + '. Policy: all new work goes to the `dev` branch; `main`/`master` is only updated on the user\'s EXPLICIT approval. ' +
+      '🧰 qwen-dev-toolkit git-flow guard blocked this: it is ' + reason + '. Policy: all new work goes to the `dev` branch; `main`/`master` is only updated on the user\'s EXPLICIT approval. ' +
       'What to do instead: commit/push to `dev` (create it from the current work if it does not exist: `git switch -c dev` then push `dev`). ' +
       'If — and only if — the user has explicitly told you to release to main, do NOT retry this command yourself; ask the user to run `/main-push` first (it authorizes exactly ONE push to main — single-use — which also covers the merge before it), then repeat the command.',
   },

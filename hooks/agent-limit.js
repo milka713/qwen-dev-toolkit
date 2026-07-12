@@ -72,7 +72,7 @@ process.stdout.write(JSON.stringify({
     hookEventName: 'PreToolUse',
     permissionDecision: 'deny',
     permissionDecisionReason:
-      `Subagent limit reached: at most ${cap} subagent(s) may run at once in this project (set via /maxagents), and ${decision.running} ` +
+      `🧰 qwen-dev-toolkit subagent cap: at most ${cap} subagent(s) may run at once in this project (set via /maxagents), and ${decision.running} ` +
       `is/are already running. Do NOT launch this subagent now — wait for a running one to finish, then launch the next. ` +
       `Run them sequentially (or in batches of ${cap}) rather than all at once.`,
   },

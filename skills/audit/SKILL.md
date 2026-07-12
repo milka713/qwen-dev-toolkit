@@ -1,6 +1,6 @@
 ---
 name: audit
-description: Security review at the architecture and code level — find hardcoded secrets, secrets about to be committed, authn/authz gaps, injection (SQL/command/path), XSS, unsafe deserialization, SSRF, missing input validation, weak crypto, and risky dependencies. Use PROACTIVELY before shipping, before a commit/push, after building an auth/network/file/DB feature, or when the user asks to check security ("is this safe?", "проверь безопасность"). Invoke with /audit or /audit <focus or path>.
+description: 🧰 Security review at the architecture and code level — find hardcoded secrets, secrets about to be committed, authn/authz gaps, injection (SQL/command/path), XSS, unsafe deserialization, SSRF, missing input validation, weak crypto, and risky dependencies. Use PROACTIVELY before shipping, before a commit/push, after building an auth/network/file/DB feature, or when the user asks to check security ("is this safe?", "проверь безопасность"). Invoke with /audit or /audit <focus or path>.
 argument-hint: '[focus area or path]'
 priority: 20
 allowedTools:

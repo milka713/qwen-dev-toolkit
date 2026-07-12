@@ -1,6 +1,6 @@
 ---
 name: commit
-description: Stage and commit the current work with a clean Conventional-Commits message written from the actual diff. Use PROACTIVELY when the user says "commit", "закоммить", "сделай коммит", or after a change is finished. Respects the gitflow policy (commits land on `dev`, never `main`, unless the user explicitly released). Invoke with /commit or /commit <hint>.
+description: 🧰 Stage and commit the current work with a clean Conventional-Commits message written from the actual diff. Use PROACTIVELY when the user says "commit", "закоммить", "сделай коммит", or after a change is finished. Respects the gitflow policy (commits land on `dev`, never `main`, unless the user explicitly released). Invoke with /commit or /commit <hint>.
 argument-hint: '[hint]'
 priority: 25
 allowedTools:

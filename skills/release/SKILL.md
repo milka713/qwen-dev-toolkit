@@ -1,6 +1,6 @@
 ---
 name: release
-description: Cut a version release so the published tag / GitHub Release never lags behind the code. Detects drift between the latest tag, the VERSION file, and the commits on main, then (when a bump is ready) creates the annotated git tag and a GitHub Release with notes from CHANGELOG. Use when the user says "release", "cut a release", "выпусти релиз", "publish the release", "tag a version", or right after merging to main. Invoke with /release (assess + cut), /release check (report only), or /release <version>.
+description: 🧰 Cut a version release so the published tag / GitHub Release never lags behind the code. Detects drift between the latest tag, the VERSION file, and the commits on main, then (when a bump is ready) creates the annotated git tag and a GitHub Release with notes from CHANGELOG. Use when the user says "release", "cut a release", "выпусти релиз", "publish the release", "tag a version", or right after merging to main. Invoke with /release (assess + cut), /release check (report only), or /release <version>.
 argument-hint: '[check | <version>]'
 priority: 20
 allowedTools:

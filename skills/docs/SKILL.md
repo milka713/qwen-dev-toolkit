@@ -1,6 +1,6 @@
 ---
 name: docs
-description: Keep the project's documentation in sync with the code — README (and translated READMEs like README.ru.md if present), usage examples, and any docs/ pages — after a feature is added or an interface changes. Use PROACTIVELY when the user says "update docs", "обнови доки/readme", or after a build that changed commands/APIs/setup. Invoke with /docs or /docs <what changed>.
+description: 🧰 Keep the project's documentation in sync with the code — README (and translated READMEs like README.ru.md if present), usage examples, and any docs/ pages — after a feature is added or an interface changes. Use PROACTIVELY when the user says "update docs", "обнови доки/readme", or after a build that changed commands/APIs/setup. Invoke with /docs or /docs <what changed>.
 argument-hint: '[what changed]'
 priority: 15
 allowedTools:

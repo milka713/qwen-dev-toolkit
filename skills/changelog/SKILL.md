@@ -1,6 +1,6 @@
 ---
 name: changelog
-description: Generate or update CHANGELOG.md from the git history since the last release/tag, grouped by change type (Added/Changed/Fixed/…) in Keep-a-Changelog style. Use when the user says "changelog", "обнови changelog", or when cutting a release. Invoke with /changelog or /changelog <version>.
+description: 🧰 Generate or update CHANGELOG.md from the git history since the last release/tag, grouped by change type (Added/Changed/Fixed/…) in Keep-a-Changelog style. Use when the user says "changelog", "обнови changelog", or when cutting a release. Invoke with /changelog or /changelog <version>.
 argument-hint: '[version]'
 priority: 15
 allowedTools:

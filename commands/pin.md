@@ -1,5 +1,5 @@
 ---
-description: Remember ANY important info compaction-proof — server IP/port, deploy/run commands, decisions, URLs, snippets, gotchas, anything you want kept in context and surviving compaction. Stored in a gitignored project FACTS.md (won't leak to the repo). Usage: /pin <anything>, /pin list, /pin remove <text>, /pin clear.
+description: 🧰 Remember ANY important info compaction-proof — server IP/port, deploy/run commands, decisions, URLs, snippets, gotchas, anything you want kept in context and surviving compaction. Stored in a gitignored project FACTS.md (won't leak to the repo). Usage: /pin <anything>, /pin list, /pin remove <text>, /pin clear.
 ---
 
 The change below was applied deterministically by the shell — act on its result:

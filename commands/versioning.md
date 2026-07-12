@@ -1,5 +1,5 @@
 ---
-description: Version-naming policy. Semantic versioning is ON by default (stated in the global QWEN.md) — name versions by significance, PATCH for small fixes (1.4.7), MINOR for notable features (1.5.0), MAJOR for breaking changes (2.0.0), and say which part you bumped. This command sets a **per-project** override, pinned in the project's QWEN.md: /versioning <how to name versions instead> = use a custom scheme here; /versioning off = opt this project out of the default; /versioning on = re-pin semantic; /versioning status = check.
+description: 🧰 Version-naming policy. Semantic versioning is ON by default (stated in the global QWEN.md) — name versions by significance, PATCH for small fixes (1.4.7), MINOR for notable features (1.5.0), MAJOR for breaking changes (2.0.0), and say which part you bumped. This command sets a **per-project** override, pinned in the project's QWEN.md: /versioning <how to name versions instead> = use a custom scheme here; /versioning off = opt this project out of the default; /versioning on = re-pin semantic; /versioning status = check.
 argument-hint: '[on | off | status | <custom scheme text>]'
 ---
 

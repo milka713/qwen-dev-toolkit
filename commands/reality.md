@@ -1,5 +1,5 @@
 ---
-description: Toggle "reality mode" — integrity over agreement. When ON, the assistant is held to a standing honesty directive: be accurate rather than agreeable, separate fact/inference/opinion, surface inconvenient truths (failed tests, skipped steps, real risks) without softening, disagree directly when the user or a plan is wrong, and never fabricate agreement or confidence. OFF by default. /reality or /reality on = enable; /reality off = disable; /reality status = check. Deterministic, pinned per-project in the project's QWEN.md so it survives compaction and persists across sessions within that project.
+description: 🧰 Toggle "reality mode" — integrity over agreement. When ON, the assistant is held to a standing honesty directive: be accurate rather than agreeable, separate fact/inference/opinion, surface inconvenient truths (failed tests, skipped steps, real risks) without softening, disagree directly when the user or a plan is wrong, and never fabricate agreement or confidence. OFF by default. /reality or /reality on = enable; /reality off = disable; /reality status = check. Deterministic, pinned per-project in the project's QWEN.md so it survives compaction and persists across sessions within that project.
 argument-hint: '[on | off | status]'
 ---
 

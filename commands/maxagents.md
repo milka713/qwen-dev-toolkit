@@ -1,5 +1,5 @@
 ---
-description: Cap how many subagents run at once, for a resource-constrained local model. /maxagents <N> = at most N concurrent subagents; /maxagents off = remove the cap (default, as many as the work needs); /maxagents status = check. Deterministic, pinned in QWEN.md so it survives compaction.
+description: 🧰 Cap how many subagents run at once, for a resource-constrained local model. /maxagents <N> = at most N concurrent subagents; /maxagents off = remove the cap (default, as many as the work needs); /maxagents status = check. Deterministic, pinned in QWEN.md so it survives compaction.
 argument-hint: '[<N> | off | status]'
 ---
 

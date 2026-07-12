@@ -4,6 +4,14 @@ All notable changes to qwen-dev-toolkit are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com); versions follow semver.
 (Releases before 1.7.0 predate this file and are not backfilled — see the git history.)
 
+## [1.16.1] - 2026-07-12
+
+### Added
+- **Toolkit signature (🧰) on commands, skills, and hooks.** Everything the toolkit ships is now marked with a 🧰 so you can tell it apart from your own or built-in items:
+  - **Commands** and **skills**: their description starts with 🧰, so in the `/` palette a toolkit command/skill is visibly distinct. The **names are unchanged** — invocation stays exactly the same (no `toolkit-` prefix to type).
+  - **Hooks**: they have no palette entry, so the 🧰 goes on the text they surface — the guards' deny reasons and the automation hooks' injected messages now carry it, so whenever a hook speaks (e.g. blocks an action) it's clearly the toolkit.
+  - Tests assert every `commands/*.md` and `skills/*/SKILL.md` description, and every hook script, carries the signature — so nothing can silently ship unsigned.
+
 ## [1.16.0] - 2026-07-12
 
 ### Changed

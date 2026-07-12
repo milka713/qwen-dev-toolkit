@@ -73,6 +73,6 @@ if (!note) process.exit(0);              // release is in step with the code —
 process.stdout.write(JSON.stringify({
   hookSpecificOutput: {
     hookEventName: 'PreToolUse',
-    additionalContext: 'qwen-dev-toolkit release-guard: ' + note,
+    additionalContext: '🧰 qwen-dev-toolkit release-guard: ' + note,
   },
 }));

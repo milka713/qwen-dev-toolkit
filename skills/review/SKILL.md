@@ -1,6 +1,6 @@
 ---
 name: review
-description: Correctness- and quality-focused code review of the current diff (bugs, edge cases, dead code, over-complication) — separate from /audit, which is security. Use PROACTIVELY after a build or before a commit/PR, or when the user says "review", "проверь код", "отревьюй". Reports findings by severity and fixes the safe, unambiguous ones. Invoke with /review or /review <path-or-scope>.
+description: 🧰 Correctness- and quality-focused code review of the current diff (bugs, edge cases, dead code, over-complication) — separate from /audit, which is security. Use PROACTIVELY after a build or before a commit/PR, or when the user says "review", "проверь код", "отревьюй". Reports findings by severity and fixes the safe, unambiguous ones. Invoke with /review or /review <path-or-scope>.
 argument-hint: '[path or scope]'
 priority: 20
 allowedTools:

@@ -40,7 +40,7 @@ for (let i = lines.length - 1; i >= 0; i--) {
   if (reduction >= MIN_REDUCTION) break; // healthy compression — stay silent
   const pct = Math.max(0, Math.round(reduction * 100));
   const ctx =
-    `⚠️ COMPACTION SATURATION: the compaction that just ran reduced this session's history by only ${pct}% ` +
+    `🧰 ⚠️ qwen-dev-toolkit compaction warning: the compaction that just ran reduced this session's history by only ${pct}% ` +
     `(${orig} → ${next} tokens; anything under 15% means the context is mostly already-compressed summary). ` +
     `Compacting this session again will free almost nothing while costing a full model call. ` +
     `Tell the user plainly, in your first reply: automatic compaction is no longer effective for this session; ` +

@@ -1,6 +1,6 @@
 ---
 name: toolkit-update
-description: Install or update the qwen-dev-toolkit itself from its GitHub repo with one command — fetches the latest version and runs the cross-platform installer. Use when the user says "update the toolkit", "обнови тулкит/скиллы", "reinstall the skills", or asks to get the newest version. Invoke with /toolkit-update. (For resetting stale/leftover toolkit settings instead of fetching a new release, that's the separate /toolkit-reset command.)
+description: 🧰 Install or update the qwen-dev-toolkit itself from its GitHub repo with one command — fetches the latest version and runs the cross-platform installer. Use when the user says "update the toolkit", "обнови тулкит/скиллы", "reinstall the skills", or asks to get the newest version. Invoke with /toolkit-update. (For resetting stale/leftover toolkit settings instead of fetching a new release, that's the separate /toolkit-reset command.)
 priority: 20
 allowedTools:
   - run_shell_command
