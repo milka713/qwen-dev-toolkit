@@ -98,7 +98,7 @@ const backendExt = isWin ? '.js' : '.sh';
 // Node files needed on EVERY OS: _qdt.js (shared helper) and any _*.js that is the real
 // logic behind a thin .sh wrapper (e.g. _autocompact.sh just execs _autocompact.js —
 // JSON editing needs a real parser, and Node is a hard toolkit prerequisite anyway).
-const ALWAYS_COPY = new Set(['_qdt.js', '_autocompact.js', '_toolkit-reset.js']);
+const ALWAYS_COPY = new Set(['_qdt.js', '_autocompact.js', '_toolkit-reset.js', '_applied.js']);
 for (const f of fs.readdirSync(cmdDir)) {
   if (f.endsWith('.md')) continue;
   const isBackend = f.startsWith('_') && (f.endsWith('.sh') || f.endsWith('.js'));
@@ -110,7 +110,7 @@ if (!isWin) { for (const f of fs.readdirSync(path.join(QHOME, 'commands')).filte
 console.log('\nInstalled:');
 console.log(`  ✓ skills   (${SKILLS.join(', ')})`);
 console.log(`  ✓ agents   (${AGENTS.join(', ')})`);
-console.log('  ✓ commands (/dev, /cover, /pin, /status, /maxagents, /bro, /main-push, /versioning, /autocompact, /toolkit-reset, /reality)  [' + (isWin ? 'Node backends' : 'bash backends') + ']');
+console.log('  ✓ commands (/dev, /cover, /pin, /status, /maxagents, /bro, /main-push, /versioning, /autocompact, /toolkit-reset, /reality, /applied)  [' + (isWin ? 'Node backends' : 'bash backends') + ']');
 console.log('  ✓ hooks    (restore, compaction-steer, compact-warn, secret-guard, git-branch-guard, release-guard, toolkit-reset-guard, skill-reminder, agent-limit)');
 
 // ---- 5) merge hooks + memory into settings.json --------------------------
@@ -175,7 +175,10 @@ console.log('  ✓ hooks    (restore, compaction-steer, compact-warn, secret-gua
   console.log('  ✓ QWEN.md guidance ' + (had ? 'updated' : 'added'));
 })();
 
-// ---- 7) done -------------------------------------------------------------
+// ---- 7) record the installed version (read by /applied) ------------------
+try { fs.writeFileSync(path.join(QHOME, '.toolkit-version'), VERSION + '\n'); } catch (_) {}
+
+// ---- 8) done -------------------------------------------------------------
 console.log('\nDone. Restart qwen-code (or start a new session) to load everything.');
 console.log('Verify:  /skills  →  implement, plan, checkpoint, audit, brainstorm, gitflow, commit, review, docs, changelog, release, toolkit-update');
 console.log('         /agents manage  →  implementer, scout, debugger, tester, researcher, verifier');

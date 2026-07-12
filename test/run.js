@@ -66,6 +66,13 @@ const missingCmd = cmdMd.filter((c) => !new RegExp(`'${c}'`).test(uninstallSrc))
 const missingBk = cmdBackends.filter((c) => !new RegExp(`'${c}'`).test(uninstallSrc));
 ok('every command .md is in uninstall.js CMD_MD', missingCmd.length === 0, missingCmd.join(', '));
 ok('every command backend is in uninstall.js CMD_BACKENDS', missingBk.length === 0, missingBk.join(', '));
+// same class of gap for hook SCRIPT files: uninstall.js strips the settings.json entries by
+// name, but the .js files under ~/.qwen/hooks are removed by an explicit list — every
+// hooks/*.js must be in it or uninstall orphans the script (compact-warn/toolkit-reset-guard
+// were once missing here).
+const hookFiles = fs.readdirSync(path.join(ROOT, 'hooks')).filter((f) => f.endsWith('.js'));
+const missingHookFiles = hookFiles.filter((h) => !uninstallSrc.includes(`'${h}'`));
+ok('every hooks/*.js file is in uninstall.js\'s hook-file removal list', missingHookFiles.length === 0, missingHookFiles.join(', '));
 const badFm = [];
 for (const a of agentNames) { const b = fs.readFileSync(path.join(ROOT, 'agents', a + '.md'), 'utf8'); if (!b.startsWith('---') || !b.includes('name: ' + a + '\n') || !b.includes('tools:')) badFm.push(a); }
 for (const s of skillNames) { const b = fs.readFileSync(path.join(ROOT, 'skills', s, 'SKILL.md'), 'utf8'); if (!b.startsWith('---') || !b.includes('name: ' + s + '\n')) badFm.push(s); }
@@ -202,6 +209,12 @@ ok('reality-mode is OFF by default (not in the always-on block)', !fs.readFileSy
 // installer ships only the OS-appropriate one: .sh on POSIX, .js on Windows.
 ok('reality backend installed for this OS',
   fs.existsSync(path.join(qh2, 'commands', process.platform === 'win32' ? '_reality.js' : '_reality.sh')));
+// /applied: Node logic ships on every OS (like /autocompact — it parses settings.json),
+// and the install records its version so /applied can report it.
+ok('applied Node logic installed alongside the wrapper',
+  fs.existsSync(path.join(qh2, 'commands', '_applied.js')) &&
+  (process.platform === 'win32' || fs.existsSync(path.join(qh2, 'commands', '_applied.sh'))));
+ok('install records .toolkit-version', fs.readFileSync(path.join(qh2, '.toolkit-version'), 'utf8').trim() === fs.readFileSync(path.join(ROOT, 'VERSION'), 'utf8').trim());
 // /autocompact: the .sh is a thin wrapper over the Node logic, so BOTH files must land
 // on POSIX; and a fresh install must default auto-compaction to OFF (threshold 1).
 ok('autocompact Node logic installed alongside the wrapper',
@@ -223,6 +236,9 @@ ok('uninstall exits 0', ru.status === 0);
 ok('uninstall removes skills', !fs.existsSync(path.join(qh2, 'skills', 'implement')));
 ok('uninstall strips hook entries', !fs.readFileSync(path.join(qh2, 'settings.json'), 'utf8').includes('git-branch-guard'));
 ok('uninstall strips toolkit-reset-guard entry too', !fs.readFileSync(path.join(qh2, 'settings.json'), 'utf8').includes('toolkit-reset-guard'));
+ok('uninstall removes the /applied backend files', !fs.existsSync(path.join(qh2, 'commands', '_applied.js')) && !fs.existsSync(path.join(qh2, 'commands', '_applied.sh')));
+ok('uninstall removes hook script files (compact-warn/toolkit-reset-guard)', !fs.existsSync(path.join(qh2, 'hooks', 'compact-warn.js')) && !fs.existsSync(path.join(qh2, 'hooks', 'toolkit-reset-guard.js')));
+ok('uninstall removes the recorded .toolkit-version', !fs.existsSync(path.join(qh2, '.toolkit-version')));
 
 // ---- /reality — integrity-over-agreement toggle, OFF by default, per-project block ------
 console.log('— /reality —');
@@ -246,6 +262,35 @@ console.log('— /reality —');
   ok('reality off reports OFF', /now OFF/.test(off.stdout));
   ok('reality off removes the block', !fs.readFileSync(qf, 'utf8').includes('realitymode:start'));
   ok('reality off when already off is a clean no-op', /already OFF/.test(run('off').stdout));
+}
+
+// ---- /applied — read-only introspection of what the toolkit currently applies ---------
+console.log('— /applied —');
+{
+  const qhA = tmp();
+  cp.spawnSync('node', [path.join(ROOT, 'install.js')], { env: { ...process.env, QWEN_HOME: qhA }, encoding: 'utf8' });
+  const ap = path.join(ROOT, 'commands', '_applied.js');
+  const proj = tmp(); fs.mkdirSync(proj, { recursive: true });
+  const run = (arg) => cp.spawnSync('node', [ap, ...(arg ? [arg] : [])], { cwd: proj, env: { ...process.env, QWEN_HOME: qhA }, encoding: 'utf8' }).stdout;
+  // default scope = project; global settings-driven guards/hooks show in both scopes
+  const p = run('');
+  ok('applied defaults to PROJECT scope', /scope: PROJECT/.test(p));
+  ok('applied lists guards/prohibitions', /Guards \/ prohibitions/.test(p) && /secret-guard/.test(p) && /git-branch-guard/.test(p) && /toolkit-reset-guard/.test(p));
+  ok('applied lists automation hooks', /Automation hooks/.test(p) && /restore-progress/.test(p));
+  ok('applied reports the recorded toolkit version', new RegExp('Toolkit version: ' + fs.readFileSync(path.join(ROOT, 'VERSION'), 'utf8').trim().replace(/\./g, '\\.')).test(p));
+  // reflects a per-project mode toggle
+  cp.spawnSync('node', [path.join(ROOT, 'commands', '_reality.js'), 'on'], { cwd: proj, encoding: 'utf8' });
+  cp.spawnSync('node', [path.join(ROOT, 'commands', '_maxagents.js'), '2'], { cwd: proj, encoding: 'utf8' });
+  const p2 = run('');
+  ok('applied reflects an enabled mode (reality ON)', /Reality mode\.* ON/.test(p2));
+  ok('applied reflects maxagents limit', /at most 2 at a time/.test(p2));
+  // read-only: running /applied must not mutate the project QWEN.md
+  const before = fs.readFileSync(path.join(proj, 'QWEN.md'), 'utf8');
+  run(''); run('global');
+  ok('applied is read-only (QWEN.md unchanged)', fs.readFileSync(path.join(proj, 'QWEN.md'), 'utf8') === before);
+  // global scope reads ~/.qwen/QWEN.md, not the project's
+  ok('applied global switches scope', /scope: GLOBAL/.test(run('global')));
+  ok('applied global does not show the project-only reality block as ON', /Reality mode\.* OFF/.test(run('global')));
 }
 
 // ---- /toolkit-reset — sweep global marker-block drift, gated by a real confirm step ----

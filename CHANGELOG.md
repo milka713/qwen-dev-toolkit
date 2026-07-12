@@ -4,6 +4,15 @@ All notable changes to qwen-dev-toolkit are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com); versions follow semver.
 (Releases before 1.7.0 predate this file and are not backfilled — see the git history.)
 
+## [1.13.0] - 2026-07-12
+
+### Added
+- **`/applied` command** — a read-only snapshot of everything the toolkit currently applies. `/applied` (default) shows **this project's** state; `/applied global` shows the `~/.qwen` state. It surfaces three things: (1) **modes** — the per-scope marker blocks from the relevant `QWEN.md` (`/dev`, `/cover` + target, `/bro` + persona, `/maxagents` + N, `/versioning` scheme, `/reality`); (2) **guards / prohibitions** — the global hooks that can *block* a tool call (`secret-guard`, `git-branch-guard`, `release-guard`, `toolkit-reset-guard`, the `/maxagents` subagent cap), each with a one-line description of what it forbids; (3) **automation hooks** — the non-blocking ones (`restore-progress`, `compact-warn`, `steer-compaction`, `skill-reminder`, agent-limit housekeeping). Hooks and guards are read from the global `~/.qwen/settings.json` and labelled as global, because they apply to every project including the current one — so they show in both scopes; only the marker-block modes are per-scope. Reads real installed state (parses `settings.json`), mutates nothing. Backend follows the `/autocompact` pattern (`_applied.js` does the work, `_applied.sh` is a thin wrapper) since it parses JSON. Distinct from `/status`, which stays a focused per-project build snapshot (goal / tasks / next).
+- **`install.js` records the installed version** to `~/.qwen/.toolkit-version`, so `/applied` (and future tooling) can report it without depending on a `/toolkit-update` source cache.
+
+### Fixed
+- **`uninstall.js` orphaned hook script files** — `compact-warn.js` and `toolkit-reset-guard.js` had their `settings.json` entries stripped but the `.js` files themselves were never in the hook-file removal list, so uninstall left them in `~/.qwen/hooks`. Both added. A new cross-check test asserts every `hooks/*.js` file is in that list (same class as the command-file cross-check added in 1.12.1). Test count: 138 passing.
+
 ## [1.12.1] - 2026-07-12
 
 ### Changed

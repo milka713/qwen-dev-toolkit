@@ -82,6 +82,15 @@ compaction) and is **gitignored** so it can't leak into the repo. `list` shows t
 target, subagent cap, how many facts are pinned, and — from `.qwen/PROGRESS.md` — the current
 goal and the next unchecked task. Changes nothing.
 
+**`/applied` · `project` · `global`** — Read-only overview of **everything the toolkit currently
+applies**, in three groups: the **modes** pinned in the relevant `QWEN.md` (`/dev`, `/cover`,
+`/bro`, `/maxagents`, `/versioning`, `/reality`), the **guards/prohibitions** that can block a
+tool call (`secret-guard`, `git-branch-guard`, `release-guard`, `toolkit-reset-guard`, the
+subagent cap), and the non-blocking **automation hooks**. `/applied` shows this project (default);
+`/applied global` shows the `~/.qwen` state. Modes are per-scope; hooks and guards live globally
+(in `~/.qwen/settings.json`) and apply to every project, so they show in both. Changes nothing.
+· _Example:_ `/applied global`
+
 **`/main-push` · `off` · `status`** — The user-only release valve for the protected branch. By
 default the `git-branch-guard` hook blocks every push/merge to `main`/`master`; running
 `/main-push` opens a **15-minute window** that authorizes the whole release (the merge **and**
