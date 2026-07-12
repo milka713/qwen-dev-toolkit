@@ -103,9 +103,11 @@ refused. Global scope.
 
 **`/main-push` · `off` · `status`** — The user-only release valve for the protected branch. By
 default the `git-branch-guard` hook blocks every push/merge to `main`/`master`; running
-`/main-push` opens a **15-minute window** that authorizes the whole release (the merge **and**
-the push). `off` revokes it early, `status` checks it. Because only you can run a slash
-command, this makes "yes, really release to main" un-fakeable by the model.
+`/main-push` authorizes **exactly one push to main** — **single-use**: it covers the merge and
+the one push, then the guard **consumes** it, so a second push needs `/main-push` again (an
+unused authorization also expires after 15 min). `off` revokes it early, `status` checks it.
+Because only you can run a slash command, this makes "yes, really release to main" un-fakeable
+by the model.
 
 **`/versioning` · `on` · `off` · `status` · `<custom scheme>`** — Version-naming policy.
 Semantic versioning is **on by default** (stated in the global `QWEN.md`): the model names
@@ -246,7 +248,7 @@ the same way `git-branch-guard` backstops `/main-push`.
 | `PreCompact` → `pre-compact-steer.js` | Steers the built-in compressor to keep the goal, decisions, file list and done/todo. |
 | `SessionStart(compact)` → `compact-warn.js` | Compaction-saturation warning: after a compaction, reads the real before/after token counts from the session transcript; if the history shrank by **less than 15%**, tells the model to warn you that compacting this session again is no longer effective (what's left is mostly already-compressed summary) and to suggest a fresh session after `/checkpoint`. Silent on healthy compressions. |
 | `PreToolUse` → `secret-guard.js` | **Blocks** any write/edit/command containing a hardcoded credential (private keys, AWS/OpenAI/GitHub/Slack/HF tokens, …) or that commits a secret file (`.env`, `id_rsa`, `*.pem`). Env-var usage and placeholders pass. |
-| `PreToolUse` → `git-branch-guard.js` | **Blocks** any `git push`/`merge`/`rebase` that would touch `main`/`master` (explicit target, or while checked out on it, or a switch-then-merge one-liner). Pushes to `dev`/feature branches and read-only git pass. Released for one operation by `/main-push`. |
+| `PreToolUse` → `git-branch-guard.js` | **Blocks** any `git push`/`merge`/`rebase` that would touch `main`/`master` (explicit target, or while checked out on it, or a switch-then-merge one-liner). Pushes to `dev`/feature branches and read-only git pass. Unlocked for exactly one push (single-use) by `/main-push`. |
 | `PreToolUse` → `release-guard.js` | **Reminds** (never blocks) when a push advances `main`/`master` but the release would lag the code — a bumped `VERSION` with no matching tag, or commits past the released tag with no bump — injecting a note to run `/release` (or `/changelog` then `/release`). This is the deterministic backstop that makes `/release` fire even if the model forgets it. Silent when the release is in sync. |
 | `PreToolUse` → `toolkit-reset-guard.js` | **Blocks** an attempt to run `/toolkit-reset`'s confirm step without a valid 15-minute approval window — closes the gap where a model could otherwise call the backend script directly via a shell command instead of waiting for you to type `/toolkit-reset confirm` yourself. Preview-only calls (no `confirm`) always pass. |
 | `UserPromptSubmit` → `skill-reminder.js` | Small local models under-trigger model-invoked skills; this injects a short, targeted reminder (e.g. "looks security-related → `/audit`") only when the prompt clearly matches, so the right skill actually fires. Silent on trivial prompts. |
@@ -511,7 +513,7 @@ the full loop and shows *when* to reach for each command.
 
 > выкати в main            (or "release to main")   # main is protected — it asks you to authorize
 > /versioning              # (if you tag releases) confirm the bump scheme first
-> /main-push               ← opens a 15-minute release window
+> /main-push               ← authorizes exactly one push to main (single-use)
 > выкати в main            ← now it merges dev → main and pushes
 > /release                 ← cut the tag + GitHub Release from CHANGELOG so the published release matches main
 

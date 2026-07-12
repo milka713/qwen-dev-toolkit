@@ -4,6 +4,11 @@ All notable changes to qwen-dev-toolkit are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com); versions follow semver.
 (Releases before 1.7.0 predate this file and are not backfilled — see the git history.)
 
+## [1.15.0] - 2026-07-12
+
+### Changed
+- **`/main-push` is now single-use instead of a time window.** It previously opened a 15-minute window in which *any number* of pushes/merges to `main`/`master` were allowed. Now it authorizes **exactly one push to main**: the `git-branch-guard` hook **consumes** the token when it authorizes a push, so a second push needs a fresh `/main-push`. A bare `merge`/`rebase` onto main does **not** consume the token, so one authorization still covers the normal "merge dev → push" release (the push is the one-time, outward act). The 15-minute TTL is kept only as a staleness guard for an *unused* token, not as a multi-push window. Updated `/main-push` messages + `status`, the guard's deny message, and the README. Note: because the guard consumes at authorization time (PreToolUse), if a push fails (e.g. network), retrying needs another `/main-push` — the deliberate trade-off of single-use. 6 new guard tests (push consumes; merge doesn't; second push blocked).
+
 ## [1.14.0] - 2026-07-12
 
 ### Added

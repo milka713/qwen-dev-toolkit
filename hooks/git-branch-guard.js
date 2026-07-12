@@ -3,7 +3,7 @@
 // Enforces the toolkit's git discipline at the engine level instead of trusting a small
 // model to remember it: new work goes to `dev`; the protected branches (main/master) are
 // touched by an OUTWARD/irreversible action (push to main, or merge into main) ONLY when
-// the user has explicitly authorized it via `/main-push` (which drops a short-lived token).
+// the user has explicitly authorized it via `/main-push` (which drops a single-use token).
 //
 // Blocks, on run_shell_command:
 //   - `git push` that targets main/master (explicit `origin main`, `HEAD:main`, `:main`,
@@ -12,8 +12,9 @@
 //   - `git merge` / `git rebase` while checked out ON main/master
 //   - a one-liner that switches to main/master and then merges/pushes
 // Allows everything else (all pushes to dev/feature branches, all read-only git, and any
-// main operation once `/main-push` has authorized it — the token opens a 15-minute
-// window and is NOT consumed per command, so one authorization covers merge + push).
+// main operation once `/main-push` has authorized it). The token is SINGLE-USE: a push to
+// main/master CONSUMES it (so a second push needs a fresh `/main-push`); a bare merge/rebase
+// onto main does NOT consume it, so one authorization still covers "merge dev then push".
 'use strict';
 try { if (require('./_hookutil.js').disabled('git-branch-guard')) process.exit(0); } catch (_) {}
 const fs = require('fs');
@@ -80,15 +81,22 @@ if (!reason &&
 
 if (!reason) process.exit(0); // allow
 
-// Explicit user authorization? /main-push drops a short-lived token that opens a 15-minute
-// release window (NOT consumed on use, so one authorization covers the merge AND the push).
+// Explicit user authorization? /main-push drops a SINGLE-USE token: it authorizes exactly
+// one push to main/master. A push CONSUMES the token here (so a second push needs a fresh
+// /main-push); a bare merge/rebase onto main does NOT consume it, so one authorization still
+// covers the "merge dev → push" release. The TTL only expires an UNUSED token (a staleness
+// guard so a forgotten authorization can't be used much later) — it is not a multi-push window.
 const path = require('path');
 const QHOME = process.env.QWEN_HOME || path.join(process.env.HOME || require('os').homedir(), '.qwen');
 const TOKEN = path.join(QHOME, '.main-approval');
 const TTL_MS = 15 * 60 * 1000;
 try {
   const st = fs.statSync(TOKEN);
-  if (Date.now() - st.mtimeMs <= TTL_MS) process.exit(0); // authorized window — allow
+  if (Date.now() - st.mtimeMs <= TTL_MS) {
+    // consume on the push (the outward, irreversible act); leave it for a bare merge/rebase.
+    if (/\bgit\b[\s\S]*?\bpush\b/.test(cmd)) { try { fs.unlinkSync(TOKEN); } catch (_) {} }
+    process.exit(0); // authorized — allow
+  }
   try { fs.unlinkSync(TOKEN); } catch (_) {} // stale — drop it
 } catch (_) { /* no token */ }
 
@@ -99,6 +107,6 @@ process.stdout.write(JSON.stringify({
     permissionDecisionReason:
       'qwen-dev-toolkit git-flow guard blocked this: it is ' + reason + '. Policy: all new work goes to the `dev` branch; `main`/`master` is only updated on the user\'s EXPLICIT approval. ' +
       'What to do instead: commit/push to `dev` (create it from the current work if it does not exist: `git switch -c dev` then push `dev`). ' +
-      'If — and only if — the user has explicitly told you to release to main, do NOT retry this command yourself; ask the user to run `/main-push` first (it opens a 15-minute window that authorizes the main merge and push), then repeat the command.',
+      'If — and only if — the user has explicitly told you to release to main, do NOT retry this command yourself; ask the user to run `/main-push` first (it authorizes exactly ONE push to main — single-use — which also covers the merge before it), then repeat the command.',
   },
 }));

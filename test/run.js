@@ -147,9 +147,20 @@ ok('bare push while ON dev allowed', gbRun('git push', devRepo) === '');
 ok('merge while ON main denied', gbRun('git merge dev', mainRepo).includes('"deny"'));
 ok('merge while ON dev allowed', gbRun('git merge feature-x', devRepo) === '');
 ok('switch-to-main + push one-liner denied', gbRun('git switch main && git push', devRepo).includes('"deny"'));
-fs.writeFileSync(path.join(gh, '.main-approval'), '');
-ok('token window authorizes main push', gbRun('git push origin main', devRepo) === '');
-fs.unlinkSync(path.join(gh, '.main-approval'));
+// single-use token: a push to main is authorized AND consumes the token, so the very next
+// push is blocked again; a bare merge onto main does NOT consume it (so merge+push works).
+const tok = path.join(gh, '.main-approval');
+fs.writeFileSync(tok, '');
+ok('token authorizes a main push', gbRun('git push origin main', devRepo) === '');
+ok('the push consumed the token (single-use)', !fs.existsSync(tok));
+ok('a second push without a fresh token is denied', gbRun('git push origin main', devRepo).includes('"deny"'));
+// merge onto main with a token present is allowed but does NOT consume it...
+fs.writeFileSync(tok, '');
+ok('merge onto main is authorized by the token', gbRun('git merge dev', mainRepo) === '');
+ok('a bare merge does not consume the token', fs.existsSync(tok));
+// ...so the push that follows the merge is still covered by the same authorization, and consumes it
+ok('the following push is still covered by the same token', gbRun('git push origin main', devRepo) === '');
+ok('that push consumed the token', !fs.existsSync(tok));
 
 // ---- release-guard -------------------------------------------------------------
 console.log('— release-guard —');
