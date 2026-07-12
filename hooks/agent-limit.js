@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+// ⚠ qwen-dev-toolkit — MANAGED FILE. Do NOT hand-edit: /toolkit-update overwrites it, and
+// /toolkit-reset / reinstall can replace it. To switch this hook off use `/hooks off <name>`
+// (do not delete it). Source & docs: https://github.com/milka713/qwen-dev-toolkit
 // Deterministic concurrent-subagent cap. qwen-code has no native setting for this, so we
 // enforce it at the hook layer: a counter of currently-running `agent` subagents, gated
 // by a hard limit. The limit N is read from the project QWEN.md "at most N at a time"

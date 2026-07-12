@@ -1,3 +1,6 @@
+// ⚠ qwen-dev-toolkit — MANAGED FILE. Do NOT hand-edit: /toolkit-update overwrites it, and
+// /toolkit-reset / reinstall can replace it. To switch this hook off use `/hooks off <name>`
+// (do not delete it). Source & docs: https://github.com/milka713/qwen-dev-toolkit
 'use strict';
 // Shared helper for the toolkit's hook scripts: is this hook currently switched OFF?
 // State lives in ~/.qwen/.hooks-disabled (one hook name per line), edited by /hooks.

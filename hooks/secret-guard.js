@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+// ⚠ qwen-dev-toolkit — MANAGED FILE. Do NOT hand-edit: /toolkit-update overwrites it, and
+// /toolkit-reset / reinstall can replace it. To switch this hook off use `/hooks off <name>`
+// (do not delete it). Source & docs: https://github.com/milka713/qwen-dev-toolkit
 // PreToolUse hook for qwen-code — deterministic secrets guard.
 // Blocks write_file / edit / run_shell_command when the content being written (or the
 // shell command) contains a hardcoded credential, or when a command tries to commit an

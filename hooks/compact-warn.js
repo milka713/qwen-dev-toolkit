@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+// ⚠ qwen-dev-toolkit — MANAGED FILE. Do NOT hand-edit: /toolkit-update overwrites it, and
+// /toolkit-reset / reinstall can replace it. To switch this hook off use `/hooks off <name>`
+// (do not delete it). Source & docs: https://github.com/milka713/qwen-dev-toolkit
 // SessionStart(source=compact) hook for qwen-code — compaction-efficiency warning.
 // Fires right after a compaction. Reads the freshest chat_compression record from the
 // session transcript (transcript_path in the hook input); if the compression reduced

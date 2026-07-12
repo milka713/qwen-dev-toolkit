@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+// ⚠ qwen-dev-toolkit — MANAGED FILE. Do NOT hand-edit: /toolkit-update overwrites it, and
+// /toolkit-reset / reinstall can replace it. To switch this hook off use `/hooks off <name>`
+// (do not delete it). Source & docs: https://github.com/milka713/qwen-dev-toolkit
 // PreToolUse hook for qwen-code — deterministic branch-flow guard.
 // Enforces the toolkit's git discipline at the engine level instead of trusting a small
 // model to remember it: new work goes to `dev`; the protected branches (main/master) are

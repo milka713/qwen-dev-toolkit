@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+// ⚠ qwen-dev-toolkit — MANAGED FILE. Do NOT hand-edit: /toolkit-update overwrites it, and
+// /toolkit-reset / reinstall can replace it. To switch this hook off use `/hooks off <name>`
+// (do not delete it). Source & docs: https://github.com/milka713/qwen-dev-toolkit
 // UserPromptSubmit hook — nudges the model to invoke the right toolkit skill/command.
 // Small local/Qwen models under-trigger model-invoked skills, especially mid-plan; a
 // short reminder injected at the moment of the prompt (max proximity to execution) fixes

@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+// ⚠ qwen-dev-toolkit — MANAGED FILE. Do NOT hand-edit: /toolkit-update overwrites it, and
+// /toolkit-reset / reinstall can replace it. To switch this hook off use `/hooks off <name>`
+// (do not delete it). Source & docs: https://github.com/milka713/qwen-dev-toolkit
 // PreToolUse hook — deterministic release-drift reminder (never blocks).
 // The /release skill only runs when invoked, so it can be forgotten. This hook makes the
 // check automatic: whenever the stable branch (main/master) is about to be pushed, it

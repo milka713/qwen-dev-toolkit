@@ -4,6 +4,11 @@ All notable changes to qwen-dev-toolkit are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com); versions follow semver.
 (Releases before 1.7.0 predate this file and are not backfilled — see the git history.)
 
+## [1.16.2] - 2026-07-12
+
+### Added
+- **"Managed file" banner on hook scripts.** Every file in `~/.qwen/hooks/` (all nine hooks plus the shared `_hookutil.js` helper) now opens with a banner noting it's a **qwen-dev-toolkit managed file** — do not hand-edit (`/toolkit-update` overwrites it), turn a hook off with `/hooks off <name>` instead — with a link to the repo. So anyone who opens a hook to edit it manually immediately sees where it came from. `settings.json` can't carry a comment (it's JSON) and adding an unknown marker key risks qwen-code's strict hook schema, so the banner lives in the `.js` files a person actually opens; the `settings.json` hook entries point their `command` at exactly those files. A test asserts every hook file carries the banner.
+
 ## [1.16.1] - 2026-07-12
 
 ### Added

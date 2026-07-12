@@ -90,6 +90,9 @@ const unsignedSkill = skillNames.filter((s) => {
 ok('every skill SKILL.md description carries the toolkit signature', unsignedSkill.length === 0, unsignedSkill.join(', '));
 const unsignedHook = hookFiles.filter((h) => !h.startsWith('_') && !fs.readFileSync(path.join(ROOT, 'hooks', h), 'utf8').includes('🧰'));
 ok('every hook script carries the 🧰 signature in the text it surfaces', unsignedHook.length === 0, unsignedHook.join(', '));
+// every hook file carries a "managed file" banner so anyone hand-editing it sees it's from the toolkit
+const unbannered = hookFiles.filter((h) => !fs.readFileSync(path.join(ROOT, 'hooks', h), 'utf8').includes('qwen-dev-toolkit — MANAGED FILE'));
+ok('every hook file carries the managed-file banner', unbannered.length === 0, unbannered.join(', '));
 const badFm = [];
 for (const a of agentNames) { const b = fs.readFileSync(path.join(ROOT, 'agents', a + '.md'), 'utf8'); if (!b.startsWith('---') || !b.includes('name: ' + a + '\n') || !b.includes('tools:')) badFm.push(a); }
 for (const s of skillNames) { const b = fs.readFileSync(path.join(ROOT, 'skills', s, 'SKILL.md'), 'utf8'); if (!b.startsWith('---') || !b.includes('name: ' + s + '\n')) badFm.push(s); }

@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+// ⚠ qwen-dev-toolkit — MANAGED FILE. Do NOT hand-edit: /toolkit-update overwrites it, and
+// /toolkit-reset / reinstall can replace it. To switch this hook off use `/hooks off <name>`
+// (do not delete it). Source & docs: https://github.com/milka713/qwen-dev-toolkit
 // PreToolUse hook for qwen-code — engine-level backstop for /toolkit-reset.
 // _toolkit-reset.js already self-checks its approval token before mutating, but that
 // check only fires when the model runs the script itself — nothing stops a model with
