@@ -1,78 +1,136 @@
 #!/usr/bin/env node
-// /toolkit-reset backend — sweeps toolkit marker blocks left behind in the WRONG (global)
-// scope by an older toolkit version. A toggle's scope has moved before (/bro: global in
-// versions <1.8.0, project-local from 1.8.0 on) and left orphaned blocks that no current
-// command manages anymore — e.g. a stale "/bro свобода" that keeps applying to every
-// project even though /bro now only affects the current one.
+// /toolkit-reset backend — bring the toolkit back to the shape the CURRENT version implies
+// by default, for the chosen scope. It removes the toolkit's toggle marker blocks and (for
+// the global scope) resets the toolkit-managed settings to their defaults.
 //
-// Pure local cleanup, no network — deliberately UNRELATED to /toolkit-update (which fetches
-// a new release). Requires a real confirm step before it mutates anything:
-//   1. /toolkit-reset            -> PREVIEW ONLY. Lists what would be removed, drops a
-//                                    15-minute approval token, changes nothing.
-//   2. /toolkit-reset confirm    -> performs the removal, but ONLY if a valid token exists.
-// The token can only be created by a REAL slash-command invocation (custom commands are
-// user-only — a model cannot invoke one itself), and the `toolkit-reset-guard` PreToolUse
-// hook additionally denies any shell attempt to run the confirm step directly without a
-// valid token — so the model cannot skip straight to "confirm" on its own initiative even
-// via a raw shell call. Together this is the same "un-fakeable by the model" guarantee
-// /main-push gives git releases, applied to this destructive-ish settings change.
+//   /toolkit-reset            -> PROJECT scope preview (this project's ./QWEN.md)
+//   /toolkit-reset project    -> same, explicit
+//   /toolkit-reset global     -> GLOBAL scope preview (~/.qwen: QWEN.md + settings)
+//   /toolkit-reset confirm    -> perform the previewed reset (uses the previewed scope)
+//
+// Scope:
+//   project -> remove the toggle blocks (dev/cover/bro/maxagents/versioning/reality) from the
+//              current project's ./QWEN.md. Turns the project's per-project modes back to
+//              default (off / semantic). Does NOT touch global settings.
+//   global  -> remove those blocks from ~/.qwen/QWEN.md (stale drift a toggle left behind),
+//              AND reset the toolkit's global settings to the current defaults: re-enable all
+//              hooks (clear ~/.qwen/.hooks-disabled) and set context.autoCompactThreshold back
+//              to the default (auto-compaction OFF).
+//
+// Pure local cleanup, no network — deliberately UNRELATED to /toolkit-update. Requires a real
+// confirm step before it mutates anything:
+//   1. preview -> lists what WOULD change, drops a 15-minute approval token (with the scope), nothing changes.
+//   2. confirm -> applies it, ONLY if a valid token exists.
+// The token can only be created by a REAL slash-command invocation (user-only), and the
+// `toolkit-reset-guard` PreToolUse hook additionally denies any raw shell attempt to run the
+// confirm step without a valid token — so the model cannot skip straight to "confirm".
 'use strict';
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
 const QHOME = process.env.QWEN_HOME || path.join(os.homedir(), '.qwen');
-const FILE = path.join(QHOME, 'QWEN.md');
+const GLOBAL_FILE = path.join(QHOME, 'QWEN.md');
+const PROJECT_FILE = 'QWEN.md'; // relative to the cwd the command runs in
+const SETTINGS = path.join(QHOME, 'settings.json');
+const HOOKS_DISABLED = path.join(QHOME, '.hooks-disabled');
 const TOKEN = path.join(QHOME, '.toolkit-reset-approval');
 const TTL_MS = 15 * 60 * 1000;
-// Toggles that pin a "<!-- NAME:start -->...<!-- NAME:end -->" block into PROJECT QWEN.md
-// today. Any of these found in the GLOBAL file is always a leftover — no live command
-// manages it there.
+const DEFAULT_AUTOCOMPACT = 1; // current default: auto-compaction OFF
+// Toggle blocks pinned into a QWEN.md by /dev, /cover, /bro, /maxagents, /versioning, /reality.
 const MARKERS = ['bromode', 'covermode', 'devmode', 'maxagents', 'versioning', 'realitymode'];
 
-const arg = (process.argv[2] || '').trim().toLowerCase();
+const argv = process.argv.slice(2).map((s) => s.trim().toLowerCase()).filter(Boolean);
+const isConfirm = argv.includes('confirm');
+const scopeArg = argv.includes('global') ? 'global' : argv.includes('project') ? 'project' : null;
 const out = (msg) => { console.log('TOOLKIT_RESET_RESULT: ' + msg); process.exit(0); };
+const read = (p) => { try { return fs.readFileSync(p, 'utf8'); } catch (_) { return ''; } };
 
-function read(p) { try { return fs.readFileSync(p, 'utf8'); } catch (_) { return ''; } }
-
-function findStale() {
-  const body = read(FILE);
+function qwenFileFor(scope) { return scope === 'global' ? GLOBAL_FILE : PROJECT_FILE; }
+function staleBlocks(scope) {
+  const body = read(qwenFileFor(scope));
   return MARKERS.filter((m) => new RegExp('<!-- ' + m + ':start -->').test(body));
 }
-
-function tokenValid() {
-  try { return Date.now() - fs.statSync(TOKEN).mtimeMs <= TTL_MS; } catch (_) { return false; }
+function disabledHooks() {
+  return read(HOOKS_DISABLED).split('\n').map((s) => s.trim()).filter(Boolean);
+}
+function autoCompactNeedsReset() {
+  try {
+    const s = JSON.parse(read(SETTINGS) || '{}');
+    return s.context && s.context.autoCompactThreshold !== undefined && s.context.autoCompactThreshold !== DEFAULT_AUTOCOMPACT;
+  } catch (_) { return false; }
 }
 
-if (arg === 'confirm') {
-  if (!tokenValid()) {
-    out('no pending approval (run /toolkit-reset first, with no arguments, to preview and start a 15-minute approval window — it must be a real slash command the user types, not something you run for them) — nothing changed.');
+// Human-readable list of pending changes for a scope; empty array = nothing to reset.
+function changes(scope) {
+  const list = [];
+  const blocks = staleBlocks(scope);
+  if (blocks.length) list.push('remove toggle block(s) from ' + (scope === 'global' ? 'the global' : "this project's") + ' QWEN.md: ' + blocks.join(', '));
+  if (scope === 'global') {
+    const dh = disabledHooks();
+    if (dh.length) list.push('re-enable ' + dh.length + ' disabled hook(s) (clear .hooks-disabled): ' + dh.join(', '));
+    if (autoCompactNeedsReset()) list.push('reset context.autoCompactThreshold to the default (' + DEFAULT_AUTOCOMPACT + ', auto-compaction OFF)');
+  }
+  return list;
+}
+
+function applyReset(scope) {
+  // 1) strip the toggle blocks from the scope's QWEN.md
+  const file = qwenFileFor(scope);
+  const blocks = staleBlocks(scope);
+  if (blocks.length) {
+    let body = read(file);
+    for (const m of blocks) {
+      const re = new RegExp('\\n?<!-- ' + m + ':start -->[\\s\\S]*?<!-- ' + m + ':end -->\\n?', 'g');
+      body = body.replace(re, '\n');
+    }
+    fs.writeFileSync(file, body.replace(/\n{3,}/g, '\n\n').replace(/^\n+/, ''));
+  }
+  // 2) global scope only: reset toolkit-managed settings to defaults
+  if (scope === 'global') {
+    try { fs.unlinkSync(HOOKS_DISABLED); } catch (_) {} // re-enable all hooks
+    try {
+      const s = JSON.parse(read(SETTINGS) || '{}');
+      if (s.context && s.context.autoCompactThreshold !== undefined) {
+        s.context.autoCompactThreshold = DEFAULT_AUTOCOMPACT;
+        fs.writeFileSync(SETTINGS, JSON.stringify(s, null, 2) + '\n');
+      }
+    } catch (_) { /* settings unreadable/absent — leave it */ }
+  }
+}
+
+function tokenScope() {
+  try {
+    if (Date.now() - fs.statSync(TOKEN).mtimeMs > TTL_MS) return null;
+    const s = read(TOKEN).trim();
+    return s === 'global' ? 'global' : 'project';
+  } catch (_) { return null; }
+}
+
+if (isConfirm) {
+  const scope = tokenScope();
+  if (!scope) {
+    out('no pending approval (run /toolkit-reset [project|global] first, with no confirm, to preview and open a 15-minute approval window — it must be a real slash command the user types, not something you run for them) — nothing changed.');
   }
   try { fs.unlinkSync(TOKEN); } catch (_) {}
-  const stale = findStale(); // recompute fresh — the file may have changed since the preview
-  if (!stale.length) out('nothing to reset (no stale global blocks found at confirm time) — nothing changed.');
-  let body = read(FILE);
-  for (const m of stale) {
-    const re = new RegExp('\\n?<!-- ' + m + ':start -->[\\s\\S]*?<!-- ' + m + ':end -->\\n?', 'g');
-    body = body.replace(re, '\n');
-  }
-  body = body.replace(/\n{3,}/g, '\n\n').replace(/^\n+/, '');
-  fs.writeFileSync(FILE, body);
-  out('removed stale global block(s) — ' + stale.join(', ') +
-    ' (these are project-local now; re-apply per project with /bro, /cover, /dev, /maxagents, /versioning if you still want them there).');
+  const pending = changes(scope); // recompute fresh — state may have changed since preview
+  if (!pending.length) out('nothing to reset for the ' + scope + ' scope at confirm time — nothing changed.');
+  applyReset(scope);
+  out('reset done (' + scope + ' scope): ' + pending.join('; ') + '.' +
+    (scope === 'global' ? ' Restart qwen-code / start a new session for the settings changes to take effect.' : ''));
 }
 
-if (arg === '' || arg === 'status' || arg === 'preview') {
-  const stale = findStale();
-  if (!stale.length) {
-    try { fs.unlinkSync(TOKEN); } catch (_) {} // no point leaving a stale token armed
-    out('nothing to reset — no stale global blocks found in ' + FILE + '.');
+if (!isConfirm) {
+  const scope = scopeArg || 'project';
+  const pending = changes(scope);
+  if (!pending.length) {
+    try { fs.unlinkSync(TOKEN); } catch (_) {}
+    out('nothing to reset — the ' + scope + ' scope already matches the current version\'s defaults.');
   }
   fs.mkdirSync(QHOME, { recursive: true });
-  fs.writeFileSync(TOKEN, '');
-  out('PREVIEW — would remove from the global QWEN.md: ' + stale.join(', ') +
-    '. Nothing has changed yet. A 15-minute approval window just opened; ask the user to confirm, ' +
-    'then run /toolkit-reset confirm to actually remove them.');
+  fs.writeFileSync(TOKEN, scope);
+  out('PREVIEW (' + scope + ' scope) — ⚠ WARNING: this RESETS the ' + scope +
+    ' toolkit state to the current version\'s defaults; your current toggles/settings in this scope will be LOST and it is not auto-reversible. It would: ' + pending.join('; ') +
+    '. NOTHING has changed yet. A 15-minute approval window opened for the ' + scope +
+    ' scope. You MUST warn the user this is destructive and ASK them to confirm ("точно сбросить до значений по умолчанию?") — for BOTH project and global — and only if they say yes, they themselves run /toolkit-reset confirm.');
 }
-
-out("usage - /toolkit-reset (preview) | /toolkit-reset confirm. Got: '" + arg + "'");

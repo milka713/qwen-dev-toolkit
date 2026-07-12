@@ -4,6 +4,15 @@ All notable changes to qwen-dev-toolkit are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com); versions follow semver.
 (Releases before 1.7.0 predate this file and are not backfilled — see the git history.)
 
+## [1.16.0] - 2026-07-12
+
+### Changed
+- **`/toolkit-reset` now resets the toolkit to the current version's defaults, scoped.** It was a global-only sweep of stale marker blocks; now it takes a scope — `/toolkit-reset` (or `/toolkit-reset project`) resets **this project**, `/toolkit-reset global` resets **`~/.qwen`**:
+  - **Both scopes:** remove the toolkit's toggle blocks (`/dev`, `/cover`, `/bro`, `/maxagents`, `/versioning`, `/reality`) from that scope's `QWEN.md`, turning those modes back to default (also cleans stale drift an older version left in the wrong place).
+  - **Global scope additionally:** reset the toolkit-managed global settings to defaults — re-enable all hooks (clear `.hooks-disabled`) and set `context.autoCompactThreshold` back to the default (auto-compaction OFF).
+  - **Confirmation is mandatory in both scopes** and unchanged in spirit: a plain run **previews** with an explicit destructive-action warning and opens a 15-minute window (mutating nothing); `/toolkit-reset confirm` applies it. The approval **token now records the previewed scope**, so confirm always applies exactly the scope you previewed. The `toolkit-reset-guard` hook still backstops the confirm step at the engine level (no change needed — it's scope-agnostic).
+  - Project-scope and global-scope resets are isolated from each other (a global reset never touches a project's `./QWEN.md`; a project reset never touches global settings) — asserted by tests. 169 tests passing (the reset suite rewritten for the two scopes + settings resets).
+
 ## [1.15.0] - 2026-07-12
 
 ### Changed

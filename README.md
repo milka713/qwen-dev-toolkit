@@ -213,21 +213,22 @@ update are the same operation; works from anywhere (needs `git` + `node`). This 
 about getting the **latest released code** — for cleaning up settings a toggle left behind
 in the wrong place, see `/toolkit-reset` below (a separate, unrelated command).
 
-**`/toolkit-reset` · `confirm`** — Deterministic cleanup for settings an *older* toolkit
-version left behind in the wrong (global) place — e.g. some toggles used to be pinned
-globally and are per-project now (`/bro` before v1.8.0): a block left in the *global*
-`~/.qwen/QWEN.md` from before that change keeps applying to every project forever, since no
-current command manages it there anymore. `/toolkit-reset` sweeps those specific known
-blocks (`bromode`/`covermode`/`devmode`/`maxagents`/`versioning`) out of the global file —
-never touches a project's own `QWEN.md` — and reports exactly what it found or removed.
-Pure local cleanup, no network, unrelated to `/toolkit-update`. **Requires confirmation, and
-that confirmation is not optional or skippable by the model:** plain `/toolkit-reset`
-*previews* what would be removed and opens a 15-minute approval window, changing nothing;
-only `/toolkit-reset confirm`, typed by you within that window, actually removes anything.
-A `toolkit-reset-guard` hook enforces the window at the engine level — even a model that
-tried to call the confirm step directly via a shell command, skipping you, would be denied,
-the same way `git-branch-guard` backstops `/main-push`.
-· _Example:_ `/toolkit-reset` then, if the preview looks right, `/toolkit-reset confirm`
+**`/toolkit-reset` · `project` · `global` · `confirm`** — Bring the toolkit back to the shape
+the **current version implies by default**, for a chosen scope. `/toolkit-reset` (or
+`/toolkit-reset project`) resets **this project**; `/toolkit-reset global` resets the global
+`~/.qwen`. It removes the toolkit's toggle blocks (`/dev`, `/cover`, `/bro`, `/maxagents`,
+`/versioning`, `/reality`) from that scope's `QWEN.md` — turning those modes back to their
+defaults — and, for the **global** scope, also resets the toolkit's global settings to
+defaults: re-enables all hooks (clears `.hooks-disabled`) and puts auto-compaction back to its
+default. This also cleans stale blocks an older version pinned in the wrong place (e.g. a
+global `/bro` from before v1.8.0). Pure local cleanup, no network, unrelated to
+`/toolkit-update`. **Requires confirmation in both scopes, and it isn't skippable by the
+model:** a plain run *previews* what would change (with a destructive-action warning) and opens
+a 15-minute window, changing nothing; only `/toolkit-reset confirm`, typed by you within that
+window, applies it (to the scope you previewed — the token remembers it). A
+`toolkit-reset-guard` hook enforces the window at the engine level, the same way
+`git-branch-guard` backstops `/main-push`.
+· _Example:_ `/toolkit-reset global` then, if the preview looks right, `/toolkit-reset confirm`
 
 ### Subagents (isolated context)
 

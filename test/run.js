@@ -351,86 +351,96 @@ console.log('— /hooks —');
   ok('bare "off" is refused (no accidental nuke)', /specify what to turn off/.test(run(['off'])) && !fs.existsSync(disabledFile));
 }
 
-// ---- /toolkit-reset — sweep global marker-block drift, gated by a real confirm step ----
-// Simulates the exact drift this exists for: an older toolkit version pinned /bro globally
-// (pre-1.8.0); the block is still sitting in ~/.qwen/QWEN.md even though no current command
-// manages it there. Unrelated to /toolkit-update (no network) — a standalone command with
-// a mandatory preview -> confirm flow so a model can't silently mutate settings.
+// ---- /toolkit-reset — reset the toolkit to the current version's defaults, per scope -----
+// Scopes: project (default; this project's ./QWEN.md toggle blocks) and global (~/.qwen
+// QWEN.md drift + toolkit-managed settings: re-enable hooks, autoCompactThreshold default).
+// Mandatory preview -> confirm; the token remembers the previewed scope.
 console.log('— /toolkit-reset —');
 const tkReset = path.join(ROOT, 'commands', '_toolkit-reset.js');
 const MARKERS = ['bromode', 'covermode', 'devmode', 'maxagents', 'versioning', 'realitymode'];
 const seedStale = (file) => {
-  const blocks = MARKERS.map((m) =>
-    `<!-- ${m}:start -->\nstale ${m} content from an old toolkit version\n<!-- ${m}:end -->\n`
-  ).join('\n');
-  fs.writeFileSync(file, `# my own notes\nI wrote this myself, keep it.\n\n${blocks}\nmore of my own notes at the end.\n`);
+  const blocks = MARKERS.map((m) => `<!-- ${m}:start -->\nstale ${m} content\n<!-- ${m}:end -->\n`).join('\n');
+  fs.writeFileSync(file, `# my own notes\nkeep this line.\n\n${blocks}\nand this trailing note.\n`);
 };
-const tkRun = (arg, qh) => cp.spawnSync('node', [tkReset, ...(arg ? [arg] : [])], { env: { ...process.env, QWEN_HOME: qh }, encoding: 'utf8' });
+const tkRun = (args, qh, cwd) => cp.spawnSync('node', [tkReset, ...args], { env: { ...process.env, QWEN_HOME: qh }, cwd: cwd || process.cwd(), encoding: 'utf8' });
 const tokenOf = (qh) => path.join(qh, '.toolkit-reset-approval');
 
-// (a) confirm with NO prior preview must refuse — there is no approval window yet.
+// === GLOBAL scope ===
+// (a) confirm with NO prior preview must refuse; the global QWEN.md stays untouched.
 {
-  const qh = tmp(); fs.mkdirSync(qh, { recursive: true }); seedStale(path.join(qh, 'QWEN.md'));
-  const r = tkRun('confirm', qh);
-  ok('confirm with no prior preview is refused', r.status === 0 && /no pending approval/.test(r.stdout));
-  ok('refused confirm leaves QWEN.md untouched', MARKERS.every((m) => fs.readFileSync(path.join(qh, 'QWEN.md'), 'utf8').includes(`${m}:start`)));
+  const qh = tmp(); seedStale(path.join(qh, 'QWEN.md'));
+  const r = tkRun(['confirm'], qh);
+  ok('confirm with no prior preview is refused', /no pending approval/.test(r.stdout));
+  ok('refused confirm leaves the global QWEN.md untouched', MARKERS.every((m) => fs.readFileSync(path.join(qh, 'QWEN.md'), 'utf8').includes(`${m}:start`)));
+}
+// (b) global preview: WARNS it is destructive + asks; lists blocks AND settings resets;
+//     mutates nothing; arms a token that records scope=global.
+const gq = tmp();
+seedStale(path.join(gq, 'QWEN.md'));
+fs.writeFileSync(path.join(gq, 'settings.json'), JSON.stringify({ context: { autoCompactThreshold: 0.7 } }, null, 2));
+fs.writeFileSync(path.join(gq, '.hooks-disabled'), 'secret-guard\ngit-branch-guard\n');
+{
+  const r = tkRun(['global'], gq);
+  ok('global preview warns it is destructive and asks to confirm', /⚠|WARNING/.test(r.stdout) && /confirm/i.test(r.stdout));
+  ok('global preview lists the stale blocks', MARKERS.every((m) => r.stdout.includes(m)));
+  ok('global preview lists the settings resets', /autoCompactThreshold/.test(r.stdout) && /re-enable 2 disabled hook/.test(r.stdout));
+  ok('global preview mutates nothing', MARKERS.every((m) => fs.readFileSync(path.join(gq, 'QWEN.md'), 'utf8').includes(`${m}:start`)) && fs.existsSync(path.join(gq, '.hooks-disabled')));
+  ok('global preview arms token with scope=global', fs.readFileSync(tokenOf(gq), 'utf8').trim() === 'global');
+}
+// (c) global confirm: removes blocks, keeps prose, resets settings, consumes the token.
+{
+  const r = tkRun(['confirm'], gq);
+  ok('global confirm reports done', /reset done \(global scope\)/.test(r.stdout));
+  const body = fs.readFileSync(path.join(gq, 'QWEN.md'), 'utf8');
+  ok('global confirm removes all stale blocks', MARKERS.every((m) => !body.includes(`${m}:start`)));
+  ok('global confirm keeps the user prose', body.includes('keep this line.') && body.includes('and this trailing note.'));
+  ok('global confirm re-enables hooks (clears .hooks-disabled)', !fs.existsSync(path.join(gq, '.hooks-disabled')));
+  ok('global confirm resets autoCompactThreshold to default 1', JSON.parse(fs.readFileSync(path.join(gq, 'settings.json'), 'utf8')).context.autoCompactThreshold === 1);
+  ok('global confirm consumes the token', !fs.existsSync(tokenOf(gq)));
+  ok('a second confirm right after is refused', /no pending approval/.test(tkRun(['confirm'], gq).stdout));
+}
+// (d) an expired token (>15 min) is treated as no approval.
+{
+  const qh = tmp(); seedStale(path.join(qh, 'QWEN.md'));
+  tkRun(['global'], qh);
+  const old = new Date(Date.now() - 16 * 60 * 1000); fs.utimesSync(tokenOf(qh), old, old);
+  ok('confirm refuses an expired (>15min) token', /no pending approval/.test(tkRun(['confirm'], qh).stdout));
+}
+// (e) nothing to reset (clean QWEN.md, default settings) -> clean report, no token armed.
+{
+  const qh = tmp(); fs.writeFileSync(path.join(qh, 'QWEN.md'), '# nothing stale\n');
+  const r = tkRun(['global'], qh);
+  ok('global with nothing to reset reports clean', /nothing to reset/.test(r.stdout));
+  ok('no token armed when nothing to reset', !fs.existsSync(tokenOf(qh)));
 }
 
-// (b) preview: lists what would be removed, mutates NOTHING, opens the approval window.
-const qh5 = tmp(); fs.mkdirSync(qh5, { recursive: true }); seedStale(path.join(qh5, 'QWEN.md'));
+// === PROJECT scope ===
+// project preview/confirm operate on the CWD's ./QWEN.md and must NOT touch global settings.
 {
-  const r = tkRun('', qh5);
-  ok('preview exits 0', r.status === 0, (r.stderr || '').slice(0, 160));
-  ok('preview reports PREVIEW and lists all marker blocks', /PREVIEW/.test(r.stdout) && MARKERS.every((m) => r.stdout.includes(m)));
-  ok('preview does not mutate QWEN.md', MARKERS.every((m) => fs.readFileSync(path.join(qh5, 'QWEN.md'), 'utf8').includes(`${m}:start`)));
-  ok('preview opens the approval token', fs.existsSync(tokenOf(qh5)));
+  const qh = tmp();
+  fs.writeFileSync(path.join(qh, 'settings.json'), JSON.stringify({ context: { autoCompactThreshold: 0.7 } }, null, 2));
+  fs.writeFileSync(path.join(qh, '.hooks-disabled'), 'secret-guard\n');
+  fs.writeFileSync(path.join(qh, 'QWEN.md'), '<!-- bromode:start -->\nstale GLOBAL block\n<!-- bromode:end -->\n');
+  const proj = tmp(); seedStale(path.join(proj, 'QWEN.md'));
+  const p = tkRun([], qh, proj); // no arg -> project scope
+  ok('project preview warns and asks to confirm', /⚠|WARNING/.test(p.stdout) && /confirm/i.test(p.stdout));
+  ok('project preview arms token with scope=project', fs.readFileSync(tokenOf(qh), 'utf8').trim() === 'project');
+  const c = tkRun(['confirm'], qh, proj);
+  ok('project confirm reports done (project scope)', /reset done \(project scope\)/.test(c.stdout));
+  ok('project confirm removes blocks from the project QWEN.md', MARKERS.every((m) => !fs.readFileSync(path.join(proj, 'QWEN.md'), 'utf8').includes(`${m}:start`)));
+  ok('project confirm keeps the project prose', fs.readFileSync(path.join(proj, 'QWEN.md'), 'utf8').includes('keep this line.'));
+  ok('project scope does NOT touch global settings', JSON.parse(fs.readFileSync(path.join(qh, 'settings.json'), 'utf8')).context.autoCompactThreshold === 0.7 && fs.existsSync(path.join(qh, '.hooks-disabled')));
+  ok('project scope does NOT touch the global QWEN.md', fs.readFileSync(path.join(qh, 'QWEN.md'), 'utf8').includes('bromode:start'));
 }
-
-// (c) confirm within the window: removes exactly the stale blocks, keeps the user's own
-// prose, and consumes the token (a second confirm right after must refuse again).
+// global scope must NOT touch the project's ./QWEN.md (isolation the other way).
 {
-  const r = tkRun('confirm', qh5);
-  ok('confirm exits 0', r.status === 0, (r.stderr || '').slice(0, 160));
-  ok('confirm reports the removed blocks', /removed stale global block\(s\)/.test(r.stdout) && MARKERS.every((m) => r.stdout.includes(m)));
-  const body = fs.readFileSync(path.join(qh5, 'QWEN.md'), 'utf8');
-  ok('confirm removes all stale marker blocks', MARKERS.every((m) => !body.includes(`${m}:start`)));
-  ok('confirm keeps the user\'s own prose', body.includes('I wrote this myself, keep it.') && body.includes('more of my own notes at the end.'));
-  ok('confirm consumes the token', !fs.existsSync(tokenOf(qh5)));
-  const r2 = tkRun('confirm', qh5);
-  ok('a second confirm right after is refused (token already spent)', /no pending approval/.test(r2.stdout));
-}
-
-// (d) an expired token (>15 min old) must be treated as no approval at all.
-{
-  const qh = tmp(); fs.mkdirSync(qh, { recursive: true }); seedStale(path.join(qh, 'QWEN.md'));
-  tkRun('', qh); // open the window
-  const old = new Date(Date.now() - 16 * 60 * 1000);
-  fs.utimesSync(tokenOf(qh), old, old);
-  const r = tkRun('confirm', qh);
-  ok('confirm refuses an expired (>15min) token', /no pending approval/.test(r.stdout));
-}
-
-// (e) nothing stale -> clean report, no token armed for no reason.
-{
-  const qh = tmp(); fs.mkdirSync(qh, { recursive: true }); fs.writeFileSync(path.join(qh, 'QWEN.md'), '# nothing stale here\n');
-  const r = tkRun('', qh);
-  ok('preview reports nothing to reset when clean', /nothing to reset/.test(r.stdout));
-  ok('no token armed when there is nothing to confirm', !fs.existsSync(tokenOf(qh)));
-}
-ok('"status"/"preview" aliases behave like bare preview', /PREVIEW|nothing to reset/.test(tkRun('status', tmp()).stdout));
-ok('unknown arg -> usage, no crash', /usage/.test(tkRun('bogus', tmp()).stdout));
-
-// (f) a reset must NEVER touch a project's own QWEN.md — different file entirely; the
-// script only ever reads/writes QHOME/QWEN.md, but assert the byte-for-byte guarantee.
-{
-  const projDir = tmp();
-  const projFile = path.join(projDir, 'QWEN.md');
-  fs.writeFileSync(projFile, '<!-- bromode:start -->\nlegit CURRENT project-level persona, must survive\n<!-- bromode:end -->\n');
+  const qh = tmp(); seedStale(path.join(qh, 'QWEN.md'));
+  const proj = tmp();
+  const projFile = path.join(proj, 'QWEN.md');
+  fs.writeFileSync(projFile, '<!-- realitymode:start -->\nlive project toggle, must survive\n<!-- realitymode:end -->\n');
   const before = fs.readFileSync(projFile, 'utf8');
-  const qh = tmp(); fs.mkdirSync(qh, { recursive: true }); seedStale(path.join(qh, 'QWEN.md'));
-  cp.spawnSync('node', [tkReset], { env: { ...process.env, QWEN_HOME: qh }, cwd: projDir, encoding: 'utf8' });
-  cp.spawnSync('node', [tkReset, 'confirm'], { env: { ...process.env, QWEN_HOME: qh }, cwd: projDir, encoding: 'utf8' });
-  ok('reset never touches a project QWEN.md', fs.readFileSync(projFile, 'utf8') === before);
+  tkRun(['global'], qh, proj); tkRun(['confirm'], qh, proj);
+  ok('global reset never touches the project QWEN.md', fs.readFileSync(projFile, 'utf8') === before);
 }
 
 // ---- toolkit-reset-guard hook — engine-level backstop, model can't skip the window ----
