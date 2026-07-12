@@ -26,6 +26,7 @@ const DEFAULT = [
   '- PATCH (x.y.Z) — a small fix, tweak, docs change, or refactor with no behavior change (e.g. 1.4.6 → 1.4.7).',
   '- MINOR (x.Y.0) — a notable new feature or backward-compatible behavior change (e.g. 1.4.7 → 1.5.0).',
   '- MAJOR (X.0.0) — a breaking / incompatible change (e.g. 1.5.0 → 2.0.0).',
+  'When the bump is borderline, prefer the smaller one; a same-cycle rework or correction of a just-released change is a PATCH, not a new MINOR.',
   'Always state the concrete version explicitly (e.g. "v1.4.7", "v1.5.0") when reporting a release, and say which part you bumped and why. (Turn off with /versioning off.)',
   '<!-- versioning:end -->',
 ];

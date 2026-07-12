@@ -28,7 +28,7 @@ const TTL_MS = 15 * 60 * 1000;
 // Toggles that pin a "<!-- NAME:start -->...<!-- NAME:end -->" block into PROJECT QWEN.md
 // today. Any of these found in the GLOBAL file is always a leftover — no live command
 // manages it there.
-const MARKERS = ['bromode', 'covermode', 'devmode', 'maxagents', 'versioning'];
+const MARKERS = ['bromode', 'covermode', 'devmode', 'maxagents', 'versioning', 'realitymode'];
 
 const arg = (process.argv[2] || '').trim().toLowerCase();
 const out = (msg) => { console.log('TOOLKIT_RESET_RESULT: ' + msg); process.exit(0); };

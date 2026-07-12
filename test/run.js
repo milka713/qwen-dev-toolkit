@@ -55,6 +55,17 @@ ok('every skills/ dir is in install+uninstall manifests', unlistedS.length === 0
 const hookNames = [...installSrc.matchAll(/setHook\([^,]+,\s*'[^']*'\s*,\s*'([^']+)'/g)].map((m) => m[1]);
 const missingHooks = hookNames.filter((h) => !uninstallSrc.includes(`'${h}'`));
 ok('every install.js setHook() name is in uninstall.js\'s strip set', missingHooks.length === 0, missingHooks.join(', '));
+// install.js installs commands by scanning commands/ (no explicit list), so uninstall.js is
+// the only manifest: every command .md and every _*.{sh,js} backend must be in its removal
+// lists, or `uninstall`/reinstall orphans files (this gap shipped once — /autocompact and
+// /toolkit-reset were never in CMD_MD/CMD_BACKENDS).
+const cmdFiles = fs.readdirSync(path.join(ROOT, 'commands'));
+const cmdMd = cmdFiles.filter((f) => f.endsWith('.md') && !f.startsWith('_')).map((f) => f.replace(/\.md$/, ''));
+const cmdBackends = [...new Set(cmdFiles.filter((f) => f.startsWith('_') && (f.endsWith('.sh') || f.endsWith('.js'))).map((f) => f.replace(/\.(sh|js)$/, '')))];
+const missingCmd = cmdMd.filter((c) => !new RegExp(`'${c}'`).test(uninstallSrc));
+const missingBk = cmdBackends.filter((c) => !new RegExp(`'${c}'`).test(uninstallSrc));
+ok('every command .md is in uninstall.js CMD_MD', missingCmd.length === 0, missingCmd.join(', '));
+ok('every command backend is in uninstall.js CMD_BACKENDS', missingBk.length === 0, missingBk.join(', '));
 const badFm = [];
 for (const a of agentNames) { const b = fs.readFileSync(path.join(ROOT, 'agents', a + '.md'), 'utf8'); if (!b.startsWith('---') || !b.includes('name: ' + a + '\n') || !b.includes('tools:')) badFm.push(a); }
 for (const s of skillNames) { const b = fs.readFileSync(path.join(ROOT, 'skills', s, 'SKILL.md'), 'utf8'); if (!b.startsWith('---') || !b.includes('name: ' + s + '\n')) badFm.push(s); }
@@ -184,8 +195,13 @@ ok('skills installed', fs.existsSync(path.join(qh2, 'skills', 'implement', 'SKIL
 ok('agents installed', fs.existsSync(path.join(qh2, 'agents', 'debugger.md')) && fs.existsSync(path.join(qh2, 'agents', 'tester.md')));
 ok('hooks wired into settings.json', fs.readFileSync(path.join(qh2, 'settings.json'), 'utf8').includes('git-branch-guard'));
 ok('QWEN.md guidance added', fs.readFileSync(path.join(qh2, 'QWEN.md'), 'utf8').includes('qwen-dev-toolkit:start'));
-// the always-on honesty/integrity principle must ship inside the merged QWEN.md block
-ok('QWEN.md carries the integrity principle', fs.readFileSync(path.join(qh2, 'QWEN.md'), 'utf8').includes('Integrity over agreement'));
+// /reality (integrity mode) is a toggle, OFF by default — the honesty directive must NOT
+// sit in the always-on QWEN.md block; it only appears once the user runs /reality.
+ok('reality-mode is OFF by default (not in the always-on block)', !fs.readFileSync(path.join(qh2, 'QWEN.md'), 'utf8').includes('Reality mode — ACTIVE'));
+// _reality.sh and _reality.js are parallel independent backends (like /cover), so the
+// installer ships only the OS-appropriate one: .sh on POSIX, .js on Windows.
+ok('reality backend installed for this OS',
+  fs.existsSync(path.join(qh2, 'commands', process.platform === 'win32' ? '_reality.js' : '_reality.sh')));
 // /autocompact: the .sh is a thin wrapper over the Node logic, so BOTH files must land
 // on POSIX; and a fresh install must default auto-compaction to OFF (threshold 1).
 ok('autocompact Node logic installed alongside the wrapper',
@@ -208,6 +224,30 @@ ok('uninstall removes skills', !fs.existsSync(path.join(qh2, 'skills', 'implemen
 ok('uninstall strips hook entries', !fs.readFileSync(path.join(qh2, 'settings.json'), 'utf8').includes('git-branch-guard'));
 ok('uninstall strips toolkit-reset-guard entry too', !fs.readFileSync(path.join(qh2, 'settings.json'), 'utf8').includes('toolkit-reset-guard'));
 
+// ---- /reality — integrity-over-agreement toggle, OFF by default, per-project block ------
+console.log('— /reality —');
+{
+  const rl = path.join(ROOT, 'commands', '_reality.js');
+  const proj = tmp(); fs.mkdirSync(proj, { recursive: true });
+  const qf = path.join(proj, 'QWEN.md');
+  const run = (arg) => cp.spawnSync('node', [rl, ...(arg ? [arg] : [])], { cwd: proj, encoding: 'utf8' });
+  // status before anything: OFF, and nothing written
+  ok('reality status is OFF by default', /OFF/.test(run('status').stdout) && !fs.existsSync(qf));
+  // on: pins the realitymode block with the honesty directive
+  const on = run('on');
+  ok('reality on reports ON', /now ON/.test(on.stdout));
+  ok('reality on pins the realitymode block', fs.readFileSync(qf, 'utf8').includes('<!-- realitymode:start -->') && fs.readFileSync(qf, 'utf8').includes('integrity over agreement'));
+  ok('reality status now reads ON', /ON/.test(run('status').stdout));
+  // idempotent: a second `on` must not duplicate the block
+  run('on');
+  ok('reality on is idempotent (single block)', fs.readFileSync(qf, 'utf8').split('realitymode:start').length - 1 === 1);
+  // off: removes the block, back to OFF
+  const off = run('off');
+  ok('reality off reports OFF', /now OFF/.test(off.stdout));
+  ok('reality off removes the block', !fs.readFileSync(qf, 'utf8').includes('realitymode:start'));
+  ok('reality off when already off is a clean no-op', /already OFF/.test(run('off').stdout));
+}
+
 // ---- /toolkit-reset — sweep global marker-block drift, gated by a real confirm step ----
 // Simulates the exact drift this exists for: an older toolkit version pinned /bro globally
 // (pre-1.8.0); the block is still sitting in ~/.qwen/QWEN.md even though no current command
@@ -215,7 +255,7 @@ ok('uninstall strips toolkit-reset-guard entry too', !fs.readFileSync(path.join(
 // a mandatory preview -> confirm flow so a model can't silently mutate settings.
 console.log('— /toolkit-reset —');
 const tkReset = path.join(ROOT, 'commands', '_toolkit-reset.js');
-const MARKERS = ['bromode', 'covermode', 'devmode', 'maxagents', 'versioning'];
+const MARKERS = ['bromode', 'covermode', 'devmode', 'maxagents', 'versioning', 'realitymode'];
 const seedStale = (file) => {
   const blocks = MARKERS.map((m) =>
     `<!-- ${m}:start -->\nstale ${m} content from an old toolkit version\n<!-- ${m}:end -->\n`
@@ -238,7 +278,7 @@ const qh5 = tmp(); fs.mkdirSync(qh5, { recursive: true }); seedStale(path.join(q
 {
   const r = tkRun('', qh5);
   ok('preview exits 0', r.status === 0, (r.stderr || '').slice(0, 160));
-  ok('preview reports PREVIEW and lists all 5 blocks', /PREVIEW/.test(r.stdout) && MARKERS.every((m) => r.stdout.includes(m)));
+  ok('preview reports PREVIEW and lists all marker blocks', /PREVIEW/.test(r.stdout) && MARKERS.every((m) => r.stdout.includes(m)));
   ok('preview does not mutate QWEN.md', MARKERS.every((m) => fs.readFileSync(path.join(qh5, 'QWEN.md'), 'utf8').includes(`${m}:start`)));
   ok('preview opens the approval token', fs.existsSync(tokenOf(qh5)));
 }
@@ -250,7 +290,7 @@ const qh5 = tmp(); fs.mkdirSync(qh5, { recursive: true }); seedStale(path.join(q
   ok('confirm exits 0', r.status === 0, (r.stderr || '').slice(0, 160));
   ok('confirm reports the removed blocks', /removed stale global block\(s\)/.test(r.stdout) && MARKERS.every((m) => r.stdout.includes(m)));
   const body = fs.readFileSync(path.join(qh5, 'QWEN.md'), 'utf8');
-  ok('confirm removes all 5 stale marker blocks', MARKERS.every((m) => !body.includes(`${m}:start`)));
+  ok('confirm removes all stale marker blocks', MARKERS.every((m) => !body.includes(`${m}:start`)));
   ok('confirm keeps the user\'s own prose', body.includes('I wrote this myself, keep it.') && body.includes('more of my own notes at the end.'));
   ok('confirm consumes the token', !fs.existsSync(tokenOf(qh5)));
   const r2 = tkRun('confirm', qh5);

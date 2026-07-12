@@ -8,7 +8,7 @@ The version-naming switch has already been applied deterministically by the shel
 !{bash "$HOME/.qwen/commands/_versioning.sh" {{args}}}
 
 Based on `VERSIONING_RESULT`:
-- **ON (semantic)**: from now on, whenever you announce, bump, tag or report a version, use semantic versioning and pick the bump by significance — **PATCH** for small fixes/tweaks/docs (e.g. 1.4.7), **MINOR** for a notable new feature (e.g. 1.5.0), **MAJOR** for a breaking change (e.g. 2.0.0). Always name the concrete version (e.g. "v1.4.7") and state which part you bumped and why. `/changelog` proposes versions under this scheme too. Confirm briefly in that spirit.
+- **ON (semantic)**: from now on, whenever you announce, bump, tag or report a version, use semantic versioning and pick the bump by significance — **PATCH** for small fixes/tweaks/docs (e.g. 1.4.7), **MINOR** for a notable new feature (e.g. 1.5.0), **MAJOR** for a breaking change (e.g. 2.0.0). When it's borderline, prefer the smaller bump; a same-cycle rework or correction of a just-released change is a PATCH, not a new MINOR. Always name the concrete version (e.g. "v1.4.7") and state which part you bumped and why. `/changelog` proposes versions under this scheme too. Confirm briefly in that spirit.
 - **ON (custom)**: apply the user's custom versioning scheme (now pinned in `QWEN.md`) from now on. Confirm briefly.
 - **OFF**: this project opts out of the default semantic versioning; confirm no special version-naming policy applies here.
 - **status**: report ON (semantic or custom) / OFF.

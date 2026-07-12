@@ -4,6 +4,15 @@ All notable changes to qwen-dev-toolkit are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com); versions follow semver.
 (Releases before 1.7.0 predate this file and are not backfilled — see the git history.)
 
+## [1.12.1] - 2026-07-12
+
+### Changed
+- **Versioning guidance: added the "prefer the smaller bump when borderline" rule.** The PATCH/MINOR/MAJOR wording was standard-correct but incomplete — it didn't say what to do in a borderline case, so a same-cycle correction could get over-bumped. Now the semantic-versioning guidance (global `QWEN.md`, `/versioning` command + its pinned block) adds: when the bump is borderline, prefer the smaller one, and a same-cycle rework or correction of a just-released change is a **PATCH**, not a new MINOR. This release itself follows that rule: it corrects 1.12.0's just-shipped integrity feature, so it's `1.12.1`, not `1.13.0`.
+- **"Integrity over agreement" is now a toggle (`/reality`), OFF by default** — not the always-on `QWEN.md` clause that 1.12.0 shipped. It moved out of the always-loaded guidance block into a per-project `realitymode` marker block that `/reality` (or `/reality on`) pins into the project's `QWEN.md`, `/reality off` removes, and `/reality status` reports — same deterministic, compaction-proof pattern as `/cover` and `/bro`. When ON, the assistant is held to the honesty directive: be accurate rather than agreeable, separate fact/inference/opinion, surface inconvenient truths (failed tests, skipped steps, real risks) without softening, disagree directly when the user or a plan is wrong, never fabricate agreement or confidence. Rationale: it costs nothing on the small context window when you don't want it, and you opt in per project. `realitymode` is now one of the blocks `/toolkit-reset` sweeps from a global `QWEN.md`. Parallel `_reality.sh` / `_reality.js` backends (byte-identical output, verified).
+
+### Fixed
+- **`uninstall.js` orphaned `/autocompact` and `/toolkit-reset` command files** — they were never added to its `CMD_MD` / `CMD_BACKENDS` removal lists (a gap from 1.10.0/1.11.0), so uninstalling left their `.md` and backend files behind in `~/.qwen/commands`. Both are now listed. A new manifest cross-check test asserts every command `.md` and every `_*.{sh,js}` backend in `commands/` is present in `uninstall.js`'s removal lists, so this can't silently regress (mirrors the existing hook/agent/skill cross-checks). Test count: 122 passing.
+
 ## [1.12.0] - 2026-07-11
 
 ### Added

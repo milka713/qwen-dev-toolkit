@@ -39,14 +39,6 @@ ships a full set of everyday development skills and commands: git-flow disciplin
 - **Compaction-proof flags** — compaction only summarizes the *conversation*; `QWEN.md`
   is re-attached as system context every request. So a block written to `QWEN.md` (e.g.
   the dev-mode flag) is always present and needs no re-declaring.
-- **Integrity over agreement (always on)** — the `QWEN.md` block carries a standing
-  honesty directive: be accurate, not agreeable. Separate fact / inference / opinion,
-  state uncertainty plainly, surface inconvenient truths (failed tests, skipped steps,
-  real risks) without softening or reframing, disagree directly when the user or a plan
-  is wrong, and never fabricate agreement or confidence. It lives in `QWEN.md` — not a
-  skill — precisely because that's the only primitive that is genuinely *always on*
-  (skills are on-demand; hooks are deterministic code and can't make a judgment call).
-
 ## Components
 
 ### Commands (deterministic, user-invoked)
@@ -120,6 +112,16 @@ formal assistant, in one of two personas: `свобода` = a S.T.A.L.K.E.R. *F
 always calls you "мэн", `ламар` = a GTA-V *Lamar Davis* street homie ("homie/foo/dog").
 Casual, slangy and blunt, but still genuinely accurate and helpful — the vibe is a wrapper,
 never an excuse to slack. Off by default; pinned **per-project** until `/bro off`.
+
+**`/reality` · `on` · `off` · `status`** — Integrity-over-agreement mode. While on, the
+assistant is held to a standing honesty directive: be accurate rather than agreeable —
+separate fact / inference / opinion, state uncertainty plainly, surface inconvenient truths
+(failed tests, skipped steps, real risks) without softening or reframing, disagree directly
+when you or a plan are wrong, and never fabricate agreement or confidence. A check on the
+model's own reasoning, not licence to be contrarian. **Off by default**; `/reality on` pins it
+**per-project** (survives compaction), `/reality off` clears it. It's a per-project toggle
+rather than an always-on rule so it costs nothing on the small context window until you opt in.
+· _Example:_ `/reality on`
 
 ### Skills (model- and user-invocable)
 
@@ -244,7 +246,7 @@ no session-only QWEN.md.
 | Skills, subagents, commands, hooks, guidance | `~/.qwen/…` | **Global** |
 | `/autocompact` threshold | `context.autoCompactThreshold` in `~/.qwen/settings.json` | **Global** (applies after restart) |
 | `/pin` memory | `<project>/FACTS.md` (gitignored) | **Project** |
-| `/dev`, `/bro`, `/cover`, `/versioning` flags | block in `<project>/QWEN.md` | **Project** (sticky until `off`) |
+| `/dev`, `/bro`, `/cover`, `/versioning`, `/reality` flags | block in `<project>/QWEN.md` | **Project** (sticky until `off`) |
 | Task state | `<project>/.qwen/PROGRESS.md` | **Project** |
 
 ## Usage
