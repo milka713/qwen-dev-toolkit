@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# qwen-dev-toolkit — MANAGED FILE. Do NOT hand-edit: /toolkit-update overwrites it, and
+# /toolkit-reset / reinstall can replace it. Source & docs: https://github.com/milka713/qwen-dev-toolkit
 # Generic pinned-mode toggle for qwen-dev-toolkit custom commands.
 # Pins/removes a marked block in the project's QWEN.md. That file is loaded as system
 # context every request and is never touched by compaction, so the mode persists for the

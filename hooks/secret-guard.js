@@ -86,6 +86,6 @@ process.stdout.write(JSON.stringify({
     hookEventName: 'PreToolUse',
     permissionDecision: 'deny',
     permissionDecisionReason:
-      '🧰 qwen-dev-toolkit secret-guard blocked this: it looks like ' + hit + '. Never hardcode secrets or commit them — read the value from an environment variable (e.g. process.env / os.environ) or a secrets manager, keep it in a gitignored .env, and pin only its *location* with /pin. If this is a false positive (a placeholder or test fixture), make that obvious (e.g. use YOUR_KEY_HERE) and retry.',
+      '[toolkit] secret-guard blocked this: it looks like ' + hit + '. Never hardcode secrets or commit them — read the value from an environment variable (e.g. process.env / os.environ) or a secrets manager, keep it in a gitignored .env, and pin only its *location* with /pin. If this is a false positive (a placeholder or test fixture), make that obvious (e.g. use YOUR_KEY_HERE) and retry.',
   },
 }));

@@ -1,5 +1,5 @@
 ---
-description: 🧰 Toggle per-project Development Mode (architect + delegate to implementer subagents). /dev or /dev on = enable, /dev off = disable, /dev status = check, /dev <what to build> = enable and start building. The flag is pinned in QWEN.md so it survives compaction with no re-declaration.
+description: [toolkit] Toggle per-project Development Mode (architect + delegate to implementer subagents). /dev or /dev on = enable, /dev off = disable, /dev status = check, /dev <what to build> = enable and start building. The flag is pinned in QWEN.md so it survives compaction with no re-declaration.
 ---
 
 The development-mode switch has already been applied deterministically by the shell below — act on its result, do not re-toggle it yourself:

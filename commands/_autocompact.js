@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// qwen-dev-toolkit — MANAGED FILE. Do NOT hand-edit: /toolkit-update overwrites it, and
+// /toolkit-reset / reinstall can replace it. Source & docs: https://github.com/milka713/qwen-dev-toolkit
 // /autocompact backend — controls qwen-code's auto-compaction via
 // context.autoCompactThreshold in ~/.qwen/settings.json (read at startup).
 // The threshold is the share of the INPUT budget (contextWindowSize − max_tokens)

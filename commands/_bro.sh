@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# qwen-dev-toolkit — MANAGED FILE. Do NOT hand-edit: /toolkit-update overwrites it, and
+# /toolkit-reset / reinstall can replace it. Source & docs: https://github.com/milka713/qwen-dev-toolkit
 # /bro backend — deterministic "talk to me like a homie" persona toggle, TWO flavors:
 #   1) Свободовец (S.T.A.L.K.E.R. Freedom faction) — always calls the user "мэн".
 #   2) Ламар (GTA V homie / Lamar Davis vibe) — Los Santos street bro.

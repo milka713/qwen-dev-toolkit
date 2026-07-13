@@ -1,5 +1,5 @@
 ---
-description: 🧰 Toggle per-project Test-First / Coverage Mode — enforce TDD (red-green-refactor) plus real tests with a measured coverage target. /cover or /cover on = enable at the default 80%; /cover <N> = enable with an N% target (0-100); /cover off = disable; /cover status = check. Deterministic, pinned in QWEN.md so it survives compaction.
+description: [toolkit] Toggle per-project Test-First / Coverage Mode — enforce TDD (red-green-refactor) plus real tests with a measured coverage target. /cover or /cover on = enable at the default 80%; /cover <N> = enable with an N% target (0-100); /cover off = disable; /cover status = check. Deterministic, pinned in QWEN.md so it survives compaction.
 argument-hint: '[on | off | status | <percent 0-100>]'
 ---
 

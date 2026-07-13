@@ -4,6 +4,14 @@ All notable changes to qwen-dev-toolkit are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com); versions follow semver.
 (Releases before 1.7.0 predate this file and are not backfilled — see the git history.)
 
+## [1.16.3] - 2026-07-13
+
+### Changed
+- **The toolkit signature is now the text `[toolkit]` instead of the 🧰 emoji.** The briefcase emoji rendered poorly, so every command and skill description, and every message a hook surfaces (guard deny reasons, injected notices), now uses a plain `[toolkit]` label. Command names and invocation are unchanged, as before.
+
+### Added
+- **Managed-file banner on command backends too.** The `_*.js` / `_*.sh` backend scripts in `~/.qwen/commands/` now carry the same "qwen-dev-toolkit — MANAGED FILE, do not hand-edit" banner as the hook scripts, so anyone opening a command backend to edit it sees where it came from. A test asserts every command backend carries the banner.
+
 ## [1.16.2] - 2026-07-12
 
 ### Added

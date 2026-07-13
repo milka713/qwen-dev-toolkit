@@ -1,5 +1,5 @@
 ---
-description: 🧰 Authorize ONE push to the protected branch (main/master). The git-flow guard blocks main operations by default; run this first to release. The authorization is single-use — it covers the merge and the one push, then is consumed (a second push needs running this again). /main-push or /main-push on = authorize one push; /main-push off = revoke; /main-push status = check.
+description: [toolkit] Authorize ONE push to the protected branch (main/master). The git-flow guard blocks main operations by default; run this first to release. The authorization is single-use — it covers the merge and the one push, then is consumed (a second push needs running this again). /main-push or /main-push on = authorize one push; /main-push off = revoke; /main-push status = check.
 argument-hint: '[on | off | status]'
 ---
 

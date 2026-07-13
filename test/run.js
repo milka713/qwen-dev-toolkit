@@ -66,9 +66,9 @@ const missingCmd = cmdMd.filter((c) => !new RegExp(`'${c}'`).test(uninstallSrc))
 const missingBk = cmdBackends.filter((c) => !new RegExp(`'${c}'`).test(uninstallSrc));
 ok('every command .md is in uninstall.js CMD_MD', missingCmd.length === 0, missingCmd.join(', '));
 ok('every command backend is in uninstall.js CMD_BACKENDS', missingBk.length === 0, missingBk.join(', '));
-// every toolkit command carries the 🧰 signature at the start of its description, so it reads
-// as a toolkit command in the "/" palette without changing the command name (invocation).
-const SIG = '🧰 '; // 🧰
+// every toolkit command carries the [toolkit] signature at the start of its description, so it
+// reads as a toolkit command in the "/" palette without changing the command name (invocation).
+const SIG = '[toolkit] ';
 const unsigned = cmdMd.filter((c) => {
   const m = fs.readFileSync(path.join(ROOT, 'commands', c + '.md'), 'utf8').match(/^description: (.*)$/m);
   return !m || !m[1].startsWith(SIG);
@@ -81,18 +81,22 @@ ok('every command .md description carries the toolkit signature', unsigned.lengt
 const hookFiles = fs.readdirSync(path.join(ROOT, 'hooks')).filter((f) => f.endsWith('.js'));
 const missingHookFiles = hookFiles.filter((h) => !uninstallSrc.includes(`'${h}'`));
 ok('every hooks/*.js file is in uninstall.js\'s hook-file removal list', missingHookFiles.length === 0, missingHookFiles.join(', '));
-// the 🧰 toolkit signature also goes on skills (SKILL.md description, shown in the "/" palette)
+// the [toolkit] signature also goes on skills (SKILL.md description, shown in the "/" palette)
 // and on the messages hooks surface (guards' deny reasons + the automation hooks' injected text).
 const unsignedSkill = skillNames.filter((s) => {
   const m = fs.readFileSync(path.join(ROOT, 'skills', s, 'SKILL.md'), 'utf8').match(/^description: (.*)$/m);
   return !m || !m[1].startsWith(SIG);
 });
 ok('every skill SKILL.md description carries the toolkit signature', unsignedSkill.length === 0, unsignedSkill.join(', '));
-const unsignedHook = hookFiles.filter((h) => !h.startsWith('_') && !fs.readFileSync(path.join(ROOT, 'hooks', h), 'utf8').includes('🧰'));
-ok('every hook script carries the 🧰 signature in the text it surfaces', unsignedHook.length === 0, unsignedHook.join(', '));
+const unsignedHook = hookFiles.filter((h) => !h.startsWith('_') && !fs.readFileSync(path.join(ROOT, 'hooks', h), 'utf8').includes('[toolkit]'));
+ok('every hook script carries the [toolkit] signature in the text it surfaces', unsignedHook.length === 0, unsignedHook.join(', '));
 // every hook file carries a "managed file" banner so anyone hand-editing it sees it's from the toolkit
 const unbannered = hookFiles.filter((h) => !fs.readFileSync(path.join(ROOT, 'hooks', h), 'utf8').includes('qwen-dev-toolkit — MANAGED FILE'));
 ok('every hook file carries the managed-file banner', unbannered.length === 0, unbannered.join(', '));
+// command backend scripts (_*.js/_*.sh) get the same managed-file banner — they're hand-editable logic too
+const cmdBackendFiles = fs.readdirSync(path.join(ROOT, 'commands')).filter((f) => f.startsWith('_') && (f.endsWith('.js') || f.endsWith('.sh')));
+const unbanneredCmd = cmdBackendFiles.filter((f) => !fs.readFileSync(path.join(ROOT, 'commands', f), 'utf8').includes('qwen-dev-toolkit — MANAGED FILE'));
+ok('every command backend carries the managed-file banner', unbanneredCmd.length === 0, unbanneredCmd.join(', '));
 const badFm = [];
 for (const a of agentNames) { const b = fs.readFileSync(path.join(ROOT, 'agents', a + '.md'), 'utf8'); if (!b.startsWith('---') || !b.includes('name: ' + a + '\n') || !b.includes('tools:')) badFm.push(a); }
 for (const s of skillNames) { const b = fs.readFileSync(path.join(ROOT, 'skills', s, 'SKILL.md'), 'utf8'); if (!b.startsWith('---') || !b.includes('name: ' + s + '\n')) badFm.push(s); }

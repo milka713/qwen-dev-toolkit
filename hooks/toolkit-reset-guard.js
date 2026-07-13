@@ -42,7 +42,7 @@ process.stdout.write(JSON.stringify({
     hookEventName: 'PreToolUse',
     permissionDecision: 'deny',
     permissionDecisionReason:
-      '🧰 qwen-dev-toolkit toolkit-reset guard blocked this: there is no active /toolkit-reset approval window. ' +
+      '[toolkit] toolkit-reset guard blocked this: there is no active /toolkit-reset approval window. ' +
       'This action can only run after the USER themselves types the plain `/toolkit-reset` command (not you — custom ' +
       'commands cannot be invoked by the model), reviews the preview, and then types `/toolkit-reset confirm` within ' +
       '15 minutes. Do not retry this yourself — ask the user to run `/toolkit-reset` if they want to proceed.',

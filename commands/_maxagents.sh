@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# qwen-dev-toolkit — MANAGED FILE. Do NOT hand-edit: /toolkit-update overwrites it, and
+# /toolkit-reset / reinstall can replace it. Source & docs: https://github.com/milka713/qwen-dev-toolkit
 # /maxagents backend — HARD cap on how many subagents run at once.
 # The "at most N at a time" line written here is the single source of truth read by the
 # agent-limit.js hook, which DETERMINISTICALLY denies `agent` launches beyond N at the

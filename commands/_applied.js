@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// qwen-dev-toolkit — MANAGED FILE. Do NOT hand-edit: /toolkit-update overwrites it, and
+// /toolkit-reset / reinstall can replace it. Source & docs: https://github.com/milka713/qwen-dev-toolkit
 'use strict';
 // /applied — read-only introspection: what from the toolkit is currently applied.
 //   /applied            -> PROJECT scope (marker blocks from ./QWEN.md)

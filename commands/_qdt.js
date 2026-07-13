@@ -1,3 +1,5 @@
+// qwen-dev-toolkit — MANAGED FILE. Do NOT hand-edit: /toolkit-update overwrites it, and
+// /toolkit-reset / reinstall can replace it. Source & docs: https://github.com/milka713/qwen-dev-toolkit
 'use strict';
 // Shared helpers for the qwen-dev-toolkit Node command backends (used on Windows, where
 // the bash `_*.sh` backends can't run). Each backend `require('./_qdt.js')`; both live in

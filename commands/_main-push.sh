@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# qwen-dev-toolkit — MANAGED FILE. Do NOT hand-edit: /toolkit-update overwrites it, and
+# /toolkit-reset / reinstall can replace it. Source & docs: https://github.com/milka713/qwen-dev-toolkit
 # /main-push backend — deterministic, user-only authorization for ONE main/master push.
 # The git-branch-guard hook blocks pushes/merges to the protected branch unless a fresh
 # token exists here. Only the user can run a slash command, so this makes "explicit main

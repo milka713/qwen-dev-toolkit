@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// qwen-dev-toolkit — MANAGED FILE. Do NOT hand-edit: /toolkit-update overwrites it, and
+// /toolkit-reset / reinstall can replace it. Source & docs: https://github.com/milka713/qwen-dev-toolkit
 'use strict';
 // Node port of _reality.sh — "integrity over agreement" mode. OFF by default; /reality on
 // pins a realitymode block into the PROJECT QWEN.md so the honesty directive is always in

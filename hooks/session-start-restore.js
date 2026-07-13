@@ -40,6 +40,6 @@ const lead =
 process.stdout.write(JSON.stringify({
   hookSpecificOutput: {
     hookEventName: 'SessionStart',
-    additionalContext: '🧰 ' + lead + '\n\n' + content,
+    additionalContext: '[toolkit] ' + lead + '\n\n' + content,
   },
 }));

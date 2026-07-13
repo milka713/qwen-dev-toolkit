@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// qwen-dev-toolkit — MANAGED FILE. Do NOT hand-edit: /toolkit-update overwrites it, and
+// /toolkit-reset / reinstall can replace it. Source & docs: https://github.com/milka713/qwen-dev-toolkit
 'use strict';
 // Node port of _versioning.sh — semantic versioning is the GLOBAL default (~/.qwen/QWEN.md);
 // this sets a PER-PROJECT override in ./QWEN.md: a CUSTOM scheme, or OFF to opt a project out.

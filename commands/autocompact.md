@@ -1,5 +1,5 @@
 ---
-description: 🧰 Control qwen-code auto-compaction (the toolkit disables it by default — /checkpoint compacts deliberately instead). /autocompact off = never auto-compact; /autocompact on = re-enable at the stable 0.7; /autocompact <0.3-0.99> = custom trigger share; /autocompact status = check. Edits ~/.qwen/settings.json deterministically; applies after a qwen-code restart.
+description: [toolkit] Control qwen-code auto-compaction (the toolkit disables it by default — /checkpoint compacts deliberately instead). /autocompact off = never auto-compact; /autocompact on = re-enable at the stable 0.7; /autocompact <0.3-0.99> = custom trigger share; /autocompact status = check. Edits ~/.qwen/settings.json deterministically; applies after a qwen-code restart.
 argument-hint: '[off | on | <0.3-0.99> | status]'
 ---
 

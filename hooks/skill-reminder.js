@@ -42,5 +42,5 @@ const msg =
   '. Do so only if it genuinely applies; for a quick question or one-line edit, just answer directly.';
 
 process.stdout.write(JSON.stringify({
-  hookSpecificOutput: { hookEventName: 'UserPromptSubmit', additionalContext: '🧰 ' + msg },
+  hookSpecificOutput: { hookEventName: 'UserPromptSubmit', additionalContext: '[toolkit] ' + msg },
 }));

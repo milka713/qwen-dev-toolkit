@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// qwen-dev-toolkit — MANAGED FILE. Do NOT hand-edit: /toolkit-update overwrites it, and
+// /toolkit-reset / reinstall can replace it. Source & docs: https://github.com/milka713/qwen-dev-toolkit
 'use strict';
 // Node port of _maxagents.sh — HARD cap on concurrent subagents. The "at most N at a time"
 // line is the single source of truth read by agent-limit.js.

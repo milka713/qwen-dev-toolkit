@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# qwen-dev-toolkit — MANAGED FILE. Do NOT hand-edit: /toolkit-update overwrites it, and
+# /toolkit-reset / reinstall can replace it. Source & docs: https://github.com/milka713/qwen-dev-toolkit
 # /cover backend — deterministic test-first / coverage mode with a target % parameter.
 # Args: ""|on -> default 80% ; <N> (0..100) -> that target ; off ; status
 # Pins a covermode block (with the chosen target baked in) into the project QWEN.md.

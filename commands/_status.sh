@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# qwen-dev-toolkit — MANAGED FILE. Do NOT hand-edit: /toolkit-update overwrites it, and
+# /toolkit-reset / reinstall can replace it. Source & docs: https://github.com/milka713/qwen-dev-toolkit
 # /status backend — read-only snapshot of the per-project toolkit state.
 set -u
 Q="QWEN.md"; F="FACTS.md"; P=".qwen/PROGRESS.md"

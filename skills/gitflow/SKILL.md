@@ -1,6 +1,6 @@
 ---
 name: gitflow
-description: 🧰 The project's git branch & deploy discipline. Use PROACTIVELY and follow it WHENEVER you are about to commit, push, merge, tag, or deploy — or when the user says "commit", "push", "залей", "выкати", "deploy", "merge". Core rule: all new work goes to the `dev` branch (or a feature branch) by default; the `main`/`master` branch is updated ONLY on the user's explicit approval. Invoke with /gitflow to review the policy.
+description: [toolkit] The project's git branch & deploy discipline. Use PROACTIVELY and follow it WHENEVER you are about to commit, push, merge, tag, or deploy — or when the user says "commit", "push", "залей", "выкати", "deploy", "merge". Core rule: all new work goes to the `dev` branch (or a feature branch) by default; the `main`/`master` branch is updated ONLY on the user's explicit approval. Invoke with /gitflow to review the policy.
 priority: 30
 allowedTools:
   - run_shell_command

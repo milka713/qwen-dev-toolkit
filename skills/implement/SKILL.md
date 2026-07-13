@@ -1,6 +1,6 @@
 ---
 name: implement
-description: 🧰 Build a feature or whole project to completion without losing context. The main session stays an architect — it decomposes the work and delegates each chunk to fresh implementer subagents, keeping its own context small so large projects finish instead of stalling at ~15% after a compaction. Use PROACTIVELY for any multi-step or multi-file build, "implement X", "build me a Y", "finish this project". Invoke with /implement or /implement <what to build>.
+description: [toolkit] Build a feature or whole project to completion without losing context. The main session stays an architect — it decomposes the work and delegates each chunk to fresh implementer subagents, keeping its own context small so large projects finish instead of stalling at ~15% after a compaction. Use PROACTIVELY for any multi-step or multi-file build, "implement X", "build me a Y", "finish this project". Invoke with /implement or /implement <what to build>.
 argument-hint: '[what to build]'
 priority: 20
 allowedTools:

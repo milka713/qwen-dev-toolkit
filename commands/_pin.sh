@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# qwen-dev-toolkit — MANAGED FILE. Do NOT hand-edit: /toolkit-update overwrites it, and
+# /toolkit-reset / reinstall can replace it. Source & docs: https://github.com/milka713/qwen-dev-toolkit
 # /pin backend — remember ANY important info, compaction-proof.
 # Appends to a project-root FACTS.md (hosts/ports, deploy commands, decisions, URLs,
 # snippets, gotchas — anything worth always having on hand). FACTS.md is auto-loaded

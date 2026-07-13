@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# qwen-dev-toolkit — MANAGED FILE. Do NOT hand-edit: /toolkit-update overwrites it, and
+# /toolkit-reset / reinstall can replace it. Source & docs: https://github.com/milka713/qwen-dev-toolkit
 # /reality backend — "integrity over agreement" mode. OFF by default; args: ""|on -> ON ; off ; status
 # Pins a realitymode block into the project QWEN.md so the honesty directive stays in context.
 set -u

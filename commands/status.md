@@ -1,5 +1,5 @@
 ---
-description: 🧰 Show the current per-project toolkit state at a glance — development mode, test-coverage mode, pinned facts, and the active goal / next task. Read-only. Usage: /status.
+description: [toolkit] Show the current per-project toolkit state at a glance — development mode, test-coverage mode, pinned facts, and the active goal / next task. Read-only. Usage: /status.
 ---
 
 Project toolkit state (computed deterministically by the shell):

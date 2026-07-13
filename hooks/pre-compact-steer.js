@@ -37,6 +37,6 @@ const steer =
 process.stdout.write(JSON.stringify({
   hookSpecificOutput: {
     hookEventName: 'PreCompact',
-    additionalContext: '🧰 ' + steer,
+    additionalContext: '[toolkit] ' + steer,
   },
 }));

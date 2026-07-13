@@ -1,5 +1,5 @@
 ---
-description: 🧰 Show what from the toolkit is currently applied — modes (like /dev, /cover, /bro, /maxagents, /versioning, /reality), plus the global hooks and guards/prohibitions (secret-guard, git-branch-guard, release-guard, toolkit-reset-guard, subagent limit). Read-only. /applied = this project's state (default); /applied global = the global (~/.qwen) state. Marker-block modes are per-scope; hooks and guards live globally and apply to every project.
+description: [toolkit] Show what from the toolkit is currently applied — modes (like /dev, /cover, /bro, /maxagents, /versioning, /reality), plus the global hooks and guards/prohibitions (secret-guard, git-branch-guard, release-guard, toolkit-reset-guard, subagent limit). Read-only. /applied = this project's state (default); /applied global = the global (~/.qwen) state. Marker-block modes are per-scope; hooks and guards live globally and apply to every project.
 argument-hint: '[project | global]'
 ---
 

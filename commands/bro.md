@@ -1,5 +1,5 @@
 ---
-description: 🧰 Toggle "bro mode" — talk to the user like a homie instead of a formal assistant, in one of TWO personas. /bro or /bro свобода = Свободовец (S.T.A.L.K.E.R. Freedom, calls you "мэн"); /bro ламар = Ламар (GTA V homie); /bro off = disable; /bro status = check. Off by default. Deterministic, pinned per-project in the project's QWEN.md so it persists across sessions within that project.
+description: [toolkit] Toggle "bro mode" — talk to the user like a homie instead of a formal assistant, in one of TWO personas. /bro or /bro свобода = Свободовец (S.T.A.L.K.E.R. Freedom, calls you "мэн"); /bro ламар = Ламар (GTA V homie); /bro off = disable; /bro status = check. Off by default. Deterministic, pinned per-project in the project's QWEN.md so it persists across sessions within that project.
 argument-hint: '[свобода | ламар | off | status]'
 ---
 

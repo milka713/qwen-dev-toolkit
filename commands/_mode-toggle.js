@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// qwen-dev-toolkit — MANAGED FILE. Do NOT hand-edit: /toolkit-update overwrites it, and
+// /toolkit-reset / reinstall can replace it. Source & docs: https://github.com/milka713/qwen-dev-toolkit
 'use strict';
 // Node port of _mode-toggle.sh — generic pinned-mode toggle in the project QWEN.md.
 // Args: <marker> <blockfile> <label> [user arg...]

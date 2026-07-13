@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// qwen-dev-toolkit — MANAGED FILE. Do NOT hand-edit: /toolkit-update overwrites it, and
+// /toolkit-reset / reinstall can replace it. Source & docs: https://github.com/milka713/qwen-dev-toolkit
 // /toolkit-reset backend — bring the toolkit back to the shape the CURRENT version implies
 // by default, for the chosen scope. It removes the toolkit's toggle marker blocks and (for
 // the global scope) resets the toolkit-managed settings to their defaults.

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# qwen-dev-toolkit — MANAGED FILE. Do NOT hand-edit: /toolkit-update overwrites it, and
+# /toolkit-reset / reinstall can replace it. Source & docs: https://github.com/milka713/qwen-dev-toolkit
 # /versioning backend — deterministic version-naming policy toggle, PER-PROJECT (writes the
 # project's ./QWEN.md, so different projects can use different schemes in parallel).
 # Semantic versioning is the GLOBAL default (stated in ~/.qwen/QWEN.md), so this command sets

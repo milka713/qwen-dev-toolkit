@@ -1,3 +1,5 @@
+// qwen-dev-toolkit — MANAGED FILE. Do NOT hand-edit: /toolkit-update overwrites it, and
+// /toolkit-reset / reinstall can replace it. Source & docs: https://github.com/milka713/qwen-dev-toolkit
 'use strict';
 // Canonical catalog of the toolkit's hooks + the on/off state file, shared by the /hooks
 // command backend and /applied. The name is what the user sees and toggles; `kind` splits

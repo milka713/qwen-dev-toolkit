@@ -43,8 +43,8 @@ ships a full set of everyday development skills and commands: git-flow disciplin
 
 ### Commands (deterministic, user-invoked)
 Custom commands — the file change runs via a shell step (`!{…}`), so it's deterministic,
-not left to the model. Everything the toolkit ships carries a 🧰 signature: commands and
-skills show it at the start of their description (so a toolkit item is easy to spot in the
+not left to the model. Everything the toolkit ships carries a `[toolkit]` signature: commands
+and skills show it at the start of their description (so a toolkit item is easy to spot in the
 `/` palette — names are unchanged, you invoke them exactly as before), and hooks put it on
 the messages they surface (a guard's block reason, an injected notice), so whenever a hook
 speaks it's clearly the toolkit.

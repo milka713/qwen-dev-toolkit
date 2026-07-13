@@ -1,6 +1,6 @@
 ---
 name: brainstorm
-description: 🧰 Clarify and pressure-test requirements BEFORE building, so you don't waste a small context window building the wrong thing. Use PROACTIVELY whenever a build request is vague, broad, or could be interpreted several ways — "build X", "make a Y", "I want a tool that…", "давай сделаем…" — and before /plan or /implement on anything non-trivial. Interviews the user (a few numbered questions, each with a default), then records an agreed spec durably. Invoke with /brainstorm or /brainstorm <what you want>.
+description: [toolkit] Clarify and pressure-test requirements BEFORE building, so you don't waste a small context window building the wrong thing. Use PROACTIVELY whenever a build request is vague, broad, or could be interpreted several ways — "build X", "make a Y", "I want a tool that…", "давай сделаем…" — and before /plan or /implement on anything non-trivial. Interviews the user (a few numbered questions, each with a default), then records an agreed spec durably. Invoke with /brainstorm or /brainstorm <what you want>.
 argument-hint: '[what you want to build]'
 priority: 18
 allowedTools:
