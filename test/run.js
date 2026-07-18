@@ -97,6 +97,15 @@ ok('every hook file carries the managed-file banner', unbannered.length === 0, u
 const cmdBackendFiles = fs.readdirSync(path.join(ROOT, 'commands')).filter((f) => f.startsWith('_') && (f.endsWith('.js') || f.endsWith('.sh')));
 const unbanneredCmd = cmdBackendFiles.filter((f) => !fs.readFileSync(path.join(ROOT, 'commands', f), 'utf8').includes('qwen-dev-toolkit — MANAGED FILE'));
 ok('every command backend carries the managed-file banner', unbanneredCmd.length === 0, unbanneredCmd.join(', '));
+// backends are Node-only: every _*.sh must be a thin exec-node wrapper around its .js twin
+// (a parallel bash implementation is drift waiting to happen — Node is a hard prerequisite).
+const fatSh = cmdBackendFiles.filter((f) => f.endsWith('.sh') && !fs.readFileSync(path.join(ROOT, 'commands', f), 'utf8').includes('exec node'));
+ok('every .sh backend is a thin exec-node wrapper (logic lives in the .js)', fatSh.length === 0, fatSh.join(', '));
+const orphanSh = cmdBackendFiles.filter((f) => f.endsWith('.sh') && !cmdBackendFiles.includes(f.replace(/\.sh$/, '.js')));
+ok('every .sh wrapper has its .js twin', orphanSh.length === 0, orphanSh.join(', '));
+// the extension manifest version must track VERSION (it once sat 7 minors behind)
+ok('qwen-extension.json version matches VERSION',
+  JSON.parse(fs.readFileSync(path.join(ROOT, 'qwen-extension.json'), 'utf8')).version === fs.readFileSync(path.join(ROOT, 'VERSION'), 'utf8').trim());
 const badFm = [];
 for (const a of agentNames) { const b = fs.readFileSync(path.join(ROOT, 'agents', a + '.md'), 'utf8'); if (!b.startsWith('---') || !b.includes('name: ' + a + '\n') || !b.includes('tools:')) badFm.push(a); }
 for (const s of skillNames) { const b = fs.readFileSync(path.join(ROOT, 'skills', s, 'SKILL.md'), 'utf8'); if (!b.startsWith('---') || !b.includes('name: ' + s + '\n')) badFm.push(s); }
@@ -117,6 +126,10 @@ ok('AWS key in shell denied', sgRun('run_shell_command', { command: 'echo AKIAAB
 ok('ENCRYPTED private key denied', sgRun('write_file', { file_path: '/p/k.pem', content: '-----BEGIN ENCRYPTED PRIVATE KEY-----' }).includes('"deny"'));
 ok('staging a .env file denied', sgRun('run_shell_command', { command: 'git add .env && git commit -m x' }).includes('"deny"'));
 ok('read-only tool ignored', sgRun('read_file', { file_path: '/p/.env' }) === '');
+ok('connection-string password denied', sgRun('write_file', { file_path: '/p/db.py', content: 'DSN = "postgres://admin:S3cretPass99@db.example.com:5432/app"' }).includes('"deny"'));
+ok('connection-string env indirection allowed', sgRun('write_file', { file_path: '/p/db.py', content: 'DSN = "postgres://admin:${DB_PASS}@db.example.com/app"' }) === '');
+ok('connection-string placeholder allowed', sgRun('write_file', { file_path: '/p/db.py', content: 'DSN = "postgres://admin:CHANGE_ME_1234@db/app"' }) === '');
+ok('digits-only userinfo (host:port style) allowed', sgRun('write_file', { file_path: '/p/x.js', content: 'const u = "http://user:12345678@host/path"' }) === '');
 
 // ---- skill-reminder ----------------------------------------------------------
 console.log('— skill-reminder —');
@@ -130,6 +143,17 @@ ok('release prompt nudges /release', srRun('can you cut a release and tag the ne
 ok('requirements.txt prompt stays silent', srRun('pip install -r requirements.txt fails on my machine somehow') === '');
 ok('short prompt stays silent', srRun('fix typo') === '');
 ok('slash command stays silent', srRun('/implement build me an app with tests') === '');
+// Russian prompts must trigger the same rules (JS \b is ASCII-only and never fires next
+// to Cyrillic — this suite locks in that the Russian alternations avoid \b correctly).
+ok('russian tests prompt nudges /cover', srRun('напиши юнит тесты для этого модуля с покрытием').includes('/cover'));
+ok('russian remember prompt nudges /pin', srRun('запомни что мы деплоим только по пятницам').includes('/pin'));
+ok('russian security prompt nudges /audit', srRun('проверь безопасность этого кода на уязвимости').includes('/audit'));
+ok('russian build prompt nudges /implement', srRun('сделай мне с нуля приложение для заметок').includes('/implement'));
+ok('russian plan prompt nudges /plan', srRun('составь план как разбить эту задачу на части').includes('/plan'));
+ok('russian review prompt nudges /review', srRun('сделай ревью последних изменений в коде').includes('/review'));
+ok('english review prompt nudges /review', srRun('review my code changes before I push please').includes('/review'));
+ok('russian small talk stays silent', srRun('спасибо большое за помощь с этим проектом') === '');
+ok('russian explainer stays silent', srRun('объясни как работает event loop в ноде') === '');
 
 // ---- agent-limit -------------------------------------------------------------
 console.log('— agent-limit —');
@@ -240,10 +264,16 @@ ok('QWEN.md guidance added', fs.readFileSync(path.join(qh2, 'QWEN.md'), 'utf8').
 // /reality (integrity mode) is a toggle, OFF by default — the honesty directive must NOT
 // sit in the always-on QWEN.md block; it only appears once the user runs /reality.
 ok('reality-mode is OFF by default (not in the always-on block)', !fs.readFileSync(path.join(qh2, 'QWEN.md'), 'utf8').includes('Reality mode — ACTIVE'));
-// _reality.sh and _reality.js are parallel independent backends (like /cover), so the
-// installer ships only the OS-appropriate one: .sh on POSIX, .js on Windows.
-ok('reality backend installed for this OS',
-  fs.existsSync(path.join(qh2, 'commands', process.platform === 'win32' ? '_reality.js' : '_reality.sh')));
+// Backends are Node-only: every _*.js ships on every OS; the thin _*.sh wrappers ship
+// on POSIX only (Windows rewrites the .md commands to call node directly).
+ok('reality backend installed (js everywhere, sh wrapper on POSIX only)',
+  fs.existsSync(path.join(qh2, 'commands', '_reality.js')) &&
+  (process.platform === 'win32'
+    ? !fs.existsSync(path.join(qh2, 'commands', '_reality.sh'))
+    : fs.existsSync(path.join(qh2, 'commands', '_reality.sh'))));
+ok('all Node backends installed on every OS',
+  ['_bro.js', '_cover.js', '_main-push.js', '_maxagents.js', '_mode-toggle.js', '_pin.js', '_status.js', '_versioning.js', '_qdt.js']
+    .every((f) => fs.existsSync(path.join(qh2, 'commands', f))));
 // /applied: Node logic ships on every OS (like /autocompact — it parses settings.json),
 // and the install records its version so /applied can report it.
 ok('applied Node logic installed alongside the wrapper',
@@ -269,8 +299,18 @@ ok('toolkit-reset Node logic installed alongside the wrapper',
   fs.existsSync(path.join(qh2, 'commands', '_toolkit-reset.js')) &&
   (process.platform === 'win32' || fs.existsSync(path.join(qh2, 'commands', '_toolkit-reset.sh'))));
 ok('toolkit-reset-guard hook wired into settings.json', fs.readFileSync(path.join(qh2, 'settings.json'), 'utf8').includes('toolkit-reset-guard'));
+// seed the global QWEN.md with a stale toolkit toggle block + a foreign block + user prose:
+// uninstall must clear every toolkit marker but never touch anything else
+fs.appendFileSync(path.join(qh2, 'QWEN.md'),
+  '\n<!-- devmode:start -->\nstale dev block\n<!-- devmode:end -->\n' +
+  '<!-- mycustomtool:start -->\nforeign block\n<!-- mycustomtool:end -->\nuser prose survives\n');
 const ru = cp.spawnSync('node', [path.join(ROOT, 'uninstall.js')], { env: { ...process.env, QWEN_HOME: qh2 }, encoding: 'utf8' });
 ok('uninstall exits 0', ru.status === 0);
+{
+  const q = fs.readFileSync(path.join(qh2, 'QWEN.md'), 'utf8');
+  ok('uninstall clears stale toolkit toggle blocks from the global QWEN.md', !q.includes('devmode:start'));
+  ok('uninstall keeps foreign blocks and user prose', q.includes('mycustomtool:start') && q.includes('user prose survives'));
+}
 ok('uninstall removes skills', !fs.existsSync(path.join(qh2, 'skills', 'implement')));
 ok('uninstall strips hook entries', !fs.readFileSync(path.join(qh2, 'settings.json'), 'utf8').includes('git-branch-guard'));
 ok('uninstall strips toolkit-reset-guard entry too', !fs.readFileSync(path.join(qh2, 'settings.json'), 'utf8').includes('toolkit-reset-guard'));

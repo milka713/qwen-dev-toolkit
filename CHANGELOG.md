@@ -4,6 +4,44 @@ All notable changes to qwen-dev-toolkit are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com); versions follow semver.
 (Releases before 1.7.0 predate this file and are not backfilled — see the git history.)
 
+## [1.17.0] - 2026-07-15
+
+Full-toolkit review & refactor release, driven by an end-to-end QA pass (~130 integration
+checks across install/uninstall, all 9 hooks, all command backends, and live inference).
+
+### Changed
+- **Command backends are Node-only now.** The nine parallel bash implementations (`_bro`,
+  `_cover`, `_main-push`, `_maxagents`, `_mode-toggle`, `_pin`, `_reality`, `_status`,
+  `_versioning`) were duplicated logic: qwen-code already requires Node on every OS, so the
+  bash twins added maintenance and drift risk without adding portability. Every `_*.sh` is
+  now a thin `exec node` wrapper over its `.js` twin (byte-identical behavior, verified);
+  the installer ships all `_*.js` on every OS and the wrappers on POSIX only. Tests now
+  assert the wrapper invariant instead of hand-maintained output parity.
+- **`skill-reminder` understands Russian.** Previously 8 of 10 nudge rules matched English
+  only, so a Russian prompt («напиши юнит тесты…», «запомни что…», «проверь безопасность…»)
+  never triggered a hint. Every rule now has a Russian alternation (written without `\b`,
+  which is ASCII-only in JS and never fires next to Cyrillic), plus a new `/review` rule
+  that was missing in both languages. Bilingual tests lock this in.
+
+### Fixed
+- **`/gitflow` no longer mis-describes `/main-push` as a multi-use window.** The skill still
+  said "15-minute window, not consumed per command" — stale text from before 1.16.0's
+  single-use change, contradicting the actual guard behavior. It now teaches the real
+  semantics: one push per authorization; the merge before it doesn't consume the token.
+- **`qwen-extension.json` version un-stuck.** It sat at 1.9.0 (7 minors behind); it now
+  tracks `VERSION`, and a test fails the suite if they ever drift again.
+- **Uninstall clears every toolkit toggle block from the global `~/.qwen/QWEN.md`.** It only
+  stripped the guidance block and `bromode` (and looked for `bromode` in the wrong file —
+  `/bro` pins per-project); it now sweeps the same six-marker set `/toolkit-reset` owns, so
+  a stale `devmode`/`realitymode`/… block can't survive an uninstall. Foreign blocks and
+  user prose are untouched (tested), and the uninstall output now explains that per-project
+  blocks are cleared with `/toolkit-reset project` instead.
+
+### Added
+- **`secret-guard` catches connection-string passwords** (`postgres://user:S3cret99@host`),
+  with the usual placeholder/env-indirection escape hatches, and never flags digits-only
+  userinfo like `host:8080`.
+
 ## [1.16.3] - 2026-07-13
 
 ### Changed

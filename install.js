@@ -93,24 +93,21 @@ for (const md of fs.readdirSync(cmdDir).filter((f) => f.endsWith('.md'))) {
   }
   fs.writeFileSync(path.join(QHOME, 'commands', md), body);
 }
-// backends: bash set on posix, node set on windows; _devmode.block on both.
-const backendExt = isWin ? '.js' : '.sh';
-// Node files needed on EVERY OS: _qdt.js (shared helper) and any _*.js that is the real
-// logic behind a thin .sh wrapper (e.g. _autocompact.sh just execs _autocompact.js —
-// JSON editing needs a real parser, and Node is a hard toolkit prerequisite anyway).
-const ALWAYS_COPY = new Set(['_qdt.js', '_autocompact.js', '_toolkit-reset.js', '_applied.js', '_hooks.js', '_hookcat.js']);
+// backends: the real logic is Node-only (_*.js, shared by every OS — Node is a hard
+// toolkit prerequisite). The _*.sh files are thin exec-node wrappers for the POSIX
+// `!{bash ...}` dispatch in the .md commands; Windows rewrites the .md to call node
+// directly, so it does not need them. _devmode.block ships on both.
 for (const f of fs.readdirSync(cmdDir)) {
   if (f.endsWith('.md')) continue;
-  const isBackend = f.startsWith('_') && (f.endsWith('.sh') || f.endsWith('.js'));
-  if (isBackend && !f.endsWith(backendExt) && !ALWAYS_COPY.has(f)) continue; // skip the other OS's backends
-  copy(path.join(cmdDir, f), path.join(QHOME, 'commands', f)); // _*.<ext>, ALWAYS_COPY, _devmode.block
+  if (isWin && f.endsWith('.sh')) continue; // wrappers are POSIX-only
+  copy(path.join(cmdDir, f), path.join(QHOME, 'commands', f)); // _*.js, _*.sh wrappers, _devmode.block
 }
 if (!isWin) { for (const f of fs.readdirSync(path.join(QHOME, 'commands')).filter((x) => x.endsWith('.sh'))) { try { fs.chmodSync(path.join(QHOME, 'commands', f), 0o755); } catch (_) {} } }
 
 console.log('\nInstalled:');
 console.log(`  ✓ skills   (${SKILLS.join(', ')})`);
 console.log(`  ✓ agents   (${AGENTS.join(', ')})`);
-console.log('  ✓ commands (/dev, /cover, /pin, /status, /maxagents, /bro, /main-push, /versioning, /autocompact, /toolkit-reset, /reality, /applied, /hooks)  [' + (isWin ? 'Node backends' : 'bash backends') + ']');
+console.log('  ✓ commands (/dev, /cover, /pin, /status, /maxagents, /bro, /main-push, /versioning, /autocompact, /toolkit-reset, /reality, /applied, /hooks)  [Node backends' + (isWin ? '' : ' + bash wrappers') + ']');
 console.log('  ✓ hooks    (restore, compaction-steer, compact-warn, secret-guard, git-branch-guard, release-guard, toolkit-reset-guard, skill-reminder, agent-limit)');
 
 // ---- 5) merge hooks + memory into settings.json --------------------------

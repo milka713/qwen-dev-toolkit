@@ -59,6 +59,19 @@ const SECRETS = [
 let hit = null;
 for (const [re, label] of SECRETS) { if (re.test(text)) { hit = label; break; } }
 
+// Password embedded in a connection-string URL (postgres://user:pass@host, mongodb://…,
+// amqp://…, https://user:token@…), excluding placeholders and env-var indirection.
+// Requires letters+digits in the password so `localhost:8080` (a port) never matches.
+if (!hit) {
+  const m = text.match(/\b[a-z][a-z0-9+.-]{1,24}:\/\/([^/\s:@'"]{1,64}):([^/\s@'"]{8,})@/i);
+  if (m) {
+    const v = m[2];
+    const placeholder = /your|example|placeholder|change[_-]?me|xxxx|\*\*\*|dummy|sample|redacted|insert|todo|fixme|replace|fake|password|passwd|<|>|\$\{|\$\(|%s|process\.env|os\.environ|getenv/i.test(v);
+    const looksReal = /[A-Za-z]/.test(v) && /[0-9]/.test(v);
+    if (!placeholder && looksReal) hit = 'a password embedded in a connection string';
+  }
+}
+
 // Generic high-entropy assignment to a secret-ish name, excluding obvious placeholders
 // and env-var indirection (which is the *correct* pattern we want to encourage).
 if (!hit) {

@@ -45,14 +45,20 @@ console.log('  ✓ removed skills, commands, subagents, hook scripts');
   console.log('  ✓ removed hook entries from settings.json (your other settings kept)');
 })();
 
-// strip our QWEN.md guidance block + the /bro persona block
+// strip our QWEN.md guidance block + every toolkit toggle block (the same marker set
+// /toolkit-reset owns — the modes normally pin these in a PROJECT QWEN.md, but an older
+// release pinned some globally, and a stale one must not survive the uninstall)
 (function () {
   const file = path.join(QHOME, 'QWEN.md');
   let cur = read(file); if (cur == null) return;
-  let out = cur.replace(/\n*<!-- qwen-dev-toolkit:start -->[\s\S]*?<!-- qwen-dev-toolkit:end -->\n*/, '\n')
-               .replace(/\n*<!-- bromode:start -->[\s\S]*?<!-- bromode:end -->\n*/, '\n');
+  const MARKERS = ['qwen-dev-toolkit', 'bromode', 'covermode', 'devmode', 'maxagents', 'versioning', 'realitymode'];
+  let out = cur;
+  for (const m of MARKERS) out = out.replace(new RegExp('\\n*<!-- ' + m + ':start -->[\\s\\S]*?<!-- ' + m + ':end -->\\n*', 'g'), '\n');
   fs.writeFileSync(file, out.replace(/\n{3,}/g, '\n\n').trimEnd() + '\n');
-  console.log('  ✓ removed QWEN.md guidance + bro-mode block');
+  console.log('  ✓ removed QWEN.md guidance + toolkit toggle blocks');
 })();
 
 console.log('Done. Restart qwen-code.');
+console.log('Note: per-project toggle blocks (/dev, /cover, /bro, …) live in each project\'s own');
+console.log('QWEN.md and are not touched by a global uninstall — run /toolkit-reset project in a');
+console.log('project (before uninstalling) or delete its marker blocks by hand to clear them.');

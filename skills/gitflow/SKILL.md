@@ -20,7 +20,7 @@ This is a **hard workflow policy**, not a suggestion. It protects the stable bra
    - `dev` does not exist yet → create it from the current work: `git switch -c dev`, then `git push -u origin dev`.
    - On `main`/`master` with uncommitted or just-committed work → move it to `dev` before pushing. Do not push `main`.
 2. **`main`/`master` is updated ONLY on the user's explicit approval.** "Explicit" means the user clearly said so: *"выкатывай в main"*, *"мержи в main"*, *"push to main"*, *"release to prod"*. Ambiguous requests ("залей изменения", "запушь это") are **not** main approval — they mean `dev`.
-   - Even with a clear verbal go-ahead, the guard hook requires an authorization token: ask the user to run **`/main-push`** (it opens a **15-minute window**, not consumed per command, so it covers the whole merge + push sequence). Do not attempt to bypass or self-authorize.
+   - Even with a clear verbal go-ahead, the guard hook requires an authorization token: ask the user to run **`/main-push`** (**single-use** — it authorizes exactly ONE push to main; the bare merge/rebase before it does not consume the token, so one authorization covers the whole "merge dev → push" release, but a second push needs a fresh `/main-push`; an unused token expires after 15 minutes). Do not attempt to bypass or self-authorize.
    - Never merge `dev → main` on your own initiative, even if everything looks green.
 3. **Deploy order** (when the project has a deploy step): push to `dev` → deploy to test/staging → **wait for the user to confirm** it works → only then (with `/main-push`) release to `main` → deploy to prod. If the project ships deploy scripts, use them instead of manual restart/rsync.
 

@@ -256,7 +256,7 @@ window, applies it (to the scope you previewed — the token remembers it). A
 | `PreToolUse` → `git-branch-guard.js` | **Blocks** any `git push`/`merge`/`rebase` that would touch `main`/`master` (explicit target, or while checked out on it, or a switch-then-merge one-liner). Pushes to `dev`/feature branches and read-only git pass. Unlocked for exactly one push (single-use) by `/main-push`. |
 | `PreToolUse` → `release-guard.js` | **Reminds** (never blocks) when a push advances `main`/`master` but the release would lag the code — a bumped `VERSION` with no matching tag, or commits past the released tag with no bump — injecting a note to run `/release` (or `/changelog` then `/release`). This is the deterministic backstop that makes `/release` fire even if the model forgets it. Silent when the release is in sync. |
 | `PreToolUse` → `toolkit-reset-guard.js` | **Blocks** an attempt to run `/toolkit-reset`'s confirm step without a valid 15-minute approval window — closes the gap where a model could otherwise call the backend script directly via a shell command instead of waiting for you to type `/toolkit-reset confirm` yourself. Preview-only calls (no `confirm`) always pass. |
-| `UserPromptSubmit` → `skill-reminder.js` | Small local models under-trigger model-invoked skills; this injects a short, targeted reminder (e.g. "looks security-related → `/audit`") only when the prompt clearly matches, so the right skill actually fires. Silent on trivial prompts. |
+| `UserPromptSubmit` → `skill-reminder.js` | Small local models under-trigger model-invoked skills; this injects a short, targeted reminder (e.g. "looks security-related → `/audit`") only when the prompt clearly matches, so the right skill actually fires. Matches **both English and Russian** prompts. Silent on trivial prompts. |
 | `PreToolUse`/`PostToolUse`/`SessionStart` → `agent-limit.js` | Enforces `/maxagents` deterministically: counts running subagents and **denies** `agent` launches beyond the cap (concurrency-safe via a lock), decrements when one finishes, resets each session. No cap set → no-op. |
 
 Plus a lean `~/.qwen/QWEN.md` (operating modes + memory discipline) and native auto-memory.
@@ -450,7 +450,7 @@ want the main agent to keep its reasoning, the robust path is **`yolo` + a harde
 **Install and update are the same command** — re-run it any time and it refreshes in place.
 It copies only this toolkit's own files into `~/.qwen`; your other skills, settings, API
 keys and memories are left untouched. Cross-platform: **macOS · Linux · Windows** (one Node
-installer — it wires bash backends on macOS/Linux and Node backends on Windows automatically).
+installer — the command logic is a single set of Node backends on every OS; on macOS/Linux they are invoked through thin bash wrappers, on Windows directly).
 
 (AI agent? — see the banner at the top of this README / [`INSTALL_FOR_AI.md`](INSTALL_FOR_AI.md).)
 
@@ -463,7 +463,10 @@ install.cmd       # Windows        (or: node install.js  — anywhere)
 ```
 
 Then **restart qwen-code**. To update later, re-run the same command (or `/toolkit-update`
-from inside qwen-code). To remove: `./uninstall.sh` / `uninstall.cmd`.
+from inside qwen-code). To remove: `./uninstall.sh` / `uninstall.cmd` — it deletes only the
+toolkit's own files, strips its hook entries and clears its toggle blocks from the **global**
+`~/.qwen/QWEN.md`; per-project toggle blocks stay (clear them with `/toolkit-reset project`
+per project, before uninstalling).
 
 **Verify** (after restart): `/skills` lists `brainstorm, plan, implement, checkpoint,
 gitflow, audit, review, commit, docs, changelog, release, toolkit-update`; `/agents manage` lists
