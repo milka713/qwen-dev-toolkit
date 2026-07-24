@@ -107,8 +107,8 @@ if (!isWin) { for (const f of fs.readdirSync(path.join(QHOME, 'commands')).filte
 console.log('\nInstalled:');
 console.log(`  ✓ skills   (${SKILLS.join(', ')})`);
 console.log(`  ✓ agents   (${AGENTS.join(', ')})`);
-console.log('  ✓ commands (/dev, /cover, /pin, /status, /maxagents, /bro, /main-push, /versioning, /autocompact, /toolkit-reset, /reality, /applied, /hooks)  [Node backends' + (isWin ? '' : ' + bash wrappers') + ']');
-console.log('  ✓ hooks    (restore, compaction-steer, compact-warn, secret-guard, git-branch-guard, release-guard, toolkit-reset-guard, skill-reminder, agent-limit)');
+console.log('  ✓ commands (/dev, /cover, /pin, /status, /maxagents, /bro, /main-push, /versioning, /autocompact, /toolkit-reset, /reality, /hooks, /doctor)  [Node backends' + (isWin ? '' : ' + bash wrappers') + ']');
+console.log('  ✓ hooks    (restore, compaction-steer, compact-warn, secret-guard, git-branch-guard, release-guard, toolkit-reset-guard, skill-reminder, agent-limit, checkpoint-nudge)');
 
 // ---- 5) merge hooks + memory into settings.json --------------------------
 (function mergeSettings() {
@@ -140,6 +140,7 @@ console.log('  ✓ hooks    (restore, compaction-steer, compact-warn, secret-gua
   setHook('PreToolUse', 'agent-limit.js pre', 'agent-limit-pre', 'agent');
   setHook('PostToolUse', 'agent-limit.js post', 'agent-limit-post', 'agent');
   setHook('UserPromptSubmit', 'skill-reminder.js', 'skill-reminder');
+  setHook('Stop', 'checkpoint-nudge.js', 'checkpoint-nudge');
   s.memory = Object.assign({ enableManagedAutoMemory: true, enableManagedAutoDream: true }, s.memory || {});
   // Toolkit stance: auto-compaction OFF by default (threshold 1.0 = only at a full
   // window). Compaction is lossy; durable state lives in PROGRESS.md and /checkpoint

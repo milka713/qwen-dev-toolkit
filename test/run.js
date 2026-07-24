@@ -272,8 +272,11 @@ ok('reality backend installed (js everywhere, sh wrapper on POSIX only)',
     ? !fs.existsSync(path.join(qh2, 'commands', '_reality.sh'))
     : fs.existsSync(path.join(qh2, 'commands', '_reality.sh'))));
 ok('all Node backends installed on every OS',
-  ['_bro.js', '_cover.js', '_main-push.js', '_maxagents.js', '_mode-toggle.js', '_pin.js', '_status.js', '_versioning.js', '_qdt.js']
+  ['_bro.js', '_cover.js', '_main-push.js', '_maxagents.js', '_mode-toggle.js', '_pin.js', '_status.js', '_versioning.js', '_qdt.js', '_stateview.js', '_doctor.js']
     .every((f) => fs.existsSync(path.join(qh2, 'commands', f))));
+ok('checkpoint-nudge Stop hook installed + wired',
+  fs.existsSync(path.join(qh2, 'hooks', 'checkpoint-nudge.js')) &&
+  fs.readFileSync(path.join(qh2, 'settings.json'), 'utf8').includes('checkpoint-nudge'));
 // /applied: Node logic ships on every OS (like /autocompact — it parses settings.json),
 // and the install records its version so /applied can report it.
 ok('applied Node logic installed alongside the wrapper',
@@ -522,6 +525,128 @@ const trg = path.join(ROOT, 'hooks', 'toolkit-reset-guard.js');
   const old = new Date(Date.now() - 16 * 60 * 1000);
   fs.utimesSync(path.join(qh, '.toolkit-reset-approval'), old, old);
   ok('confirm attempt denied once the approval window expires', run('node _toolkit-reset.js confirm').includes('"deny"'));
+}
+
+// ---- /toolkit-reset undo — reverts the last confirm, one level ----------------
+console.log('— /toolkit-reset undo —');
+{
+  // project scope: confirm removes blocks; undo restores the exact prior QWEN.md
+  const qh = tmp(); fs.mkdirSync(qh, { recursive: true });
+  const proj = tmp();
+  const pf = path.join(proj, 'QWEN.md');
+  fs.writeFileSync(pf, '# notes\nmanual prose\n\n<!-- devmode:start -->\nDEV\n<!-- devmode:end -->\n<!-- realitymode:start -->\nR\n<!-- realitymode:end -->\n');
+  const before = fs.readFileSync(pf, 'utf8');
+  tkRun([], qh, proj); tkRun(['confirm'], qh, proj);
+  ok('undo: confirm removed the project blocks', !fs.readFileSync(pf, 'utf8').includes('devmode:start'));
+  ok('undo: a backup snapshot was written', fs.existsSync(path.join(qh, '.toolkit-reset-backup')));
+  const u = tkRun(['undo'], qh, proj);
+  ok('undo restores the project QWEN.md byte-for-byte', fs.readFileSync(pf, 'utf8') === before);
+  ok('undo reports what it restored', /undo done \(project scope\)/.test(u.stdout));
+  ok('undo consumes the backup (one level)', !fs.existsSync(path.join(qh, '.toolkit-reset-backup')));
+  ok('a second undo says nothing to undo', /nothing to undo/.test(tkRun(['undo'], qh, proj).stdout));
+}
+{
+  // global scope: undo restores .hooks-disabled and autoCompactThreshold too
+  const qh = tmp();
+  fs.writeFileSync(path.join(qh, 'QWEN.md'), '<!-- versioning:start -->\nv\n<!-- versioning:end -->\n');
+  fs.writeFileSync(path.join(qh, 'settings.json'), JSON.stringify({ context: { autoCompactThreshold: 0.7 } }, null, 2));
+  fs.writeFileSync(path.join(qh, '.hooks-disabled'), 'secret-guard\n');
+  tkRun(['global'], qh); tkRun(['confirm'], qh);
+  ok('undo(global): confirm cleared .hooks-disabled', !fs.existsSync(path.join(qh, '.hooks-disabled')));
+  ok('undo(global): confirm reset autoCompactThreshold to 1', JSON.parse(fs.readFileSync(path.join(qh, 'settings.json'), 'utf8')).context.autoCompactThreshold === 1);
+  tkRun(['undo'], qh);
+  ok('undo(global) restores .hooks-disabled', fs.existsSync(path.join(qh, '.hooks-disabled')) && fs.readFileSync(path.join(qh, '.hooks-disabled'), 'utf8').includes('secret-guard'));
+  ok('undo(global) restores autoCompactThreshold to 0.7', JSON.parse(fs.readFileSync(path.join(qh, 'settings.json'), 'utf8')).context.autoCompactThreshold === 0.7);
+  ok('undo(global) restores the versioning block', fs.readFileSync(path.join(qh, 'QWEN.md'), 'utf8').includes('versioning:start'));
+}
+
+// ---- checkpoint-nudge — Stop hook that keeps .qwen/PROGRESS.md fresh -----------
+console.log('— checkpoint-nudge —');
+{
+  const cn = path.join(ROOT, 'hooks', 'checkpoint-nudge.js');
+  const run = (cwd, extra) => runNode(cn, { input: JSON.stringify(Object.assign({ cwd }, extra || {})) }).stdout;
+  const mkProj = () => { const d = tmp(); fs.mkdirSync(path.join(d, '.qwen'), { recursive: true }); return d; };
+  const setProgress = (d, body) => { const p = path.join(d, '.qwen', 'PROGRESS.md'); fs.writeFileSync(p, body); return p; };
+  const backdate = (p) => { const old = new Date('2020-01-01'); fs.utimesSync(p, old, old); };
+
+  ok('no PROGRESS.md → silent', run(mkProj()) === '');
+  {
+    const d = mkProj(); setProgress(d, '## Goal\nX\n- [x] a\n- [ ] b\n');
+    ok('PROGRESS fresh, no code edited after it → silent', run(d) === '');
+  }
+  {
+    const d = mkProj(); const p = setProgress(d, '## Goal\nX\n- [x] a\n- [ ] b\n');
+    fs.writeFileSync(path.join(d, 'app.js'), 'console.log(1)\n'); backdate(p);
+    ok('code newer than checkpoint + unchecked tasks → block', run(d).includes('"block"'));
+    ok('nudge is loop-safe under stop_hook_active', run(d, { stop_hook_active: true }) === '');
+  }
+  {
+    const d = mkProj(); const p = setProgress(d, '## Goal\nX\n- [x] a\n- [x] b\n');
+    fs.writeFileSync(path.join(d, 'app.js'), 'x\n'); backdate(p);
+    ok('all tasks done → silent even with code drift', run(d) === '');
+  }
+  {
+    const d = mkProj(); const p = setProgress(d, '## Goal\nX\n- [ ] b\n');
+    fs.writeFileSync(path.join(d, 'notes.txt'), 'hi\n'); backdate(p);
+    ok('only non-code files changed → silent', run(d) === '');
+  }
+  {
+    const qh = tmp(); fs.writeFileSync(path.join(qh, '.hooks-disabled'), 'checkpoint-nudge\n');
+    const d = mkProj(); const p = setProgress(d, '## Goal\nX\n- [ ] b\n');
+    fs.writeFileSync(path.join(d, 'app.js'), 'x\n'); backdate(p);
+    ok('disabled via /hooks → silent', runNode(cn, { input: JSON.stringify({ cwd: d }), env: { QWEN_HOME: qh } }).stdout === '');
+  }
+}
+
+// ---- /status — merged snapshot incl. active plan/dev progress ------------------
+console.log('— /status —');
+{
+  const qh = tmp(); fs.mkdirSync(qh, { recursive: true });
+  cp.spawnSync('node', [path.join(ROOT, 'install.js')], { env: { ...process.env, QWEN_HOME: qh }, encoding: 'utf8' });
+  const st = path.join(ROOT, 'commands', '_status.js');
+  const proj = tmp();
+  const run = (arg) => cp.spawnSync('node', [st, ...(arg ? [arg] : [])], { cwd: proj, env: { ...process.env, QWEN_HOME: qh }, encoding: 'utf8' }).stdout;
+  // dev mode on + an active plan with mixed progress
+  cp.spawnSync('node', [path.join(ROOT, 'commands', '_mode-toggle.js'), 'devmode', path.join(ROOT, 'commands', '_devmode.block'), 'Development mode', 'on'], { cwd: proj, encoding: 'utf8' });
+  fs.mkdirSync(path.join(proj, '.qwen'), { recursive: true });
+  fs.writeFileSync(path.join(proj, '.qwen', 'PROGRESS.md'), '## Goal\nBuild the API\n\n- [x] scaffold\n- [x] db\n- [ ] endpoints\n- [ ] auth\n');
+  const p = run('');
+  ok('status shows PROJECT scope header', /scope: PROJECT/.test(p));
+  ok('status shows development mode ON', /Development mode\.* ON/.test(p));
+  ok('status shows the active plan goal', /Active plan \/ development/.test(p) && /Build the API/.test(p));
+  ok('status shows plan progress counts + percent', /2 done, 2 remaining \(50% complete\)/.test(p));
+  ok('status shows the next unchecked task', /Next\.* endpoints/.test(p));
+  ok('status shows global guards', /Guards \/ prohibitions/.test(p) && /secret-guard/.test(p));
+  ok('status reports the toolkit version', new RegExp('Toolkit version: ' + fs.readFileSync(path.join(ROOT, 'VERSION'), 'utf8').trim().replace(/\./g, '\\.')).test(p));
+  // read-only
+  const before = fs.readFileSync(path.join(proj, 'QWEN.md'), 'utf8');
+  run(''); run('global');
+  ok('status is read-only (QWEN.md unchanged)', fs.readFileSync(path.join(proj, 'QWEN.md'), 'utf8') === before);
+  ok('status global switches scope and hides the project plan', /scope: GLOBAL/.test(run('global')) && !/Active plan/.test(run('global')));
+  // /applied still works but is a deprecated alias of the same report
+  const ap = cp.spawnSync('node', [path.join(ROOT, 'commands', '_applied.js')], { cwd: proj, env: { ...process.env, QWEN_HOME: qh }, encoding: 'utf8' }).stdout;
+  ok('/applied still works as a deprecated alias', /deprecated/.test(ap) && /scope: PROJECT/.test(ap) && /Guards \/ prohibitions/.test(ap));
+}
+
+// ---- /doctor — self-diagnostic health check -----------------------------------
+console.log('— /doctor —');
+{
+  const qh = tmp(); fs.mkdirSync(qh, { recursive: true });
+  cp.spawnSync('node', [path.join(ROOT, 'install.js')], { env: { ...process.env, QWEN_HOME: qh }, encoding: 'utf8' });
+  const doc = path.join(ROOT, 'commands', '_doctor.js');
+  const run = () => cp.spawnSync('node', [doc], { env: { ...process.env, QWEN_HOME: qh }, cwd: tmp(), encoding: 'utf8' }).stdout;
+  const healthy = run();
+  ok('doctor emits a DOCTOR_REPORT', /DOCTOR_REPORT/.test(healthy));
+  ok('doctor confirms hooks wired on a fresh install', /all \d+ toolkit hooks wired/.test(healthy));
+  ok('doctor confirms install integrity', /hook scripts: all \d+ present/.test(healthy) && /command backends: all \d+ present/.test(healthy));
+  ok('doctor reports the installed version', /installed version: /.test(healthy));
+  // break the install: a wired hook whose file is missing → doctor FAILs
+  fs.unlinkSync(path.join(qh, 'hooks', 'secret-guard.js'));
+  const broken = run();
+  ok('doctor FAILs when a hook file is missing', /✗/.test(broken) && /problem\(s\)/.test(broken));
+  // disabled guard → warning
+  fs.writeFileSync(path.join(qh, '.hooks-disabled'), 'git-branch-guard\n');
+  ok('doctor WARNs about a disabled guard', /DISABLED via \/hooks: git-branch-guard/.test(run()));
 }
 
 // ---- summary ------------------------------------------------------------------

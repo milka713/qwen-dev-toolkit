@@ -9,6 +9,7 @@
 //   /toolkit-reset project    -> same, explicit
 //   /toolkit-reset global     -> GLOBAL scope preview (~/.qwen: QWEN.md + settings)
 //   /toolkit-reset confirm    -> perform the previewed reset (uses the previewed scope)
+//   /toolkit-reset undo       -> restore the pre-reset state from the last confirm (one level)
 //
 // Scope:
 //   project -> remove the toggle blocks (dev/cover/bro/maxagents/versioning/reality) from the
@@ -37,6 +38,7 @@ const PROJECT_FILE = 'QWEN.md'; // relative to the cwd the command runs in
 const SETTINGS = path.join(QHOME, 'settings.json');
 const HOOKS_DISABLED = path.join(QHOME, '.hooks-disabled');
 const TOKEN = path.join(QHOME, '.toolkit-reset-approval');
+const BACKUP = path.join(QHOME, '.toolkit-reset-backup'); // one-level undo snapshot (JSON)
 const TTL_MS = 15 * 60 * 1000;
 const DEFAULT_AUTOCOMPACT = 1; // current default: auto-compaction OFF
 // Toggle blocks pinned into a QWEN.md by /dev, /cover, /bro, /maxagents, /versioning, /reality.
@@ -44,6 +46,7 @@ const MARKERS = ['bromode', 'covermode', 'devmode', 'maxagents', 'versioning', '
 
 const argv = process.argv.slice(2).map((s) => s.trim().toLowerCase()).filter(Boolean);
 const isConfirm = argv.includes('confirm');
+const isUndo = argv.includes('undo') || argv.includes('откат') || argv.includes('отмена');
 const scopeArg = argv.includes('global') ? 'global' : argv.includes('project') ? 'project' : null;
 const out = (msg) => { console.log('TOOLKIT_RESET_RESULT: ' + msg); process.exit(0); };
 const read = (p) => { try { return fs.readFileSync(p, 'utf8'); } catch (_) { return ''; } };
@@ -76,7 +79,22 @@ function changes(scope) {
   return list;
 }
 
+// Snapshot everything this reset is about to change, so `/toolkit-reset undo` can restore
+// it. One level deep: a new reset overwrites the previous snapshot.
+function writeBackup(scope) {
+  const file = path.resolve(qwenFileFor(scope));
+  const snap = { scope, ts: Date.now(), qwenFile: file, qwenBefore: exists0(file) ? read(file) : null };
+  if (scope === 'global') {
+    snap.hooksDisabledBefore = exists0(HOOKS_DISABLED) ? read(HOOKS_DISABLED) : null;
+    try { const s = JSON.parse(read(SETTINGS) || '{}'); snap.autoCompactBefore = s.context ? s.context.autoCompactThreshold : undefined; }
+    catch (_) { snap.autoCompactBefore = undefined; }
+  }
+  try { fs.writeFileSync(BACKUP, JSON.stringify(snap)); } catch (_) {}
+}
+function exists0(p) { try { fs.statSync(p); return true; } catch (_) { return false; } }
+
 function applyReset(scope) {
+  writeBackup(scope); // capture BEFORE we mutate anything
   // 1) strip the toggle blocks from the scope's QWEN.md
   const file = qwenFileFor(scope);
   const blocks = staleBlocks(scope);
@@ -109,6 +127,25 @@ function tokenScope() {
   } catch (_) { return null; }
 }
 
+if (isUndo) {
+  let snap;
+  try { snap = JSON.parse(read(BACKUP)); } catch (_) { snap = null; }
+  if (!snap) out('nothing to undo — no reset has been applied since the last undo (a backup is written only when /toolkit-reset confirm actually changes something).');
+  const restored = [];
+  if (snap.qwenBefore != null) { try { fs.writeFileSync(snap.qwenFile, snap.qwenBefore); restored.push('restored the ' + snap.scope + " scope's QWEN.md (toggle blocks back)"); } catch (_) { out('undo failed: could not write ' + snap.qwenFile + ' (are you in the same project you reset?).'); } }
+  if (snap.scope === 'global') {
+    if (snap.hooksDisabledBefore != null) { try { fs.writeFileSync(HOOKS_DISABLED, snap.hooksDisabledBefore); restored.push('restored .hooks-disabled'); } catch (_) {} }
+    else { try { fs.unlinkSync(HOOKS_DISABLED); } catch (_) {} } // was absent before → keep it absent
+    if (snap.autoCompactBefore !== undefined) {
+      try { const s = JSON.parse(read(SETTINGS) || '{}'); s.context = s.context || {}; s.context.autoCompactThreshold = snap.autoCompactBefore; fs.writeFileSync(SETTINGS, JSON.stringify(s, null, 2) + '\n'); restored.push('restored autoCompactThreshold to ' + snap.autoCompactBefore); }
+      catch (_) {}
+    }
+  }
+  try { fs.unlinkSync(BACKUP); } catch (_) {} // one-level undo — consume it
+  out('undo done (' + snap.scope + ' scope): ' + (restored.length ? restored.join('; ') : 'nothing needed restoring') + '.' +
+    (snap.scope === 'global' ? ' Restart qwen-code / start a new session for settings changes to take effect.' : ''));
+}
+
 if (isConfirm) {
   const scope = tokenScope();
   if (!scope) {
@@ -132,7 +169,7 @@ if (!isConfirm) {
   fs.mkdirSync(QHOME, { recursive: true });
   fs.writeFileSync(TOKEN, scope);
   out('PREVIEW (' + scope + ' scope) — ⚠ WARNING: this RESETS the ' + scope +
-    ' toolkit state to the current version\'s defaults; your current toggles/settings in this scope will be LOST and it is not auto-reversible. It would: ' + pending.join('; ') +
+    ' toolkit state to the current version\'s defaults; your current toggles/settings in this scope will be replaced. It would: ' + pending.join('; ') +
     '. NOTHING has changed yet. A 15-minute approval window opened for the ' + scope +
-    ' scope. You MUST warn the user this is destructive and ASK them to confirm ("точно сбросить до значений по умолчанию?") — for BOTH project and global — and only if they say yes, they themselves run /toolkit-reset confirm.');
+    ' scope. You MUST warn the user this is destructive and ASK them to confirm ("точно сбросить до значений по умолчанию?") — for BOTH project and global — and only if they say yes, they themselves run /toolkit-reset confirm. (It is reversible: /toolkit-reset undo restores the pre-reset state one level back.)');
 }

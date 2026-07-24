@@ -2,41 +2,13 @@
 // qwen-dev-toolkit — MANAGED FILE. Do NOT hand-edit: /toolkit-update overwrites it, and
 // /toolkit-reset / reinstall can replace it. Source & docs: https://github.com/milka713/qwen-dev-toolkit
 'use strict';
-// Node port of _status.sh — read-only snapshot of the per-project toolkit state.
-const { readF, exists } = require('./_qdt.js');
+// /status — the single "everything at a glance" snapshot for THIS project: mode toggles,
+// the active plan / development progress (goal, done/remaining, next task — the /dev or any
+// other plan currently executing), the global guards + automation hooks, pinned facts, and
+// the toolkit version. Read-only. Shares its renderer with /applied via _stateview.js so the
+// two can never drift. /status is project-scoped; use /status global for the global state.
+const { norm, rawArg } = require('./_qdt.js');
+const { render } = require('./_stateview.js');
 
-const Q = 'QWEN.md', F = 'FACTS.md', P = '.qwen/PROGRESS.md';
-const q = readF(Q);
-
-console.log(q.includes('devmode:start') ? 'STATUS_DEV: ON' : 'STATUS_DEV: OFF');
-console.log(q.includes('covermode:start') ? 'STATUS_COVER: ON' : 'STATUS_COVER: OFF');
-
-if (exists(F)) {
-  const facts = (readF(F).match(/^- /gm) || []).length;
-  console.log(`STATUS_PINNED: ${facts} fact(s) in FACTS.md`);
-} else console.log('STATUS_PINNED: none (no FACTS.md)');
-
-if (exists(P)) {
-  const lines = readF(P).split('\n');
-  // lines under the "## ... Goal" heading, up to the next "## " heading
-  const gi = lines.findIndex((l) => /^##\s.*Goal/.test(l));
-  let goal = '';
-  if (gi >= 0) {
-    const out = [];
-    for (let i = gi + 1; i < lines.length && out.length < 2; i++) {
-      if (/^##\s/.test(lines[i])) break;
-      if (lines[i].trim()) out.push(lines[i]);
-    }
-    // join with spaces and keep a trailing space, matching bash `head -2 | tr '\n' ' '`
-    goal = out.length ? out.join(' ') + ' ' : '';
-  }
-  console.log(`STATUS_GOAL: ${goal || '(none recorded)'}`);
-  const done = (readF(P).match(/^- \[x\]/gm) || []).length;
-  const todo = (readF(P).match(/^- \[ \]/gm) || []).length;
-  console.log(`STATUS_TASKS: ${done} done, ${todo} remaining`);
-  const nxtLine = lines.find((l) => /^- \[ \]/.test(l));
-  const nxt = nxtLine ? nxtLine.replace(/^- \[ \] */, '') : '';
-  console.log(`STATUS_NEXT: ${nxt || '(no unchecked task)'}`);
-} else {
-  console.log('STATUS_PROGRESS: no .qwen/PROGRESS.md (no active build)');
-}
+const GLOBAL = ['global', 'g', '-g', '--global', 'глобал', 'глобально'].includes(norm(rawArg(2)));
+console.log(render(GLOBAL ? 'GLOBAL' : 'PROJECT'));

@@ -18,24 +18,26 @@ const SKILLS = ['implement', 'plan', 'checkpoint', 'audit', 'brainstorm', 'gitfl
 for (const s of SKILLS) rm(path.join(QHOME, 'skills', s));
 for (const a of ['implementer', 'scout', 'debugger', 'tester', 'researcher', 'verifier']) rm(path.join(QHOME, 'agents', a + '.md'));
 
-const CMD_MD = ['dev', 'cover', 'pin', 'status', 'maxagents', 'bro', 'main-push', 'versioning', 'reality', 'autocompact', 'toolkit-reset', 'applied', 'hooks'];
-const CMD_BACKENDS = ['_qdt', '_mode-toggle', '_cover', '_pin', '_status', '_maxagents', '_bro', '_main-push', '_versioning', '_reality', '_autocompact', '_toolkit-reset', '_applied', '_hooks', '_hookcat'];
+const CMD_MD = ['dev', 'cover', 'pin', 'status', 'maxagents', 'bro', 'main-push', 'versioning', 'reality', 'autocompact', 'toolkit-reset', 'applied', 'hooks', 'doctor'];
+const CMD_BACKENDS = ['_qdt', '_mode-toggle', '_cover', '_pin', '_status', '_maxagents', '_bro', '_main-push', '_versioning', '_reality', '_autocompact', '_toolkit-reset', '_applied', '_hooks', '_hookcat', '_stateview', '_doctor'];
 for (const c of CMD_MD) rm(path.join(QHOME, 'commands', c + '.md'));
 for (const b of CMD_BACKENDS) { rm(path.join(QHOME, 'commands', b + '.sh')); rm(path.join(QHOME, 'commands', b + '.js')); }
 rm(path.join(QHOME, 'commands', '_devmode.block'));
 rm(path.join(QHOME, '.toolkit-version'));
 rm(path.join(QHOME, '.hooks-disabled'));
+// approval tokens + the /toolkit-reset undo snapshot (toolkit-only state files)
+for (const f of ['.toolkit-reset-backup', '.toolkit-reset-approval', '.main-approval']) rm(path.join(QHOME, f));
 // legacy names from older releases
 for (const f of ['mainok.md', '_mainok.sh', '_mainok.js', '_dev-toggle.sh', '_covermode.block']) rm(path.join(QHOME, 'commands', f));
 
-for (const h of ['session-start-restore.js', 'pre-compact-steer.js', 'secret-guard.js', 'git-branch-guard.js', 'release-guard.js', 'skill-reminder.js', 'agent-limit.js', 'compact-warn.js', 'toolkit-reset-guard.js', '_hookutil.js']) rm(path.join(QHOME, 'hooks', h));
+for (const h of ['session-start-restore.js', 'pre-compact-steer.js', 'secret-guard.js', 'git-branch-guard.js', 'release-guard.js', 'skill-reminder.js', 'agent-limit.js', 'compact-warn.js', 'toolkit-reset-guard.js', 'checkpoint-nudge.js', '_hookutil.js']) rm(path.join(QHOME, 'hooks', h));
 console.log('  ✓ removed skills, commands, subagents, hook scripts');
 
 // strip our hook entries from settings.json (keep everything else, incl. memory setting)
 (function () {
   const file = path.join(QHOME, 'settings.json');
   let s; try { s = JSON.parse(fs.readFileSync(file, 'utf8')); } catch (_) { return; }
-  const names = new Set(['restore-progress', 'steer-compaction', 'compact-warn', 'secret-guard', 'git-branch-guard', 'release-guard', 'toolkit-reset-guard', 'skill-reminder', 'agent-limit-reset', 'agent-limit-pre', 'agent-limit-post']);
+  const names = new Set(['restore-progress', 'steer-compaction', 'compact-warn', 'secret-guard', 'git-branch-guard', 'release-guard', 'toolkit-reset-guard', 'skill-reminder', 'agent-limit-reset', 'agent-limit-pre', 'agent-limit-post', 'checkpoint-nudge']);
   for (const ev of Object.keys(s.hooks || {})) {
     s.hooks[ev] = (s.hooks[ev] || []).filter((g) => !(g.hooks || []).some((h) => names.has(h.name)));
     if (!s.hooks[ev].length) delete s.hooks[ev];

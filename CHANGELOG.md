@@ -4,6 +4,49 @@ All notable changes to qwen-dev-toolkit are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com); versions follow semver.
 (Releases before 1.7.0 predate this file and are not backfilled — see the git history.)
 
+## [1.18.0] - 2026-07-24
+
+Feature release from a fresh-eyes review of the toolkit after the 1.17.0 QA pass, taking
+the new qwen-code 0.20.x hook events into account (`Stop`, `SessionEnd`, `SubagentStart/Stop`,
+`TodoCreated/Completed`, `type: prompt` model-calling hooks).
+
+### Added
+- **`/doctor` — self-diagnostic.** One read-only command that checks the things that rot
+  silently: every hook script + command backend actually present, every toolkit hook wired
+  into `settings.json` (a wired-but-missing gap ships bugs), guards not accidentally
+  disabled, stale approval tokens / a leaked subagent counter, and — if a provider is
+  configured — a live `/health` ping per model server with latency. Prints OK/WARN/FAIL by
+  section. This is the check that would have caught the version drift 1.17.0 had to fix.
+- **`checkpoint-nudge` — a `Stop` hook that keeps `.qwen/PROGRESS.md` fresh.** The toolkit's
+  whole compaction-survival story rests on PROGRESS.md staying current, but that depended on
+  the model's discipline — the one thing a small local model is unreliable at. Now, when a
+  turn is about to end and code was edited *after* the checkpoint was last written while it
+  still has unchecked tasks, the hook holds the turn **once** (loop-safe via `stop_hook_active`)
+  to make the model tick the finished boxes before stopping. No PROGRESS.md ⇒ silent. This
+  closes the last non-deterministic hole in the durable-state design, using an event that
+  did not exist when the toolkit was first built.
+- **`/toolkit-reset undo`.** `/toolkit-reset` used to warn it was "not auto-reversible"; it
+  now snapshots the pre-reset state (the edited `QWEN.md`, and for the global scope the
+  `.hooks-disabled` file and `autoCompactThreshold`) before applying, so `/toolkit-reset undo`
+  restores it one level back. Verified for both scopes.
+
+### Changed
+- **`/status` and `/applied` merged.** They were the one real duplicate — two introspection
+  commands with overlapping output. `/status` is now the single "everything at a glance"
+  view and, as before, shows the **active plan / development progress** from
+  `.qwen/PROGRESS.md` (goal, done/remaining + percent, next task) alongside the modes,
+  global guards, automation hooks, pinned facts, and version. Both commands now render from
+  one shared module (`_stateview.js`) so they can never drift; `/applied` stays as a
+  deprecated alias for one release (prints a note, same report). `/status global` shows the
+  global scope.
+
+### Notes
+- Reviewed the new qwen-code native features for overlap: `TodoCreated/Completed` events and
+  native session recovery partly overlap with PROGRESS.md and `restore-progress`, but the
+  toolkit's durable-on-disk checkpoint survives `/clear` and cross-session in a way native
+  todos do not, so both are kept. `SubagentStart/Stop` (agent-typed) could eventually
+  replace the generic-`agent`-matched `agent-limit`; left as-is since it is well-tested.
+
 ## [1.17.0] - 2026-07-15
 
 Full-toolkit review & refactor release, driven by an end-to-end QA pass (~130 integration

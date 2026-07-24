@@ -24,6 +24,7 @@ const HOOKS = [
   { name: 'steer-compaction',    kind: 'auto',  event: 'PreCompact',       desc: 'steers what compaction keeps (goal/plan over churn)' },
   { name: 'skill-reminder',      kind: 'auto',  event: 'UserPromptSubmit', desc: 'nudges the matching skill when a prompt clearly fits one' },
   { name: 'agent-limit-post',    kind: 'auto',  event: 'PostToolUse',      desc: 'decrements the subagent counter after a subagent finishes' },
+  { name: 'checkpoint-nudge',    kind: 'auto',  event: 'Stop',             desc: 'holds the turn once if code changed but .qwen/PROGRESS.md was not updated' },
 ];
 const NAMES = HOOKS.map((h) => h.name);
 const GUARDS = HOOKS.filter((h) => h.kind === 'guard').map((h) => h.name);

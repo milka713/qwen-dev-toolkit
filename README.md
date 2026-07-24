@@ -82,25 +82,31 @@ compaction) and is **gitignored** so it can't leak into the repo. `list` shows t
 `remove <text>` drops matching lines, `clear` wipes all.
 · _Example:_ `/pin deploy = ssh -p 12578 mark@host && ./deploy-dev.sh`
 
-**`/status`** — Read-only snapshot of this project's toolkit state: dev mode on/off, coverage
-target, subagent cap, how many facts are pinned, and — from `.qwen/PROGRESS.md` — the current
-goal and the next unchecked task. Changes nothing.
+**`/status` · `global`** — Read-only "everything at a glance" for this project, in groups: the
+**modes** pinned in `QWEN.md` (`/dev`, `/cover`, `/bro`, `/maxagents`, `/versioning`, `/reality`);
+the **active plan / development progress** from `.qwen/PROGRESS.md` (goal, done/remaining +
+percent, next unchecked task — the live state of `/dev` or any plan you're executing); the
+**guards/prohibitions** that can block a tool call (`secret-guard`, `git-branch-guard`,
+`release-guard`, `toolkit-reset-guard`, the subagent cap); the non-blocking **automation hooks**;
+pinned facts; and the toolkit version. `/status` is this project; `/status global` shows the
+`~/.qwen` state. Modes are per-scope; hooks/guards live globally and apply everywhere. Changes
+nothing. (`/applied` is a deprecated alias — use `/status`.)
+· _Example:_ `/status global`
 
-**`/applied` · `project` · `global`** — Read-only overview of **everything the toolkit currently
-applies**, in three groups: the **modes** pinned in the relevant `QWEN.md` (`/dev`, `/cover`,
-`/bro`, `/maxagents`, `/versioning`, `/reality`), the **guards/prohibitions** that can block a
-tool call (`secret-guard`, `git-branch-guard`, `release-guard`, `toolkit-reset-guard`, the
-subagent cap), and the non-blocking **automation hooks**. `/applied` shows this project (default);
-`/applied global` shows the `~/.qwen` state. Modes are per-scope; hooks and guards live globally
-(in `~/.qwen/settings.json`) and apply to every project, so they show in both. Changes nothing.
-· _Example:_ `/applied global`
+**`/doctor`** — Read-only self-diagnostic of the install. Checks that every hook script and
+command backend is present, every toolkit hook is wired into `settings.json`, no guard is
+accidentally disabled, there are no stale approval tokens or a leaked subagent counter, and —
+if a model provider is configured — pings each server's `/health` with latency. Reports
+OK/WARN/FAIL by section and names the fix (`/toolkit-update`, `/hooks on <name>`, or a server
+that's down). Changes nothing.
+· _Example:_ `/doctor`
 
 **`/hooks` · `off <name|guards|all>` · `on [<name>]`** — Turn the toolkit's hooks off/on when a
 guard is too strict and gets in the way, without uninstalling. `/hooks status` lists every hook
 ON/OFF; `/hooks off git-branch-guard` disables one; `/hooks off guards` disables all five guards
 at once; `/hooks on` re-enables everything. Off hooks stay wired but self-disable via
 `~/.qwen/.hooks-disabled` (effective immediately, no restart). Disabling is **sticky and loud** —
-a disabled guard is flagged here and in `/applied` (`⚠ DISABLED`) so you never silently lose
+a disabled guard is flagged here and in `/status` (`⚠ DISABLED`) so you never silently lose
 protection (e.g. `secret-guard` off = nothing stops a committed secret). Bare `/hooks off` is
 refused. Global scope.
 · _Example:_ `/hooks off git-branch-guard`
@@ -217,7 +223,7 @@ update are the same operation; works from anywhere (needs `git` + `node`). This 
 about getting the **latest released code** — for cleaning up settings a toggle left behind
 in the wrong place, see `/toolkit-reset` below (a separate, unrelated command).
 
-**`/toolkit-reset` · `project` · `global` · `confirm`** — Bring the toolkit back to the shape
+**`/toolkit-reset` · `project` · `global` · `confirm` · `undo`** — Bring the toolkit back to the shape
 the **current version implies by default**, for a chosen scope. `/toolkit-reset` (or
 `/toolkit-reset project`) resets **this project**; `/toolkit-reset global` resets the global
 `~/.qwen`. It removes the toolkit's toggle blocks (`/dev`, `/cover`, `/bro`, `/maxagents`,
@@ -231,7 +237,9 @@ model:** a plain run *previews* what would change (with a destructive-action war
 a 15-minute window, changing nothing; only `/toolkit-reset confirm`, typed by you within that
 window, applies it (to the scope you previewed — the token remembers it). A
 `toolkit-reset-guard` hook enforces the window at the engine level, the same way
-`git-branch-guard` backstops `/main-push`.
+`git-branch-guard` backstops `/main-push`. It's **reversible**: before applying, it snapshots
+the pre-reset state, so `/toolkit-reset undo` restores it one level back (run it in the same
+project you reset).
 · _Example:_ `/toolkit-reset global` then, if the preview looks right, `/toolkit-reset confirm`
 
 ### Subagents (isolated context)
@@ -258,6 +266,7 @@ window, applies it (to the scope you previewed — the token remembers it). A
 | `PreToolUse` → `toolkit-reset-guard.js` | **Blocks** an attempt to run `/toolkit-reset`'s confirm step without a valid 15-minute approval window — closes the gap where a model could otherwise call the backend script directly via a shell command instead of waiting for you to type `/toolkit-reset confirm` yourself. Preview-only calls (no `confirm`) always pass. |
 | `UserPromptSubmit` → `skill-reminder.js` | Small local models under-trigger model-invoked skills; this injects a short, targeted reminder (e.g. "looks security-related → `/audit`") only when the prompt clearly matches, so the right skill actually fires. Matches **both English and Russian** prompts. Silent on trivial prompts. |
 | `PreToolUse`/`PostToolUse`/`SessionStart` → `agent-limit.js` | Enforces `/maxagents` deterministically: counts running subagents and **denies** `agent` launches beyond the cap (concurrency-safe via a lock), decrements when one finishes, resets each session. No cap set → no-op. |
+| `Stop` → `checkpoint-nudge.js` | Keeps `.qwen/PROGRESS.md` honest: if a turn is about to end after code was edited but the checkpoint still has unchecked tasks and wasn't updated, it **holds the turn once** (loop-safe) to make the model tick the finished boxes first — so a later compaction/restart resumes from an accurate checkpoint. No `PROGRESS.md` → silent. |
 
 Plus a lean `~/.qwen/QWEN.md` (operating modes + memory discipline) and native auto-memory.
 
