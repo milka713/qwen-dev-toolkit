@@ -451,7 +451,7 @@ want the main agent to keep its reasoning, the robust path is **`yolo` + a harde
 
 ## Requirements
 
-- **qwen-code** (tested on **0.19.x**) + **Node.js**; **git** for the git features. Any
+- **qwen-code** (tested on **0.19.8–0.21.0**) + **Node.js**; **git** for the git features. Any
   provider; designed for small-context local models. Runs on macOS, Linux and Windows.
 
 ## Install / update
@@ -465,6 +465,11 @@ installer — the command logic is a single set of Node backends on every OS; on
 
 Prerequisites: **Node.js** + **qwen-code** (and **git** for the git features). The installer
 checks them and prints what's missing.
+
+> **qwen-code compatibility:** tested on **qwen-code 0.19.8 – 0.21.0**. Everything works on
+> 0.19.x; the one feature that needs **0.20.x+** is `checkpoint-nudge`'s proactive
+> context-fill guard (it reads `context_usage` from the `Stop` event, which older versions
+> don't send — there it simply stays silent). Run `/doctor` to see your version and health.
 
 ```bash
 ./install.sh      # macOS / Linux
