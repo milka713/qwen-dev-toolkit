@@ -101,6 +101,27 @@ OK/WARN/FAIL by section and names the fix (`/toolkit-update`, `/hooks on <name>`
 that's down). Changes nothing.
 · _Example:_ `/doctor`
 
+**`/sudo-on <password>` · `confirm` · `status` · `/sudo-off`**
+
+> ## ☢️ EXTREME DANGER — FULL PASSWORDLESS ROOT FOR THE MODEL
+> **This hands the local model full, passwordless `sudo` on the machine.** A mistaken or
+> looping model — exactly the kind of small local model this toolkit is built for — can then
+> **irreversibly destroy the system**: wipe files, drop firewall rules, brick services, with
+> no second chance. There is **no undo**. Only ever enable this on a box you own and can
+> afford to lose, for a specific task, and run **`/sudo-off` the instant you're done**.
+
+Off by default; the command's mere presence grants nothing. `/sudo-on <password>` **stages**
+the password and prints a loud red warning — nothing is active yet. Only `/sudo-on confirm`
+(which **you** type, after the warning) actually enables it: it writes a root **askpass helper**
+(`~/.qwen/.sudo-askpass`, `chmod 700`) so the model runs privileged commands as
+`SUDO_ASKPASS=… sudo -A <cmd>` — the password is fed by the helper and **never appears in the
+command line or the transcript** — and pins a `sudomode` block into the global `QWEN.md` so the
+model knows root is open. `/sudo-off` wipes the password, the helper, and the block, so the
+model can no longer `sudo` and forgets the password. `/sudo-on status` reports the state. A
+safer alternative for most needs is scoped passwordless sudo (`/etc/sudoers.d/` `NOPASSWD` for
+just the commands you need) — that limits the blast radius instead of granting blanket root.
+· _Example:_ `/sudo-on 'mypass'` → read the warning → `/sudo-on confirm` … `/sudo-off` when done
+
 **`/hooks` · `off <name|guards|all>` · `on [<name>]`** — Turn the toolkit's hooks off/on when a
 guard is too strict and gets in the way, without uninstalling. `/hooks status` lists every hook
 ON/OFF; `/hooks off git-branch-guard` disables one; `/hooks off guards` disables all five guards

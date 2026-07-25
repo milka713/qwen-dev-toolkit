@@ -18,15 +18,15 @@ const SKILLS = ['implement', 'plan', 'checkpoint', 'audit', 'brainstorm', 'gitfl
 for (const s of SKILLS) rm(path.join(QHOME, 'skills', s));
 for (const a of ['implementer', 'scout', 'debugger', 'tester', 'researcher', 'verifier']) rm(path.join(QHOME, 'agents', a + '.md'));
 
-const CMD_MD = ['dev', 'cover', 'pin', 'status', 'maxagents', 'bro', 'main-push', 'versioning', 'reality', 'autocompact', 'toolkit-reset', 'applied', 'hooks', 'doctor'];
-const CMD_BACKENDS = ['_qdt', '_mode-toggle', '_cover', '_pin', '_status', '_maxagents', '_bro', '_main-push', '_versioning', '_reality', '_autocompact', '_toolkit-reset', '_applied', '_hooks', '_hookcat', '_stateview', '_doctor'];
+const CMD_MD = ['dev', 'cover', 'pin', 'status', 'maxagents', 'bro', 'main-push', 'versioning', 'reality', 'autocompact', 'toolkit-reset', 'applied', 'hooks', 'doctor', 'sudo-on', 'sudo-off'];
+const CMD_BACKENDS = ['_qdt', '_mode-toggle', '_cover', '_pin', '_status', '_maxagents', '_bro', '_main-push', '_versioning', '_reality', '_autocompact', '_toolkit-reset', '_applied', '_hooks', '_hookcat', '_stateview', '_doctor', '_sudoctl'];
 for (const c of CMD_MD) rm(path.join(QHOME, 'commands', c + '.md'));
 for (const b of CMD_BACKENDS) { rm(path.join(QHOME, 'commands', b + '.sh')); rm(path.join(QHOME, 'commands', b + '.js')); }
 rm(path.join(QHOME, 'commands', '_devmode.block'));
 rm(path.join(QHOME, '.toolkit-version'));
 rm(path.join(QHOME, '.hooks-disabled'));
-// approval tokens + the /toolkit-reset undo snapshot (toolkit-only state files)
-for (const f of ['.toolkit-reset-backup', '.toolkit-reset-approval', '.main-approval']) rm(path.join(QHOME, f));
+// approval tokens, the /toolkit-reset undo snapshot, and the /sudo-on state (toolkit-only files)
+for (const f of ['.toolkit-reset-backup', '.toolkit-reset-approval', '.main-approval', '.sudo-pending', '.sudo-pass', '.sudo-askpass']) rm(path.join(QHOME, f));
 // legacy names from older releases
 for (const f of ['mainok.md', '_mainok.sh', '_mainok.js', '_dev-toggle.sh', '_covermode.block']) rm(path.join(QHOME, 'commands', f));
 
@@ -53,7 +53,7 @@ console.log('  ✓ removed skills, commands, subagents, hook scripts');
 (function () {
   const file = path.join(QHOME, 'QWEN.md');
   let cur = read(file); if (cur == null) return;
-  const MARKERS = ['qwen-dev-toolkit', 'bromode', 'covermode', 'devmode', 'maxagents', 'versioning', 'realitymode'];
+  const MARKERS = ['qwen-dev-toolkit', 'bromode', 'covermode', 'devmode', 'maxagents', 'versioning', 'realitymode', 'sudomode'];
   let out = cur;
   for (const m of MARKERS) out = out.replace(new RegExp('\\n*<!-- ' + m + ':start -->[\\s\\S]*?<!-- ' + m + ':end -->\\n*', 'g'), '\n');
   fs.writeFileSync(file, out.replace(/\n{3,}/g, '\n\n').trimEnd() + '\n');

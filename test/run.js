@@ -606,6 +606,43 @@ console.log('— checkpoint-nudge —');
   }
 }
 
+// ---- /sudo-on + /sudo-off — DANGEROUS opt-in full-root toggle (confirm-gated) -------
+console.log('— sudo-on / sudo-off —');
+{
+  const sc = path.join(ROOT, 'commands', '_sudoctl.js');
+  const qh = tmp(); fs.mkdirSync(qh, { recursive: true });
+  const run = (...args) => cp.spawnSync('node', [sc, ...args], { env: { ...process.env, QWEN_HOME: qh, NO_COLOR: '1' }, encoding: 'utf8' }).stdout;
+  const has = (f) => fs.existsSync(path.join(qh, f));
+
+  ok('status is OFF by default', /sudo is OFF/.test(run('on', 'status')));
+  // arm: warns, stages a pending password, activates nothing
+  const armed = run('on', 's3cret-pw');
+  ok('sudo-on <pw> shows the danger warning', /EXTREME DANGER/.test(armed) && /IRREVERSIBLY/.test(armed));
+  ok('sudo-on <pw> stages a pending file, nothing active yet', has('.sudo-pending') && !has('.sudo-askpass') && !has('.sudo-pass'));
+  ok('sudo-on <pw> does NOT echo the password back', !armed.includes('s3cret-pw'));
+  ok('status reflects PENDING', /PENDING/.test(run('on', 'status')));
+  // confirm: activate
+  const active = run('on', 'confirm');
+  ok('confirm reports sudo ACTIVE', /sudo ACTIVE/.test(active) && /FULL PASSWORDLESS ROOT/.test(active));
+  ok('confirm writes askpass (0700) + pass (0600)', has('.sudo-askpass') && has('.sudo-pass') &&
+    (fs.statSync(path.join(qh, '.sudo-askpass')).mode & 0o777) === 0o700 &&
+    (fs.statSync(path.join(qh, '.sudo-pass')).mode & 0o777) === 0o600);
+  ok('confirm consumes the pending file', !has('.sudo-pending'));
+  ok('confirm pins a sudomode block into the global QWEN.md', /<!-- sudomode:start -->/.test(fs.readFileSync(path.join(qh, 'QWEN.md'), 'utf8')));
+  ok('askpass helper returns the stored password', cp.spawnSync('sh', [path.join(qh, '.sudo-askpass')], { encoding: 'utf8' }).stdout === 's3cret-pw');
+  ok('status now reads ACTIVE', /ACTIVE/.test(run('on', 'status')));
+  // off: wipe everything
+  run('off');
+  ok('sudo-off wipes password + askpass', !has('.sudo-pass') && !has('.sudo-askpass'));
+  ok('sudo-off removes the sudomode block', !/sudomode:start/.test(fs.readFileSync(path.join(qh, 'QWEN.md'), 'utf8')));
+  ok('confirm with no pending is refused', /nothing to confirm/.test(run('on', 'confirm')));
+  // an expired pending (>5 min) can't be confirmed
+  fs.writeFileSync(path.join(qh, '.sudo-pending'), 'x');
+  const old = new Date(Date.now() - 6 * 60 * 1000);
+  fs.utimesSync(path.join(qh, '.sudo-pending'), old, old);
+  ok('expired pending is refused at confirm', /nothing to confirm/.test(run('on', 'confirm')) && !has('.sudo-askpass'));
+}
+
 // ---- compact-warn — warns AND latches auto-compaction off when it's ineffective -----
 console.log('— compact-warn —');
 {

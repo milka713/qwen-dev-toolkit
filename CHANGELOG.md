@@ -4,6 +4,23 @@ All notable changes to qwen-dev-toolkit are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com); versions follow semver.
 (Releases before 1.7.0 predate this file and are not backfilled — see the git history.)
 
+## [1.20.0] - 2026-07-25
+
+### Added
+- **`/sudo-on` + `/sudo-off` — opt-in, confirm-gated full-root access for the local model
+  (☢️ DANGEROUS).** For operators who explicitly want the model to run privileged commands on
+  their own machines (firewall/sysadmin automation). Off by default and inert until used:
+  `/sudo-on <password>` only *stages* the password and prints a **loud red danger banner**;
+  `/sudo-on confirm` (typed by the user, after the warning) actually enables it by writing a
+  root **askpass helper** (`~/.qwen/.sudo-askpass`, `chmod 700`) so the model runs
+  `SUDO_ASKPASS=… sudo -A <cmd>` — the password is fed by the helper and **never appears in the
+  command line or the transcript** — and pins a `sudomode` block into the global `QWEN.md`.
+  `/sudo-off` wipes the password, helper, and block; `/sudo-on status` reports state. The
+  command description, the README, and the runtime output all carry prominent **☢️** warnings
+  that a mistaken/looping model with this on can irreversibly destroy the machine, and point to
+  the safer scoped `NOPASSWD` sudoers alternative. `sudomode` is swept by `/toolkit-reset` and
+  uninstall; the state files are removed on uninstall.
+
 ## [1.19.0] - 2026-07-24
 
 Robustness release: make the durable-state workflow survive a saturated context window

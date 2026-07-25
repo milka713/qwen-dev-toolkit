@@ -42,7 +42,7 @@ const BACKUP = path.join(QHOME, '.toolkit-reset-backup'); // one-level undo snap
 const TTL_MS = 15 * 60 * 1000;
 const DEFAULT_AUTOCOMPACT = 1; // current default: auto-compaction OFF
 // Toggle blocks pinned into a QWEN.md by /dev, /cover, /bro, /maxagents, /versioning, /reality.
-const MARKERS = ['bromode', 'covermode', 'devmode', 'maxagents', 'versioning', 'realitymode'];
+const MARKERS = ['bromode', 'covermode', 'devmode', 'maxagents', 'versioning', 'realitymode', 'sudomode'];
 
 const argv = process.argv.slice(2).map((s) => s.trim().toLowerCase()).filter(Boolean);
 const isConfirm = argv.includes('confirm');
