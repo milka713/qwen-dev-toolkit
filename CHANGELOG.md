@@ -4,6 +4,32 @@ All notable changes to qwen-dev-toolkit are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com); versions follow semver.
 (Releases before 1.7.0 predate this file and are not backfilled — see the git history.)
 
+## [1.19.0] - 2026-07-24
+
+Robustness release: make the durable-state workflow survive a saturated context window
+even when qwen-code's built-in auto-compaction fails — which it does on a reasoning model,
+where the summarization call comes back empty and hard-fails the turn.
+
+### Changed
+- **`compact-warn` now latches auto-compaction OFF when it proves ineffective.** It already
+  warned after a compaction that freed <15%; now it also sets `context.autoCompactThreshold`
+  to 1 (off) in `settings.json` — but only if auto-compaction was actually enabled, and it
+  preserves every other key. Once compaction is shown to be useless for a session, qwen-code
+  stops retrying it (and stops risking the empty-summary hard-fail); the durable-checkpoint +
+  fresh-session path takes over. The injected message says it turned it off.
+- **`checkpoint-nudge` gains a proactive context-fill guard.** qwen-code 0.20.x reports
+  `context_usage` on the `Stop` event; when the window is ~88%+ full, the hook now holds the
+  turn once to force `/checkpoint` + a fresh session **before** the window fills and an
+  auto-compaction can fire-and-fail. Degrades to silent on older qwen-code that doesn't send
+  the field. Loop-safe as before (`stop_hook_active`).
+
+### Notes
+- Together these close the "auto-compaction can still die" gap two ways: prevent reaching a
+  full window (proactive fill guard), and stop retrying compaction once it's proven useless
+  (auto-disable). The honest limit remains: a finite window is finite — the robust answer is
+  durable state on disk (`PROGRESS.md`) + fresh sessions, which these hooks now enforce
+  rather than merely suggest.
+
 ## [1.18.0] - 2026-07-24
 
 Feature release from a fresh-eyes review of the toolkit after the 1.17.0 QA pass, taking

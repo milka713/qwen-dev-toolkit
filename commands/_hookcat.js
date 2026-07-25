@@ -20,11 +20,11 @@ const HOOKS = [
   { name: 'agent-limit-pre',     kind: 'guard', event: 'PreToolUse',       desc: 'blocks launching more subagents than /maxagents allows' },
   { name: 'restore-progress',    kind: 'auto',  event: 'SessionStart',     desc: 're-injects .qwen/PROGRESS.md after compaction / on a new session' },
   { name: 'agent-limit-reset',   kind: 'auto',  event: 'SessionStart',     desc: 'resets the subagent counter at session start' },
-  { name: 'compact-warn',        kind: 'auto',  event: 'SessionStart',     desc: 'warns when a compaction saved <15% (compacting further is ineffective)' },
+  { name: 'compact-warn',        kind: 'auto',  event: 'SessionStart',     desc: 'when a compaction saved <15%, warns and latches auto-compaction OFF (it is proven ineffective)' },
   { name: 'steer-compaction',    kind: 'auto',  event: 'PreCompact',       desc: 'steers what compaction keeps (goal/plan over churn)' },
   { name: 'skill-reminder',      kind: 'auto',  event: 'UserPromptSubmit', desc: 'nudges the matching skill when a prompt clearly fits one' },
   { name: 'agent-limit-post',    kind: 'auto',  event: 'PostToolUse',      desc: 'decrements the subagent counter after a subagent finishes' },
-  { name: 'checkpoint-nudge',    kind: 'auto',  event: 'Stop',             desc: 'holds the turn once if code changed but .qwen/PROGRESS.md was not updated' },
+  { name: 'checkpoint-nudge',    kind: 'auto',  event: 'Stop',             desc: 'holds the turn once if code changed but PROGRESS.md is stale, or if the context window is nearly full' },
 ];
 const NAMES = HOOKS.map((h) => h.name);
 const GUARDS = HOOKS.filter((h) => h.kind === 'guard').map((h) => h.name);

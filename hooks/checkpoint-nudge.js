@@ -26,6 +26,29 @@ if (evt.stop_hook_active === true) process.exit(0);
 const cwd = evt.cwd || process.cwd();
 const progress = path.join(cwd, '.qwen', 'PROGRESS.md');
 
+// --- proactive context-fill guard -------------------------------------------
+// qwen-code 0.20.x sends context_usage (ratio of window used) on Stop. When the window is
+// nearly full, the NEXT turn risks tipping into an auto-compaction that, on a reasoning
+// model, can come back empty and hard-fail the turn — the exact failure this is meant to
+// pre-empt. So before the window fills, hold the turn once to force the durable-checkpoint
+// + fresh-session path (the only thing that actually survives a full window). Degrades to
+// silent on older qwen-code that doesn't send the field. Loop-safe (stop_hook_active above).
+const FULL = 0.88; // fraction of the context window at which we insist on checkpointing
+const usage = evt.context_usage;
+if (typeof usage === 'number' && isFinite(usage) && usage >= FULL) {
+  const pct = Math.round(usage * 100);
+  process.stdout.write(JSON.stringify({
+    decision: 'block',
+    reason:
+      '[toolkit] context-fill guard: the context window is ~' + pct + '% full. Do NOT keep going and let it fill — ' +
+      'a full window forces an auto-compaction that can come back empty and hard-fail the session. Instead, right now: ' +
+      'run /checkpoint to save the goal/decisions/done-todo to .qwen/PROGRESS.md, then tell the user to start a FRESH ' +
+      'session (a new session reloads PROGRESS.md automatically and continues from the next unchecked task). Do this ' +
+      'before doing more work.',
+  }));
+  process.exit(0);
+}
+
 let pStat, body;
 try { pStat = fs.statSync(progress); body = fs.readFileSync(progress, 'utf8'); }
 catch (_) { process.exit(0); } // no checkpoint here — nothing to keep fresh

@@ -596,6 +596,43 @@ console.log('— checkpoint-nudge —');
     fs.writeFileSync(path.join(d, 'app.js'), 'x\n'); backdate(p);
     ok('disabled via /hooks → silent', runNode(cn, { input: JSON.stringify({ cwd: d }), env: { QWEN_HOME: qh } }).stdout === '');
   }
+  // context-fill guard (qwen-code 0.20.x sends context_usage on Stop)
+  {
+    const d = mkProj(); // no PROGRESS.md, no code drift — fill guard fires on usage alone
+    ok('context ~92% full → block to checkpoint', run(d, { context_usage: 0.92 }).includes('"block"') && run(d, { context_usage: 0.92 }).includes('% full'));
+    ok('context 50% full → silent', run(d, { context_usage: 0.5 }) === '');
+    ok('no context_usage field (old qwen) → silent (graceful)', run(d, {}) === '');
+    ok('fill guard loop-safe under stop_hook_active', run(d, { context_usage: 0.95, stop_hook_active: true }) === '');
+  }
+}
+
+// ---- compact-warn — warns AND latches auto-compaction off when it's ineffective -----
+console.log('— compact-warn —');
+{
+  const cw = path.join(ROOT, 'hooks', 'compact-warn.js');
+  const mkTranscript = (orig, next) => { const f = path.join(tmp(), 't.jsonl'); fs.writeFileSync(f, JSON.stringify({ type: 'chat_compression', systemPayload: { info: { originalTokenCount: orig, newTokenCount: next } } }) + '\n'); return f; };
+  const run = (qh, transcript) => runNode(cw, { input: JSON.stringify({ source: 'compact', transcript_path: transcript }), env: { QWEN_HOME: qh } }).stdout;
+  // ineffective (5% reduction) with auto-compaction ON → warn + disable + preserve other keys
+  {
+    const qh = tmp(); fs.writeFileSync(path.join(qh, 'settings.json'), JSON.stringify({ context: { autoCompactThreshold: 0.7 }, keepme: 1 }));
+    const out = run(qh, mkTranscript(1000, 950));
+    ok('compact-warn warns on <15% reduction', out.includes('compaction warning'));
+    ok('compact-warn latches auto-compaction OFF (threshold → 1)', JSON.parse(fs.readFileSync(path.join(qh, 'settings.json'), 'utf8')).context.autoCompactThreshold === 1);
+    ok('compact-warn says it turned auto-compaction off', out.includes('turned OFF'));
+    ok('compact-warn preserves other settings keys', JSON.parse(fs.readFileSync(path.join(qh, 'settings.json'), 'utf8')).keepme === 1);
+  }
+  // healthy (50% reduction) → silent, threshold untouched
+  {
+    const qh = tmp(); fs.writeFileSync(path.join(qh, 'settings.json'), JSON.stringify({ context: { autoCompactThreshold: 0.7 } }));
+    ok('compact-warn silent on a healthy compaction', run(qh, mkTranscript(1000, 500)) === '');
+    ok('compact-warn leaves threshold alone when compaction was healthy', JSON.parse(fs.readFileSync(path.join(qh, 'settings.json'), 'utf8')).context.autoCompactThreshold === 0.7);
+  }
+  // already off (threshold 1) → still warns, message notes it is already off
+  {
+    const qh = tmp(); fs.writeFileSync(path.join(qh, 'settings.json'), JSON.stringify({ context: { autoCompactThreshold: 1 } }));
+    const out = run(qh, mkTranscript(1000, 950));
+    ok('compact-warn still warns when auto-compaction already off', out.includes('compaction warning') && out.includes('already off'));
+  }
 }
 
 // ---- /status — merged snapshot incl. active plan/dev progress ------------------
