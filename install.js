@@ -139,6 +139,7 @@ console.log('  ✓ hooks    (restore, compaction-steer, compact-warn, secret-gua
   setHook('PreToolUse', 'toolkit-reset-guard.js', 'toolkit-reset-guard', 'run_shell_command');
   setHook('PreToolUse', 'agent-limit.js pre', 'agent-limit-pre', 'agent');
   setHook('PreToolUse', 'devmode-guard.js', 'devmode-guard', 'write_file|edit');
+  setHook('PreToolUse', 'terminal-guard.js', 'terminal-guard', 'run_shell_command');
   setHook('PostToolUse', 'agent-limit.js post', 'agent-limit-post', 'agent');
   setHook('UserPromptSubmit', 'skill-reminder.js', 'skill-reminder');
   setHook('Stop', 'checkpoint-nudge.js', 'checkpoint-nudge');

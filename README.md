@@ -221,8 +221,10 @@ session. It teaches the reliable macOS way (`open -a Terminal` a `.command` scri
 AppleScript escaping, **no Automation/Accessibility permission needed**, unlike the brittle
 `keystroke` path), what each missing permission is and **how to grant it** rather than
 silently failing, and device-safety for destructive ops (confirm the target disk, pause
-before the wipe). The model *already* has this ability — the skill makes it use it instead
-of stalling or faking success.
+before the wipe). It **always asks for an explicit yes** before handing anything off, and is
+**blocked in `auto`/`yolo` modes** by the `terminal-guard` hook (no confirmation happens
+there). The model *already* has this ability — the skill makes it use it, safely, instead of
+stalling or faking success.
 
 **`/plan`** — Turns a fuzzy or large request into a concrete, **dependency-ordered task list**
 in `.qwen/PROGRESS.md`, exploring an unfamiliar codebase first via the read-only `scout`
@@ -324,6 +326,7 @@ project you reset).
 | `PreToolUse` → `release-guard.js` | **Reminds** (never blocks) when a push advances `main`/`master` but the release would lag the code — a bumped `VERSION` with no matching tag, or commits past the released tag with no bump — injecting a note to run `/release` (or `/changelog` then `/release`). This is the deterministic backstop that makes `/release` fire even if the model forgets it. Silent when the release is in sync. |
 | `PreToolUse` → `toolkit-reset-guard.js` | **Blocks** an attempt to run `/toolkit-reset`'s confirm step without a valid 15-minute approval window — closes the gap where a model could otherwise call the backend script directly via a shell command instead of waiting for you to type `/toolkit-reset confirm` yourself. Preview-only calls (no `confirm`) always pass. |
 | `PreToolUse` → `devmode-guard.js` | Makes development mode's core rule deterministic: while `/dev` is on for a project, **blocks** the architect (main session) from writing source/tests/config with `write_file`/`edit` — that work must go to an `implementer`/`debugger` subagent. Subagents are exempt (they're the sanctioned writers, detected via `QWEN_CODE_AGENT_ID`); the architect's own `PROGRESS.md`/`QWEN.md`/`FACTS.md` writes pass. `/devedit <why>` authorises exactly one direct edit (logged to `PROGRESS.md`, single-use, 15-min expiry). Inert when `/dev` is off. |
+| `PreToolUse` → `terminal-guard.js` | Backs the `/terminal` skill: **blocks** a terminal handoff (`open -a Terminal` / `osascript … do script` / `keystroke` to Terminal) when the approval mode is `auto` or `yolo` (read from the hook's `permission_mode`) — those modes auto-approve, so a destructive handoff (`dd`, format, flash) must not fire unwatched. Passes in `default`/`auto-edit`/`plan`, and passes any non-handoff command. |
 | `UserPromptSubmit` → `skill-reminder.js` | Small local models under-trigger model-invoked skills; this injects a short, targeted reminder (e.g. "looks security-related → `/audit`") only when the prompt clearly matches, so the right skill actually fires. Matches **both English and Russian** prompts. Silent on trivial prompts. |
 | `PreToolUse`/`PostToolUse`/`SessionStart` → `agent-limit.js` | Enforces `/maxagents` deterministically: counts running subagents and **denies** `agent` launches beyond the cap (concurrency-safe via a lock), decrements when one finishes, resets each session. No cap set → no-op. |
 | `Stop` → `checkpoint-nudge.js` | Two guards, each holds the turn once (loop-safe): **(1)** keeps `.qwen/PROGRESS.md` honest — if code was edited but the checkpoint still has unchecked tasks and wasn't updated, it makes the model tick the finished boxes first; **(2)** proactive context-fill guard — when qwen-code (0.20.x+) reports the window ~88%+ full, it forces `/checkpoint` + a fresh session **before** the window fills and an auto-compaction can fire-and-fail. Degrades to silent on older qwen-code / no `PROGRESS.md`. |

@@ -4,6 +4,23 @@ All notable changes to qwen-dev-toolkit are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com); versions follow semver.
 (Releases before 1.7.0 predate this file and are not backfilled — see the git history.)
 
+## [1.21.2] - 2026-07-30
+
+### Added
+- **`terminal-guard` hook — the `/terminal` handoff now requires the user in the loop.**
+  Two safety changes to the terminal-handoff added in 1.21.1:
+  - **Explicit confirmation before every handoff.** The `/terminal` skill now mandates
+    showing the exact command, saying what it will do (which device, `sudo`, irreversible),
+    and getting a **direct yes** before opening the terminal — a general earlier "do
+    whatever" is not consent for a specific destructive command.
+  - **Disabled in `auto` and `yolo` modes.** Those approval modes auto-approve everything,
+    so a destructive handoff (`dd`, format, flash) could fire with nobody watching. The new
+    `terminal-guard` `PreToolUse` hook detects a Terminal handoff (`open -a Terminal` /
+    `osascript … do script` / `keystroke` to Terminal) and **blocks it when
+    `permission_mode` is `auto` or `yolo`** (the mode is read from the hook payload),
+    telling the model to switch back to default approval and confirm there. Every other
+    command, and every other mode (`default`, `auto-edit`, `plan`), passes untouched.
+
 ## [1.21.1] - 2026-07-30
 
 ### Added

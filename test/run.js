@@ -162,6 +162,21 @@ ok('devedit authorises one edit + logs to PROGRESS.md',
 ok('devedit token lets exactly ONE architect source write through', dgRun('write_file', 'src/app.py') === '');
 ok('devedit token is single-use (next write denied again)', dgRun('write_file', 'src/app.py').includes('"deny"'));
 
+// ---- terminal-guard --------------------------------------------------------
+console.log('— terminal-guard —');
+const tg = path.join(ROOT, 'hooks', 'terminal-guard.js');
+const tgRun = (command, permission_mode) => runNode(tg, { input: JSON.stringify({ tool_name: 'run_shell_command', tool_input: { command }, permission_mode }) }).stdout;
+const OSA = 'osascript -e \'tell application "Terminal" to activate\' -e \'tell application "Terminal" to do script "xz -dc img.xz | sudo dd of=/dev/rdisk2"\'';
+const OPENC = 'chmod +x /tmp/x.command && open -a Terminal /tmp/x.command';
+ok('handoff (osascript do script) BLOCKED in auto', tgRun(OSA, 'auto').includes('"deny"'));
+ok('handoff (open -a Terminal) BLOCKED in yolo', tgRun(OPENC, 'yolo').includes('"deny"'));
+ok('handoff (keystroke to Terminal) BLOCKED in auto', tgRun('osascript -e \'tell process "Terminal" to keystroke "dd"\'', 'auto').includes('"deny"'));
+ok('handoff ALLOWED in default mode (user confirms there)', tgRun(OSA, 'default') === '');
+ok('handoff ALLOWED in auto-edit (shell still prompts)', tgRun(OSA, 'auto-edit') === '');
+ok('non-handoff command allowed even in yolo', tgRun('ls -la /tmp', 'yolo') === '');
+ok('unrelated osascript (no Terminal) allowed in auto', tgRun('osascript -e \'display notification "hi"\'', 'auto') === '');
+ok('missing permission_mode is treated as not-auto/yolo (allow)', tgRun(OSA, undefined) === '');
+
 // ---- skill-reminder ----------------------------------------------------------
 console.log('— skill-reminder —');
 const sr = path.join(ROOT, 'hooks', 'skill-reminder.js');
@@ -303,6 +318,8 @@ ok('QWEN.md guidance added', fs.readFileSync(path.join(qh2, 'QWEN.md'), 'utf8').
 ok('honesty directive is ON by default (in the always-on global QWEN.md)', /Honesty over agreement/.test(fs.readFileSync(path.join(qh2, 'QWEN.md'), 'utf8')));
 ok('research-first directive is ON by default (in the always-on global QWEN.md)', /Think & research before flailing/.test(fs.readFileSync(path.join(qh2, 'QWEN.md'), 'utf8')));
 ok('terminal-handoff awareness is in the global QWEN.md', /Can't run it yourself/.test(fs.readFileSync(path.join(qh2, 'QWEN.md'), 'utf8')) && fs.existsSync(path.join(qh2, 'skills', 'terminal', 'SKILL.md')));
+ok('terminal skill requires explicit confirm + notes auto/yolo disabled', (() => { const s = fs.readFileSync(path.join(qh2, 'skills', 'terminal', 'SKILL.md'), 'utf8'); return /Always confirm before you hand off/.test(s) && /Disabled in auto \/ yolo/.test(s); })());
+ok('terminal-guard hook installed + wired', fs.existsSync(path.join(qh2, 'hooks', 'terminal-guard.js')) && fs.readFileSync(path.join(qh2, 'settings.json'), 'utf8').includes('terminal-guard'));
 ok('commit skill requires a body for non-trivial commits', /required for any non-trivial commit/.test(fs.readFileSync(path.join(ROOT, 'skills', 'commit', 'SKILL.md'), 'utf8')));
 // Backends are Node-only: every _*.js ships on every OS; the thin _*.sh wrappers ship
 // on POSIX only (Windows rewrites the .md commands to call node directly).

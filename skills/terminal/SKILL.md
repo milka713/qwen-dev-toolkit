@@ -27,6 +27,30 @@ models just don't realise it.
   process the user needs to watch or Ctrl-C themselves.
 - **Anything the user should see happen** on their own machine before it's real.
 
+## Always confirm before you hand off
+
+**Never open the terminal and run the command until the user has explicitly said yes.**
+Handing a command to their terminal makes it *real* — often with `sudo` and often
+irreversible. So, every time, before you launch anything:
+
+1. **Show the exact command** you're about to hand off, in a code block, and say plainly
+   **what it will do** (which device it writes to, that it needs `sudo`, that it's
+   irreversible).
+2. **Ask a direct yes/no question** — e.g. *"Run this in your Terminal now? It will erase
+   `/dev/rdisk2`."* — and **wait for an explicit confirmation.** Silence, "ok go on" about
+   something else, or a general earlier "do whatever" is **not** consent for this specific
+   destructive command.
+3. Only after they say yes, launch it (methods below). Then tell them what to expect (a
+   password prompt, a progress meter, how long it takes).
+
+This confirmation is on top of, not instead of, any approval prompt qwen-code shows.
+
+**Disabled in auto / yolo modes.** In `auto` and `yolo` approval modes nothing is confirmed
+by the user, so the handoff is **blocked by the `terminal-guard` hook** (a destructive
+command must never fire unwatched). If you're in one of those modes, don't try to route
+around it — tell the user to switch back to the default approval mode (Shift+Tab) and do
+the handoff there, where they can confirm the exact command.
+
 ## macOS — the reliable way: `open -a Terminal` a script
 
 The **most robust** method (no AppleScript escaping, and **no special permission needed**)

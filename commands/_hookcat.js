@@ -19,6 +19,7 @@ const HOOKS = [
   { name: 'toolkit-reset-guard', kind: 'guard', event: 'PreToolUse',       desc: 'blocks "/toolkit-reset confirm" with no active approval window' },
   { name: 'agent-limit-pre',     kind: 'guard', event: 'PreToolUse',       desc: 'blocks launching more subagents than /maxagents allows' },
   { name: 'devmode-guard',       kind: 'guard', event: 'PreToolUse',       desc: 'in /dev mode, blocks the architect writing source directly (delegate to a subagent); /devedit authorises one edit' },
+  { name: 'terminal-guard',      kind: 'guard', event: 'PreToolUse',       desc: 'blocks the /terminal handoff (open/osascript to Terminal) in auto/yolo mode, where nothing is confirmed' },
   { name: 'restore-progress',    kind: 'auto',  event: 'SessionStart',     desc: 're-injects .qwen/PROGRESS.md after compaction / on a new session' },
   { name: 'agent-limit-reset',   kind: 'auto',  event: 'SessionStart',     desc: 'resets the subagent counter at session start' },
   { name: 'compact-warn',        kind: 'auto',  event: 'SessionStart',     desc: 'when a compaction saved <15%, warns and latches auto-compaction OFF (it is proven ineffective)' },
