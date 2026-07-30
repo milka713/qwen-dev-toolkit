@@ -14,12 +14,12 @@ const QHOME = process.env.QWEN_HOME || path.join(os.homedir(), '.qwen');
 const rm = (p) => { try { fs.rmSync(p, { recursive: true, force: true }); } catch (_) {} };
 const read = (p) => { try { return fs.readFileSync(p, 'utf8'); } catch (_) { return null; } };
 
-const SKILLS = ['implement', 'plan', 'checkpoint', 'audit', 'brainstorm', 'gitflow', 'commit', 'review', 'docs', 'changelog', 'release', 'toolkit-update'];
+const SKILLS = ['implement', 'plan', 'checkpoint', 'audit', 'brainstorm', 'gitflow', 'commit', 'review', 'docs', 'changelog', 'release', 'toolkit-update', 'research'];
 for (const s of SKILLS) rm(path.join(QHOME, 'skills', s));
 for (const a of ['implementer', 'scout', 'debugger', 'tester', 'researcher', 'verifier']) rm(path.join(QHOME, 'agents', a + '.md'));
 
-const CMD_MD = ['dev', 'cover', 'pin', 'status', 'maxagents', 'bro', 'main-push', 'versioning', 'reality', 'autocompact', 'toolkit-reset', 'applied', 'hooks', 'doctor', 'sudo-on', 'sudo-off', 'devedit'];
-const CMD_BACKENDS = ['_qdt', '_mode-toggle', '_cover', '_pin', '_status', '_maxagents', '_bro', '_main-push', '_versioning', '_reality', '_autocompact', '_toolkit-reset', '_applied', '_hooks', '_hookcat', '_stateview', '_doctor', '_sudoctl', '_devedit'];
+const CMD_MD = ['dev', 'cover', 'pin', 'status', 'maxagents', 'bro', 'main-push', 'versioning', 'reality', 'research', 'autocompact', 'toolkit-reset', 'applied', 'hooks', 'doctor', 'sudo-on', 'sudo-off', 'devedit'];
+const CMD_BACKENDS = ['_qdt', '_mode-toggle', '_cover', '_pin', '_status', '_maxagents', '_bro', '_main-push', '_versioning', '_reality', '_research', '_autocompact', '_toolkit-reset', '_applied', '_hooks', '_hookcat', '_stateview', '_doctor', '_sudoctl', '_devedit'];
 for (const c of CMD_MD) rm(path.join(QHOME, 'commands', c + '.md'));
 for (const b of CMD_BACKENDS) { rm(path.join(QHOME, 'commands', b + '.sh')); rm(path.join(QHOME, 'commands', b + '.js')); }
 rm(path.join(QHOME, 'commands', '_devmode.block'));
@@ -53,7 +53,7 @@ console.log('  ✓ removed skills, commands, subagents, hook scripts');
 (function () {
   const file = path.join(QHOME, 'QWEN.md');
   let cur = read(file); if (cur == null) return;
-  const MARKERS = ['qwen-dev-toolkit', 'bromode', 'covermode', 'devmode', 'maxagents', 'versioning', 'realitymode', 'sudomode'];
+  const MARKERS = ['qwen-dev-toolkit', 'bromode', 'covermode', 'devmode', 'maxagents', 'versioning', 'realitymode', 'realityoff', 'researchoff', 'sudomode'];
   let out = cur;
   for (const m of MARKERS) out = out.replace(new RegExp('\\n*<!-- ' + m + ':start -->[\\s\\S]*?<!-- ' + m + ':end -->\\n*', 'g'), '\n');
   fs.writeFileSync(file, out.replace(/\n{3,}/g, '\n\n').trimEnd() + '\n');

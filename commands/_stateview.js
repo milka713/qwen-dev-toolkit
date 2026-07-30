@@ -19,7 +19,8 @@ function modesFor(q, GLOBAL) {
   modes.push(['Test-coverage mode', has('covermode') ? 'ON (' + (grab(/target ≥[0-9]+%/) || 'target set') + ')' : 'OFF']);
   modes.push(['Bro mode', has('bromode') ? 'ON (' + (q.includes('persona: lamar') ? 'Ламар' : 'Свободовец') + ')' : 'OFF']);
   modes.push(['Subagent limit', has('maxagents') ? (grab(/at most [0-9]+ at a time/) || 'set') : 'none (as needed)']);
-  modes.push(['Reality mode', has('realitymode') ? 'ON' : 'OFF']);
+  modes.push(['Honesty (reality)', has('realityoff') ? 'OFF (opted out here)' : 'ON (default)']);
+  modes.push(['Research-first', has('researchoff') ? 'OFF (opted out here)' : 'ON (default)']);
   let versioning;
   if (has('versioning')) {
     versioning = q.includes('versioning: custom') ? 'custom scheme (project override)'
@@ -98,7 +99,7 @@ function render(scope /* 'PROJECT' | 'GLOBAL' */) {
   const out = [];
   out.push('TOOLKIT STATE — scope: ' + scope + ' (' + (GLOBAL ? qwenFile : './QWEN.md') + ')');
   out.push('');
-  const anyMode = modes.some(([, v]) => v !== 'OFF' && !/^none|^semantic \(global/.test(v));
+  const anyMode = modes.some(([, v]) => v !== 'OFF' && !/^none|^semantic \(global|\(default\)/.test(v));
   out.push('Modes — ' + (GLOBAL ? 'global' : 'per-project') + ' marker blocks in ' + (GLOBAL ? '~/.qwen/QWEN.md' : './QWEN.md') + ':');
   for (const [name, val] of modes) out.push('  • ' + name.padEnd(18, '.') + ' ' + val);
   if (!anyMode) out.push('  (nothing pinned beyond the global semantic-versioning default)');

@@ -43,6 +43,8 @@ const rules = [
   [/\b(look up|check the docs|read the docs|which version of|how (do|to) (i |you )?use)\b/, 'delegate a `researcher` subagent for a version-pinned API digest instead of answering from memory'],
   [/посмотри (в )?док|глянь (в )?док|какая версия (у|в|библиотек)|как (пользоваться|использовать|юзать)/, 'delegate a `researcher` subagent for a version-pinned API digest instead of answering from memory'],
   [/\b(review (this|the|my) (code|diff|change|changes|pr)|code review)\b|сделай ревью|проведи ревью|отревьюй|проверь код на (баги|ошибки)/, 'invoke the `/review` skill (correctness & quality pass over the recent diff; security angles go to `/audit`)'],
+  [/\b(not working|does ?n'?t work|is ?n'?t working|still (failing|broken|not working)|keeps? (failing|breaking|crashing)|ca ?n'?t (get it to|figure out|fix)|stuck on|no idea why|why (is|does|wo ?n'?t|does ?n'?t) (it|this))\b/, 'follow the `/research` skill — investigate first (real state → docs → web) instead of retrying blind fixes'],
+  [/не работает|не пашет|не заводится|не могу (починить|разобраться|исправить|понять почему)|почему не (работает|запуска|заводит|пашет)|(всё|все) равно (падает|ошибка|не работает)|застрял|не получается (починить|заставить|исправить)/, 'follow the `/research` skill — investigate first (real state → docs → web) instead of retrying blind fixes'],
 ];
 
 const hits = [];

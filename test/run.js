@@ -292,9 +292,11 @@ ok('skills installed', fs.existsSync(path.join(qh2, 'skills', 'implement', 'SKIL
 ok('agents installed', fs.existsSync(path.join(qh2, 'agents', 'debugger.md')) && fs.existsSync(path.join(qh2, 'agents', 'tester.md')));
 ok('hooks wired into settings.json', fs.readFileSync(path.join(qh2, 'settings.json'), 'utf8').includes('git-branch-guard'));
 ok('QWEN.md guidance added', fs.readFileSync(path.join(qh2, 'QWEN.md'), 'utf8').includes('qwen-dev-toolkit:start'));
-// /reality (integrity mode) is a toggle, OFF by default — the honesty directive must NOT
-// sit in the always-on QWEN.md block; it only appears once the user runs /reality.
-ok('reality-mode is OFF by default (not in the always-on block)', !fs.readFileSync(path.join(qh2, 'QWEN.md'), 'utf8').includes('Reality mode — ACTIVE'));
+// Honesty (reality) and research-first are now standing directives, ON by default in every
+// project — so their text MUST live in the always-on global QWEN.md guidance (a project opts
+// out per-project). This is the inverse of the old default-off reality toggle.
+ok('honesty directive is ON by default (in the always-on global QWEN.md)', /Honesty over agreement/.test(fs.readFileSync(path.join(qh2, 'QWEN.md'), 'utf8')));
+ok('research-first directive is ON by default (in the always-on global QWEN.md)', /Think & research before flailing/.test(fs.readFileSync(path.join(qh2, 'QWEN.md'), 'utf8')));
 // Backends are Node-only: every _*.js ships on every OS; the thin _*.sh wrappers ship
 // on POSIX only (Windows rewrites the .md commands to call node directly).
 ok('reality backend installed (js everywhere, sh wrapper on POSIX only)',
@@ -353,28 +355,54 @@ ok('uninstall removes the /hooks backend + shared catalog + hook util', !fs.exis
 ok('uninstall removes hook script files (compact-warn/toolkit-reset-guard)', !fs.existsSync(path.join(qh2, 'hooks', 'compact-warn.js')) && !fs.existsSync(path.join(qh2, 'hooks', 'toolkit-reset-guard.js')));
 ok('uninstall removes the recorded .toolkit-version', !fs.existsSync(path.join(qh2, '.toolkit-version')));
 
-// ---- /reality — integrity-over-agreement toggle, OFF by default, per-project block ------
+// ---- /reality — honesty directive, ON by default, per-project OPT-OUT block ------------
 console.log('— /reality —');
 {
   const rl = path.join(ROOT, 'commands', '_reality.js');
   const proj = tmp(); fs.mkdirSync(proj, { recursive: true });
   const qf = path.join(proj, 'QWEN.md');
   const run = (arg) => cp.spawnSync('node', [rl, ...(arg ? [arg] : [])], { cwd: proj, encoding: 'utf8' });
-  // status before anything: OFF, and nothing written
-  ok('reality status is OFF by default', /OFF/.test(run('status').stdout) && !fs.existsSync(qf));
-  // on: pins the realitymode block with the honesty directive
-  const on = run('on');
-  ok('reality on reports ON', /now ON/.test(on.stdout));
-  ok('reality on pins the realitymode block', fs.readFileSync(qf, 'utf8').includes('<!-- realitymode:start -->') && fs.readFileSync(qf, 'utf8').includes('integrity over agreement'));
-  ok('reality status now reads ON', /ON/.test(run('status').stdout));
-  // idempotent: a second `on` must not duplicate the block
-  run('on');
-  ok('reality on is idempotent (single block)', fs.readFileSync(qf, 'utf8').split('realitymode:start').length - 1 === 1);
-  // off: removes the block, back to OFF
+  // default: ON everywhere, and status writes nothing
+  ok('reality status is ON by default', /ON \(default/.test(run('status').stdout) && !fs.existsSync(qf));
+  // off: pins the realityoff opt-out block
   const off = run('off');
-  ok('reality off reports OFF', /now OFF/.test(off.stdout));
-  ok('reality off removes the block', !fs.readFileSync(qf, 'utf8').includes('realitymode:start'));
-  ok('reality off when already off is a clean no-op', /already OFF/.test(run('off').stdout));
+  ok('reality off reports OFF for this project', /now OFF/.test(off.stdout));
+  ok('reality off pins the realityoff opt-out block', fs.readFileSync(qf, 'utf8').includes('<!-- realityoff:start -->'));
+  ok('reality status now reads OFF', /OFF/.test(run('status').stdout));
+  // idempotent: a second `off` must not duplicate the opt-out
+  run('off');
+  ok('reality off is idempotent (single opt-out block)', fs.readFileSync(qf, 'utf8').split('realityoff:start').length - 1 === 1);
+  // on: removes the opt-out, back to the default ON
+  const on = run('on');
+  ok('reality on reports back ON', /back ON/.test(on.stdout));
+  ok('reality on removes the opt-out block', !fs.readFileSync(qf, 'utf8').includes('realityoff:start'));
+  ok('reality on when already on is a clean no-op', /is ON/.test(run('on').stdout));
+  // a legacy default-off `realitymode` ON-block (now redundant) is swept on use
+  fs.writeFileSync(qf, '<!-- realitymode:start -->\nold\n<!-- realitymode:end -->\n');
+  run('status');
+  ok('legacy realitymode ON-block is swept on use', !fs.readFileSync(qf, 'utf8').includes('realitymode:start'));
+}
+
+// ---- /research — research-first directive, ON by default, per-project OPT-OUT block ----
+console.log('— /research —');
+{
+  const rl = path.join(ROOT, 'commands', '_research.js');
+  const proj = tmp(); fs.mkdirSync(proj, { recursive: true });
+  const qf = path.join(proj, 'QWEN.md');
+  const run = (arg) => cp.spawnSync('node', [rl, ...(arg ? [arg] : [])], { cwd: proj, encoding: 'utf8' });
+  ok('research status is ON by default', /ON \(default/.test(run('status').stdout) && !fs.existsSync(qf));
+  const off = run('off');
+  ok('research off reports OFF for this project', /now OFF/.test(off.stdout));
+  ok('research off pins the researchoff opt-out block', fs.readFileSync(qf, 'utf8').includes('<!-- researchoff:start -->'));
+  ok('research status now reads OFF', /OFF/.test(run('status').stdout));
+  run('off');
+  ok('research off is idempotent (single opt-out block)', fs.readFileSync(qf, 'utf8').split('researchoff:start').length - 1 === 1);
+  const on = run('on');
+  ok('research on reports back ON', /back ON/.test(on.stdout));
+  ok('research on removes the opt-out block', !fs.readFileSync(qf, 'utf8').includes('researchoff:start'));
+  ok('research on when already on is a clean no-op', /is ON/.test(run('on').stdout));
+  // the research skill ships and is signed
+  ok('research skill is present + signed', /^description: \[toolkit\] /m.test(fs.readFileSync(path.join(ROOT, 'skills', 'research', 'SKILL.md'), 'utf8')));
 }
 
 // ---- /applied — read-only introspection of what the toolkit currently applies ---------
@@ -391,11 +419,11 @@ console.log('— /applied —');
   ok('applied lists guards/prohibitions', /Guards \/ prohibitions/.test(p) && /secret-guard/.test(p) && /git-branch-guard/.test(p) && /toolkit-reset-guard/.test(p));
   ok('applied lists automation hooks', /Automation hooks/.test(p) && /restore-progress/.test(p));
   ok('applied reports the recorded toolkit version', new RegExp('Toolkit version: ' + fs.readFileSync(path.join(ROOT, 'VERSION'), 'utf8').trim().replace(/\./g, '\\.')).test(p));
-  // reflects a per-project mode toggle
-  cp.spawnSync('node', [path.join(ROOT, 'commands', '_reality.js'), 'on'], { cwd: proj, encoding: 'utf8' });
+  // reflects a per-project mode toggle (a per-project OPT-OUT of the default-on honesty mode)
+  cp.spawnSync('node', [path.join(ROOT, 'commands', '_reality.js'), 'off'], { cwd: proj, encoding: 'utf8' });
   cp.spawnSync('node', [path.join(ROOT, 'commands', '_maxagents.js'), '2'], { cwd: proj, encoding: 'utf8' });
   const p2 = run('');
-  ok('applied reflects an enabled mode (reality ON)', /Reality mode\.* ON/.test(p2));
+  ok('applied reflects a per-project opt-out (honesty OFF here)', /Honesty \(reality\)\.* OFF/.test(p2));
   ok('applied reflects maxagents limit', /at most 2 at a time/.test(p2));
   // read-only: running /applied must not mutate the project QWEN.md
   const before = fs.readFileSync(path.join(proj, 'QWEN.md'), 'utf8');
@@ -403,7 +431,7 @@ console.log('— /applied —');
   ok('applied is read-only (QWEN.md unchanged)', fs.readFileSync(path.join(proj, 'QWEN.md'), 'utf8') === before);
   // global scope reads ~/.qwen/QWEN.md, not the project's
   ok('applied global switches scope', /scope: GLOBAL/.test(run('global')));
-  ok('applied global does not show the project-only reality block as ON', /Reality mode\.* OFF/.test(run('global')));
+  ok('applied global shows honesty ON by default (no project opt-out)', /Honesty \(reality\)\.* ON/.test(run('global')));
 }
 
 // ---- /hooks — turn guards/automation off & on; hooks self-disable via .hooks-disabled ---
@@ -455,7 +483,7 @@ console.log('— /hooks —');
 // Mandatory preview -> confirm; the token remembers the previewed scope.
 console.log('— /toolkit-reset —');
 const tkReset = path.join(ROOT, 'commands', '_toolkit-reset.js');
-const MARKERS = ['bromode', 'covermode', 'devmode', 'maxagents', 'versioning', 'realitymode'];
+const MARKERS = ['bromode', 'covermode', 'devmode', 'maxagents', 'versioning', 'realitymode', 'realityoff', 'researchoff'];
 const seedStale = (file) => {
   const blocks = MARKERS.map((m) => `<!-- ${m}:start -->\nstale ${m} content\n<!-- ${m}:end -->\n`).join('\n');
   fs.writeFileSync(file, `# my own notes\nkeep this line.\n\n${blocks}\nand this trailing note.\n`);
@@ -718,6 +746,7 @@ console.log('— /status —');
   const p = run('');
   ok('status shows PROJECT scope header', /scope: PROJECT/.test(p));
   ok('status shows development mode ON', /Development mode\.* ON/.test(p));
+  ok('status shows honesty + research ON by default', /Honesty \(reality\)\.* ON/.test(p) && /Research-first\.* ON/.test(p));
   ok('status shows the active plan goal', /Active plan \/ development/.test(p) && /Build the API/.test(p));
   ok('status shows plan progress counts + percent', /2 done, 2 remaining \(50% complete\)/.test(p));
   ok('status shows the next unchecked task', /Next\.* endpoints/.test(p));

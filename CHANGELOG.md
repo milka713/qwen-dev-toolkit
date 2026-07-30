@@ -4,6 +4,41 @@ All notable changes to qwen-dev-toolkit are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com); versions follow semver.
 (Releases before 1.7.0 predate this file and are not backfilled — see the git history.)
 
+## [1.21.0] - 2026-07-30
+
+### Added
+- **`/research` — a "research-first" directive + skill, ON by default in every project.** The
+  expensive failure mode for a small local model is *thrashing*: retrying variations of a broken
+  fix without new information, burning context and time. This makes "investigate before you
+  flail" a standing behaviour. When a fix/build fails, a solution feels shaky/hacky, or info is
+  missing, the model is directed to look at the **real current state** (exact error, logs,
+  `--version`, config, *how a service is actually running before touching it*) → the **project's
+  own docs/code** → the **web** (`web_search`/`web_fetch`, or the `researcher` subagent) →
+  **only then ask you**; and in `/brainstorm` to find prior art before proposing. The new
+  **`/research` skill** carries the full playbook, including *how to search the web well* (verbatim
+  error strings, official docs, version pins, source quality, bounded — no rabbit holes). A
+  `skill-reminder` rule nudges it on stuck signals ("not working", "keeps failing", "не работает",
+  "не могу починить", …) in both English and Russian.
+
+### Changed
+- **Honesty (`/reality`) is now ON by default in every project.** The integrity-over-agreement
+  directive — be accurate not agreeable, separate fact/inference/opinion, surface failed
+  tests/skipped steps/real risks without softening, disagree directly, never fabricate
+  confidence — used to be an opt-*in* per-project toggle (off by default). It now lives in the
+  global `~/.qwen/QWEN.md` guidance and applies everywhere.
+- **New default-ON toggle model: per-project opt-OUT.** Both `/reality` and `/research` are on
+  by default (their directives ship in the global guidance) and are disabled per project by
+  pinning a small opt-out block in that project's `QWEN.md` — `/reality off` / `/research off`
+  disable, `/reality on` / `/research on` restore. This inverts the previous default-off mode
+  toggles; the opt-out survives compaction and re-installs (install never touches project
+  `QWEN.md`). A legacy `realitymode` ON-block from before is swept when `/reality` is next used.
+- **`/status` surfaces both** as `Honesty (reality)` and `Research-first`, each showing
+  `ON (default)` or `OFF (opted out here)`.
+
+### Notes
+- Test suite grew to **285 checks** (from 272): rewritten `/reality` (inverse semantics),
+  new `/research` toggle, the global-guidance directives, and the `skill-reminder` rule.
+
 ## [1.20.1] - 2026-07-30
 
 ### Added

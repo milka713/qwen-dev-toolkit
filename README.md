@@ -92,7 +92,7 @@ compaction) and is **gitignored** so it can't leak into the repo. `list` shows t
 · _Example:_ `/pin deploy = ssh -p 12578 mark@host && ./deploy-dev.sh`
 
 **`/status` · `global`** — Read-only "everything at a glance" for this project, in groups: the
-**modes** pinned in `QWEN.md` (`/dev`, `/cover`, `/bro`, `/maxagents`, `/versioning`, `/reality`);
+**modes** pinned in `QWEN.md` (`/dev`, `/cover`, `/bro`, `/maxagents`, `/versioning`, `/reality`, `/research`);
 the **active plan / development progress** from `.qwen/PROGRESS.md` (goal, done/remaining +
 percent, next unchecked task — the live state of `/dev` or any plan you're executing); the
 **guards/prohibitions** that can block a tool call (`secret-guard`, `git-branch-guard`,
@@ -174,15 +174,26 @@ always calls you "мэн", `ламар` = a GTA-V *Lamar Davis* street homie ("h
 Casual, slangy and blunt, but still genuinely accurate and helpful — the vibe is a wrapper,
 never an excuse to slack. Off by default; pinned **per-project** until `/bro off`.
 
-**`/reality` · `on` · `off` · `status`** — Integrity-over-agreement mode. While on, the
-assistant is held to a standing honesty directive: be accurate rather than agreeable —
-separate fact / inference / opinion, state uncertainty plainly, surface inconvenient truths
-(failed tests, skipped steps, real risks) without softening or reframing, disagree directly
-when you or a plan are wrong, and never fabricate agreement or confidence. A check on the
-model's own reasoning, not licence to be contrarian. **Off by default**; `/reality on` pins it
-**per-project** (survives compaction), `/reality off` clears it. It's a per-project toggle
-rather than an always-on rule so it costs nothing on the small context window until you opt in.
-· _Example:_ `/reality on`
+**`/reality` · `off` · `on` · `status`** — Honesty directive (integrity over agreement).
+**ON by default in every project** — the assistant is held to a standing honesty directive: be
+accurate rather than agreeable, separate fact / inference / opinion, state uncertainty plainly,
+surface inconvenient truths (failed tests, skipped steps, real risks) without softening or
+reframing, disagree directly when you or a plan are wrong, and never fabricate agreement or
+confidence. A check on the model's own reasoning, not licence to be contrarian. The directive
+lives in the global `~/.qwen/QWEN.md`; this command only lets a project **opt out** —
+`/reality off` pins an opt-out in that project's `QWEN.md`, `/reality on` restores the default,
+`/reality status` checks.
+· _Example:_ `/reality off` (allow a normal tone in one specific project)
+
+**`/research` · `off` · `on` · `status`** — Research-first directive (think before flailing).
+**ON by default in every project.** It makes the model **investigate before thrashing**: when a
+fix or build fails, a solution feels shaky/hacky, or information is missing, it looks at the
+real current state → the project's docs → the web (or delegates to the `researcher` subagent)
+**before** more blind edits or before asking you — and in `/brainstorm` it finds prior art
+first. The detailed how-to (when to research, source order, how to search the web well) is the
+`/research` **skill**. Like `/reality` it's a per-project **opt-out**: `/research off` disables
+it in one project, `/research on` restores the default.
+· _Example:_ `/research off`
 
 ### Skills (model- and user-invocable)
 
@@ -194,6 +205,14 @@ the requirements — scope, success criteria, edge cases, constraints, what's ex
 so a small context isn't spent building the wrong thing. Produces an agreed spec, records it
 durably in `.qwen/PROGRESS.md` (it survives compaction — chat history doesn't), then hands
 off to `/plan`.
+
+**`/research`** — The **investigate-before-flailing** playbook (the standing directive is
+on by default; see the `/research` command). Tells the model *when* to research (a failed
+fix/build, a shaky solution, missing info, before touching live state, prior-art hunting in
+brainstorm), *which* source to reach for (real current state → project docs → the web →
+finally you), and *how to search the web well* (verbatim error strings, official docs, version
+pins, bounded — no rabbit holes). Delegates deep API digs to the `researcher` subagent to keep
+the main context lean.
 
 **`/plan`** — Turns a fuzzy or large request into a concrete, **dependency-ordered task list**
 in `.qwen/PROGRESS.md`, exploring an unfamiliar codebase first via the read-only `scout`
