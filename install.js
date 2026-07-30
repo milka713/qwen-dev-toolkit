@@ -63,7 +63,7 @@ const qhomeFwdEarly = QHOME.replace(/\\/g, '/');
 const winSkillBody = (body) =>
   body.replace(/bash "\$HOME\/\.qwen\/commands\/([^"]+)\.sh"/g, 'node "' + qhomeFwdEarly + '/commands/$1.js"')
       .replace(/"\$HOME\/\.qwen\//g, '"' + qhomeFwdEarly + '/'); // remaining quoted args (e.g. a block file)
-const SKILLS = ['implement', 'plan', 'checkpoint', 'audit', 'brainstorm', 'gitflow', 'commit', 'review', 'docs', 'changelog', 'release', 'toolkit-update', 'research'];
+const SKILLS = ['implement', 'plan', 'checkpoint', 'audit', 'brainstorm', 'gitflow', 'commit', 'review', 'docs', 'changelog', 'release', 'toolkit-update', 'research', 'terminal'];
 for (const s of SKILLS) {
   const srcF = path.join(SRC, 'skills', s, 'SKILL.md');
   if (!exists(srcF)) continue;

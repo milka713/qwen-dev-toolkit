@@ -23,7 +23,7 @@ Write the message from what actually changed, not from a guess. Keep it honest a
 4. **Write the message.** First look at `git log --oneline -10`: if the repo clearly uses a different style, match it. Otherwise use Conventional Commits:
    - Header: `type(scope): summary` — ≤ 72 chars, imperative mood, lowercase summary.
    - `type` ∈ `feat, fix, refactor, docs, test, chore, perf, build, ci` — pick from what the diff actually does.
-   - Optional body (wrap ~72 cols): *why*, and any non-obvious consequence — only if it adds information the header doesn't.
+   - Body (wrap ~72 cols): **required for any non-trivial commit** — a feature, a fix, a refactor, or anything touching more than one file. Cover **what changed and why** (the motivation / the bug's root cause), and any non-obvious consequence, trade-off, or follow-up. A few tight lines or bullets, grounded in the diff — not a restatement of the header. **Trivial commits may skip the body** (a typo fix, a version bump, a one-line tweak whose header already says everything). When in doubt, write the body: an over-documented history beats a cryptic one.
    - If a hint was passed as the argument, let it steer the summary, but still ground it in the diff.
    - **One logical change per commit.** If the diff is really two unrelated things, split by files and make two commits (interactive hunk staging isn't available; if unrelated changes share one file, commit them together and say so in the body).
 5. **Commit.** Prefer a real multi-line message via repeated `-m` (header, then body). If a pre-commit hook fails or reformats files: read its output, re-stage the reformatted files, retry **once**; still failing → show the user the error instead of forcing (`--no-verify` only if the user asks).

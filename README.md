@@ -214,6 +214,16 @@ finally you), and *how to search the web well* (verbatim error strings, official
 pins, bounded — no rabbit holes). Delegates deep API digs to the `researcher` subagent to keep
 the main context lean.
 
+**`/terminal`** — Hands a command off to the **user's own terminal** for the things the
+model's non-interactive shell can't or shouldn't do itself: an interactive `sudo` password
+prompt, `dd`/`diskutil`/formatting an SD card, flashing an OS image, or any long/interactive
+session. It teaches the reliable macOS way (`open -a Terminal` a `.command` script — no
+AppleScript escaping, **no Automation/Accessibility permission needed**, unlike the brittle
+`keystroke` path), what each missing permission is and **how to grant it** rather than
+silently failing, and device-safety for destructive ops (confirm the target disk, pause
+before the wipe). The model *already* has this ability — the skill makes it use it instead
+of stalling or faking success.
+
 **`/plan`** — Turns a fuzzy or large request into a concrete, **dependency-ordered task list**
 in `.qwen/PROGRESS.md`, exploring an unfamiliar codebase first via the read-only `scout`
 subagent. Produces a plan, not code — the durable starting point a build resumes from after

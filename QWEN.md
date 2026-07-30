@@ -105,6 +105,13 @@ noise makes memory useless.
   this and will block such writes). Run `/audit` before shipping security-sensitive
   work. Use `/cover` (test-first, measured coverage target, default 80%) to require real
   tests instead of hollow output.
+- **Can't run it yourself?** Your shell is non-interactive — it can't answer a `sudo`
+  password prompt, drive a curses UI, or safely do irreversible disk work (`dd`, format an
+  SD card, flash an image). Don't stall, fake success, or force it through your own shell:
+  hand the command to the **user's own terminal** (on macOS, `open -a Terminal` a small
+  script — no special permission needed; see the `/terminal` skill), show the exact command,
+  and for destructive ops confirm the target device first. If a GUI-control permission is
+  missing, explain which one and how to grant it, then retry.
 
 ## Standing directives (ON by default in every project)
 

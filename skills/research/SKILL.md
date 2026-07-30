@@ -75,7 +75,10 @@ Research **before** the next attempt whenever any of these is true:
 
 - **Prefer fetching a known-good URL over searching.** With `web_fetch` you can go straight
   to the answer if you know where it lives — `https://docs.python.org/3/library/<mod>.html`,
-  `https://pypi.org/project/<pkg>/`, a repo's `/blob/main/README.md` or `/releases`. This
+  `https://pypi.org/project/<pkg>/`, a repo's `/blob/main/README.md` or `/releases`,
+  `https://developer.mozilla.org/en-US/docs/Web/<...>`. **Trust your guess** — you're usually
+  right about canonical doc-URL shapes, so construct the obvious one and fetch it; if it
+  404s, adjust (try the project's site, readthedocs, or the GitHub source) and refetch. This
   works even when no search tool is available.
 - **When you *do* have `web_search`, match the query to the situation:**
   - *Error / stack trace* → paste the **exact, distinctive** part verbatim (the message +

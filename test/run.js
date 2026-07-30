@@ -185,6 +185,11 @@ ok('russian review prompt nudges /review', srRun('сделай ревью пос
 ok('english review prompt nudges /review', srRun('review my code changes before I push please').includes('/review'));
 ok('russian small talk stays silent', srRun('спасибо большое за помощь с этим проектом') === '');
 ok('russian explainer stays silent', srRun('объясни как работает event loop в ноде') === '');
+// research (stuck) + terminal (disk/flash) rules, both languages
+ok('english stuck prompt nudges /research', srRun('this keeps failing and I have no idea why').includes('/research'));
+ok('russian stuck prompt nudges /research', srRun('не работает, не могу починить уже час').includes('/research'));
+ok('english flash-image prompt nudges /terminal', srRun('write the ubuntu image to the sd card with dd').includes('/terminal'));
+ok('russian format-card prompt nudges /terminal', srRun('отформатируй карту и прошей туда образ распбери').includes('/terminal'));
 
 // ---- agent-limit -------------------------------------------------------------
 console.log('— agent-limit —');
@@ -297,6 +302,8 @@ ok('QWEN.md guidance added', fs.readFileSync(path.join(qh2, 'QWEN.md'), 'utf8').
 // out per-project). This is the inverse of the old default-off reality toggle.
 ok('honesty directive is ON by default (in the always-on global QWEN.md)', /Honesty over agreement/.test(fs.readFileSync(path.join(qh2, 'QWEN.md'), 'utf8')));
 ok('research-first directive is ON by default (in the always-on global QWEN.md)', /Think & research before flailing/.test(fs.readFileSync(path.join(qh2, 'QWEN.md'), 'utf8')));
+ok('terminal-handoff awareness is in the global QWEN.md', /Can't run it yourself/.test(fs.readFileSync(path.join(qh2, 'QWEN.md'), 'utf8')) && fs.existsSync(path.join(qh2, 'skills', 'terminal', 'SKILL.md')));
+ok('commit skill requires a body for non-trivial commits', /required for any non-trivial commit/.test(fs.readFileSync(path.join(ROOT, 'skills', 'commit', 'SKILL.md'), 'utf8')));
 // Backends are Node-only: every _*.js ships on every OS; the thin _*.sh wrappers ship
 // on POSIX only (Windows rewrites the .md commands to call node directly).
 ok('reality backend installed (js everywhere, sh wrapper on POSIX only)',

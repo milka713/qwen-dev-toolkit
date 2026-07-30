@@ -45,6 +45,8 @@ const rules = [
   [/\b(review (this|the|my) (code|diff|change|changes|pr)|code review)\b|сделай ревью|проведи ревью|отревьюй|проверь код на (баги|ошибки)/, 'invoke the `/review` skill (correctness & quality pass over the recent diff; security angles go to `/audit`)'],
   [/\b(not working|does ?n'?t work|is ?n'?t working|still (failing|broken|not working)|keeps? (failing|breaking|crashing)|ca ?n'?t (get it to|figure out|fix)|stuck on|no idea why|why (is|does|wo ?n'?t|does ?n'?t) (it|this))\b/, 'follow the `/research` skill — investigate first (real state → docs → web) instead of retrying blind fixes'],
   [/не работает|не пашет|не заводится|не могу (починить|разобраться|исправить|понять почему)|почему не (работает|запуска|заводит|пашет)|(всё|все) равно (падает|ошибка|не работает)|застрял|не получается (починить|заставить|исправить)/, 'follow the `/research` skill — investigate first (real state → docs → web) instead of retrying blind fixes'],
+  [/\b(format (the |an? )?(sd|usb|micro ?sd|disk|card)|flash (an? )?(image|os|sd|card)|burn (an? )?(image|iso)|write .{0,24}(image|\.img|iso) to|\bdd (if=|of=|bs=)|diskutil|balena ?etcher|raspberry pi imager)\b/, 'follow the `/terminal` skill — hand the command to the user\'s own terminal (you can, via `open -a Terminal`), don\'t run interactive/destructive disk commands in your own shell'],
+  [/отформат|прошить (образ|карту|флешк|sd|мicro)|прошей (образ|карту|флешк)|запиши образ|записать образ|образ на (карту|флешк|sd|микро)|нарезать образ|отформатируй (карту|флешк|sd)/, 'follow the `/terminal` skill — hand the command to the user\'s own terminal (you can, via `open -a Terminal`), don\'t run interactive/destructive disk commands in your own shell'],
 ];
 
 const hits = [];

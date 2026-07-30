@@ -4,6 +4,33 @@ All notable changes to qwen-dev-toolkit are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com); versions follow semver.
 (Releases before 1.7.0 predate this file and are not backfilled — see the git history.)
 
+## [1.21.1] - 2026-07-30
+
+### Added
+- **`/terminal` skill — hand a command to the user's own terminal.** The model's
+  `run_shell_command` is non-interactive: it can't answer a `sudo` password prompt, drive a
+  curses UI, or safely do irreversible disk work (`dd`, formatting an SD card, flashing an
+  image). The model *can* open the user's real terminal for these, it just doesn't realise
+  it. This skill teaches the reliable way — on macOS, write the command to a `.command`
+  script and `open -a Terminal <file>` (no AppleScript escaping, and **no Automation/
+  Accessibility permission needed**, unlike the brittle `keystroke` path that fails with
+  *"osascript is not allowed to send keystrokes (1002)"*). It covers the `osascript … do
+  script` alternative, **what each missing permission is and how to grant it** (System
+  Settings → Privacy & Security → Automation / Accessibility) instead of silently failing,
+  device-safety for `dd`/format (confirm the target disk, pause for the user before the
+  destructive step), and Linux/Windows equivalents. A short awareness line in the global
+  `QWEN.md` and a `skill-reminder` rule (EN+RU: "dd", "flash the sd card", "прошей образ",
+  "отформатируй карту", …) make the model reach for it instead of stalling or faking success.
+
+### Changed
+- **`/commit` now requires a descriptive body for non-trivial commits.** Anything that's a
+  feature, a fix, a refactor, or touches more than one file must explain *what changed and
+  why* (motivation / root cause) plus non-obvious consequences — grounded in the diff, not a
+  restatement of the header. Trivial one-liners (typo, version bump) may stay header-only.
+- **`/research` skill:** reinforced the web guidance to **trust a constructed doc URL** —
+  the model is usually right about canonical doc-URL shapes, so build the obvious one and
+  `web_fetch` it (adjust on a 404), which works even with no `web_search` tool.
+
 ## [1.21.0] - 2026-07-30
 
 ### Added
