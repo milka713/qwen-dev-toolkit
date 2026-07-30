@@ -131,6 +131,37 @@ ok('connection-string env indirection allowed', sgRun('write_file', { file_path:
 ok('connection-string placeholder allowed', sgRun('write_file', { file_path: '/p/db.py', content: 'DSN = "postgres://admin:CHANGE_ME_1234@db/app"' }) === '');
 ok('digits-only userinfo (host:port style) allowed', sgRun('write_file', { file_path: '/p/x.js', content: 'const u = "http://user:12345678@host/path"' }) === '');
 
+// ---- devmode-guard ---------------------------------------------------------
+console.log('— devmode-guard —');
+const dg = path.join(ROOT, 'hooks', 'devmode-guard.js');
+const dgDir = tmp();
+fs.writeFileSync(path.join(dgDir, 'QWEN.md'), 'proj\n<!-- devmode:start -->\nDEV\n<!-- devmode:end -->\n');
+fs.mkdirSync(path.join(dgDir, '.qwen'), { recursive: true });
+const dgRun = (tool_name, file_path, env = {}) =>
+  runNode(dg, { input: JSON.stringify({ tool_name, tool_input: { file_path }, cwd: dgDir }), cwd: dgDir, env }).stdout;
+ok('devmode ON: architect source write denied', dgRun('write_file', 'src/app.py').includes('"deny"'));
+ok('devmode ON: architect test write denied', dgRun('edit', 'tests/test_app.py').includes('"deny"'));
+ok('devmode ON: subagent write allowed (QWEN_CODE_AGENT_ID set)',
+  dgRun('write_file', 'src/app.py', { QWEN_CODE_AGENT_ID: 'implementer-abc123' }) === '');
+ok('devmode ON: architect PROGRESS.md write allowed', dgRun('write_file', '.qwen/PROGRESS.md') === '');
+ok('devmode ON: architect QWEN.md write allowed', dgRun('write_file', 'QWEN.md') === '');
+ok('devmode ON: architect FACTS.md write allowed', dgRun('edit', 'FACTS.md') === '');
+ok('non-write tool ignored', dgRun('run_shell_command', 'src/app.py') === '');
+// no devmode block → guard is inert even for the architect
+const dgDir2 = tmp();
+fs.writeFileSync(path.join(dgDir2, 'QWEN.md'), 'no dev mode here\n');
+ok('devmode OFF: architect source write allowed',
+  runNode(dg, { input: JSON.stringify({ tool_name: 'write_file', tool_input: { file_path: 'src/app.py' }, cwd: dgDir2 }), cwd: dgDir2 }).stdout === '');
+// /devedit escape: stage a token, one architect edit passes, then it's spent (single-use)
+const de = path.join(ROOT, 'commands', '_devedit.js');
+fs.writeFileSync(path.join(dgDir, '.qwen', 'PROGRESS.md'), '# P\n## 🔄 Log\n');
+const deOut = runNode(de, { args: ['fixing a one-char typo in a generated file'], cwd: dgDir }).stdout;
+ok('devedit refuses without a reason', runNode(de, { args: [], cwd: dgDir }).stdout.includes('reason is required'));
+ok('devedit authorises one edit + logs to PROGRESS.md',
+  deOut.includes('ONE direct edit authorised') && fs.readFileSync(path.join(dgDir, '.qwen', 'PROGRESS.md'), 'utf8').includes('devmode escape'));
+ok('devedit token lets exactly ONE architect source write through', dgRun('write_file', 'src/app.py') === '');
+ok('devedit token is single-use (next write denied again)', dgRun('write_file', 'src/app.py').includes('"deny"'));
+
 // ---- skill-reminder ----------------------------------------------------------
 console.log('— skill-reminder —');
 const sr = path.join(ROOT, 'hooks', 'skill-reminder.js');

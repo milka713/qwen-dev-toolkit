@@ -58,8 +58,17 @@ implementation task to a fresh `implementer` subagent instead of coding in its o
 which is exactly what lets a big build finish instead of overflowing and breaking after a
 compaction. `on` pins the dev block into the project's `QWEN.md`; `off` removes it; `status`
 reports; and `/dev <goal>` turns it on **and** starts building that goal in the same turn.
-Idempotent — the rest of your `QWEN.md` is left intact.
+Idempotent — the rest of your `QWEN.md` is left intact. The "only subagents write code" rule
+is enforced deterministically by the `devmode-guard` hook (see the hooks table), not left to
+the model's discipline.
 · _Example:_ `/dev build a REST API for todos with SQLite + tests`
+
+**`/devedit <why>`** — Escape hatch for development mode. While `/dev` is on, `devmode-guard`
+blocks the architect from editing source directly; when delegating one tiny edit is genuinely
+pointless, `/devedit <reason>` authorises **exactly one** direct `write_file`/`edit`. The reason
+is logged to `.qwen/PROGRESS.md`, the authorisation is single-use and auto-expires in 15 min —
+so a bypass is deliberate and on the record, never a silent rationalisation.
+· _Example:_ `/devedit fixing a single generated-file path, not worth a subagent`
 
 **`/cover` · `<N>` · `off` · `status`** — Test-first / coverage mode. While on, nothing is
 "done" until it ships passing tests: the model works **red → green → refactor** and must
@@ -285,6 +294,7 @@ project you reset).
 | `PreToolUse` → `git-branch-guard.js` | **Blocks** any `git push`/`merge`/`rebase` that would touch `main`/`master` (explicit target, or while checked out on it, or a switch-then-merge one-liner). Pushes to `dev`/feature branches and read-only git pass. Unlocked for exactly one push (single-use) by `/main-push`. |
 | `PreToolUse` → `release-guard.js` | **Reminds** (never blocks) when a push advances `main`/`master` but the release would lag the code — a bumped `VERSION` with no matching tag, or commits past the released tag with no bump — injecting a note to run `/release` (or `/changelog` then `/release`). This is the deterministic backstop that makes `/release` fire even if the model forgets it. Silent when the release is in sync. |
 | `PreToolUse` → `toolkit-reset-guard.js` | **Blocks** an attempt to run `/toolkit-reset`'s confirm step without a valid 15-minute approval window — closes the gap where a model could otherwise call the backend script directly via a shell command instead of waiting for you to type `/toolkit-reset confirm` yourself. Preview-only calls (no `confirm`) always pass. |
+| `PreToolUse` → `devmode-guard.js` | Makes development mode's core rule deterministic: while `/dev` is on for a project, **blocks** the architect (main session) from writing source/tests/config with `write_file`/`edit` — that work must go to an `implementer`/`debugger` subagent. Subagents are exempt (they're the sanctioned writers, detected via `QWEN_CODE_AGENT_ID`); the architect's own `PROGRESS.md`/`QWEN.md`/`FACTS.md` writes pass. `/devedit <why>` authorises exactly one direct edit (logged to `PROGRESS.md`, single-use, 15-min expiry). Inert when `/dev` is off. |
 | `UserPromptSubmit` → `skill-reminder.js` | Small local models under-trigger model-invoked skills; this injects a short, targeted reminder (e.g. "looks security-related → `/audit`") only when the prompt clearly matches, so the right skill actually fires. Matches **both English and Russian** prompts. Silent on trivial prompts. |
 | `PreToolUse`/`PostToolUse`/`SessionStart` → `agent-limit.js` | Enforces `/maxagents` deterministically: counts running subagents and **denies** `agent` launches beyond the cap (concurrency-safe via a lock), decrements when one finishes, resets each session. No cap set → no-op. |
 | `Stop` → `checkpoint-nudge.js` | Two guards, each holds the turn once (loop-safe): **(1)** keeps `.qwen/PROGRESS.md` honest — if code was edited but the checkpoint still has unchecked tasks and wasn't updated, it makes the model tick the finished boxes first; **(2)** proactive context-fill guard — when qwen-code (0.20.x+) reports the window ~88%+ full, it forces `/checkpoint` + a fresh session **before** the window fills and an auto-compaction can fire-and-fail. Degrades to silent on older qwen-code / no `PROGRESS.md`. |

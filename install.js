@@ -108,7 +108,7 @@ console.log('\nInstalled:');
 console.log(`  ✓ skills   (${SKILLS.join(', ')})`);
 console.log(`  ✓ agents   (${AGENTS.join(', ')})`);
 console.log('  ✓ commands (/dev, /cover, /pin, /status, /maxagents, /bro, /main-push, /versioning, /autocompact, /toolkit-reset, /reality, /hooks, /doctor)  [Node backends' + (isWin ? '' : ' + bash wrappers') + ']');
-console.log('  ✓ hooks    (restore, compaction-steer, compact-warn, secret-guard, git-branch-guard, release-guard, toolkit-reset-guard, skill-reminder, agent-limit, checkpoint-nudge)');
+console.log('  ✓ hooks    (restore, compaction-steer, compact-warn, secret-guard, git-branch-guard, release-guard, toolkit-reset-guard, devmode-guard, skill-reminder, agent-limit, checkpoint-nudge)');
 
 // ---- 5) merge hooks + memory into settings.json --------------------------
 (function mergeSettings() {
@@ -138,6 +138,7 @@ console.log('  ✓ hooks    (restore, compaction-steer, compact-warn, secret-gua
   setHook('PreToolUse', 'release-guard.js', 'release-guard', 'run_shell_command');
   setHook('PreToolUse', 'toolkit-reset-guard.js', 'toolkit-reset-guard', 'run_shell_command');
   setHook('PreToolUse', 'agent-limit.js pre', 'agent-limit-pre', 'agent');
+  setHook('PreToolUse', 'devmode-guard.js', 'devmode-guard', 'write_file|edit');
   setHook('PostToolUse', 'agent-limit.js post', 'agent-limit-post', 'agent');
   setHook('UserPromptSubmit', 'skill-reminder.js', 'skill-reminder');
   setHook('Stop', 'checkpoint-nudge.js', 'checkpoint-nudge');

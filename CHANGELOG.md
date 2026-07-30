@@ -4,6 +4,37 @@ All notable changes to qwen-dev-toolkit are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com); versions follow semver.
 (Releases before 1.7.0 predate this file and are not backfilled — see the git history.)
 
+## [1.20.1] - 2026-07-30
+
+### Added
+- **`devmode-guard` — development mode's core rule is now enforced, not just requested.** The
+  whole point of `/dev` is that the architect (main session) delegates every implementation to a
+  fresh `implementer`/`debugger` subagent, keeping its own context small so big builds finish.
+  Until now that rule lived only as prose in `QWEN.md` — and a model can rationalise past prose
+  ("it's only 5 lines, delegating is overhead"), which is exactly what happened in practice. This
+  release makes it deterministic with a new **`PreToolUse` hook**: while `/dev` is on for a
+  project, the architect's `write_file`/`edit` on a source/test/config path is **blocked** with a
+  message to delegate. **Subagents are exempt** — they are the sanctioned writers, detected via
+  `QWEN_CODE_AGENT_ID`, which qwen-code populates with the subagent's id inside a subagent and
+  leaves empty for the top-level architect (verified live against qwen-code 0.21.0). The
+  architect's own `PROGRESS.md`/`QWEN.md`/`FACTS.md` writes still pass. Inert when `/dev` is off.
+- **`/devedit <why>` — a deliberate, single-use escape hatch.** For the rare case where
+  delegating one tiny edit is genuinely pointless, `/devedit <reason>` stages a one-shot token
+  that lets the architect make **exactly one** direct edit even under `devmode-guard`. It requires
+  a reason, **logs the exception to `.qwen/PROGRESS.md`**, is consumed by the next guarded write,
+  and auto-expires after 15 min — turning a silent discipline break into a loud, auditable,
+  one-off exception. High-friction by design, not a real barrier (the point is the record).
+- **`/status` now surfaces dev-mode discipline**: when `/dev` is on it notes that `devmode-guard`
+  is enforcing delegation, and flags when a one-shot `/devedit` authorisation is currently armed.
+
+### Notes
+- Feasibility was verified with a live probe: a diagnostic `PreToolUse` hook confirmed that
+  qwen-code fires the hook in **both** the architect and subagent contexts (they share
+  `CoreToolScheduler`), and that `QWEN_CODE_AGENT_ID` reliably distinguishes them (architect `""`
+  vs subagent `"implementer-…"`) — which is what makes a hard block possible without breaking the
+  implementer subagents themselves.
+- Test suite grew to **272 checks** (from 258), including 12 new `devmode-guard`/`/devedit` cases.
+
 ## [1.20.0] - 2026-07-25
 
 ### Added

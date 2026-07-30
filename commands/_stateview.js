@@ -110,6 +110,10 @@ function render(scope /* 'PROJECT' | 'GLOBAL' */) {
     for (const l of planLines(devOn)) out.push(l);
     const facts = exists('FACTS.md') ? (readF('FACTS.md').match(/^- /gm) || []).length : 0;
     out.push('  • Pinned.. ' + (facts ? facts + ' fact(s) in FACTS.md (/pin)' : 'none (no FACTS.md)'));
+    if (q.includes('devmode:start')) {
+      out.push('  • Guard... devmode-guard ENFORCES delegation — the architect cannot write source directly (only PROGRESS.md/QWEN.md/FACTS.md); source goes through subagents. /devedit authorises one direct edit.');
+      if (exists(path.join('.qwen', '.devmode-edit-once'))) out.push('  • Escape.. ⚠ a one-shot /devedit authorisation is ARMED (the next direct architect edit will be allowed).');
+    }
     out.push('');
   }
 
