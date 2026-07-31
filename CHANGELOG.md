@@ -4,6 +4,18 @@ All notable changes to qwen-dev-toolkit are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com); versions follow semver.
 (Releases before 1.7.0 predate this file and are not backfilled — see the git history.)
 
+## [1.21.3] - 2026-07-31
+
+### Changed
+- **`/research` skill now recognises an MCP-provided web search.** Earlier wording assumed
+  keyword web search only exists as the built-in `web_search` (usually absent on a purely
+  local setup). It can also arrive via an **MCP server** — e.g. a self-hosted SearXNG bridge
+  exposing `searxng_web_search` (+ `web_url_read`), or any `*_web_search` tool. The skill now
+  tells the model to check its tool list and use whichever search tool is present under any
+  name, so a locally wired-up search is actually used instead of being dismissed as
+  unavailable. `allowedTools` gains `searxng_web_search` / `web_url_read`; wording stays
+  generic (no private instance details baked in).
+
 ## [1.21.2] - 2026-07-30
 
 ### Added

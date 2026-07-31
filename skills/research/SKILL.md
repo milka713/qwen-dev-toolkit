@@ -4,6 +4,8 @@ description: [toolkit] Think and investigate BEFORE flailing. Use PROACTIVELY th
 priority: 15
 allowedTools:
   - web_search
+  - searxng_web_search
+  - web_url_read
   - web_fetch
   - agent
   - read_file
@@ -58,11 +60,15 @@ Research **before** the next attempt whenever any of these is true:
      library's own site / readthedocs), the package page (PyPI, npm), or the project's
      GitHub (README, CHANGELOG, an issue, the source). You often already know the URL
      shape — construct it and fetch it directly.
-   - **`web_search`** (keyword search) exists **only if a search-capable model is
-     configured** (`tools.webSearch`); on a purely local setup it is typically **absent**.
-     If it's there, use it to find the right URL, then `web_fetch` that page. If it's not,
-     don't wait on it — reach for the doc URL directly, or say "web search isn't available
-     here" instead of pretending to search.
+   - **Keyword web search** may be present under one of a few names — check your tool
+     list: the built-in `web_search` (needs a search-capable model, `tools.webSearch`), or
+     an **MCP-provided search tool** (e.g. a SearXNG bridge exposing `searxng_web_search`
+     plus `web_url_read`, or any `*_web_search`). On a purely local setup the built-in one
+     is often absent, but an **MCP search may be wired up** — so don't assume, look. If a
+     search tool of any name is there, use it to find the right URL, then `web_fetch` (or
+     the MCP `web_url_read`) that page. If none is present, don't wait on it — reach for the
+     doc URL directly, or say "web search isn't available here" instead of pretending to
+     search.
    - For a **deeper dig into an unfamiliar library/API**, delegate to the `researcher`
      subagent (read-only, compact verified digest) so your own context stays lean — it
      also falls back to the locally installed package's own docs when web tools are thin.
@@ -80,7 +86,8 @@ Research **before** the next attempt whenever any of these is true:
   right about canonical doc-URL shapes, so construct the obvious one and fetch it; if it
   404s, adjust (try the project's site, readthedocs, or the GitHub source) and refetch. This
   works even when no search tool is available.
-- **When you *do* have `web_search`, match the query to the situation:**
+- **When you *do* have a search tool (`web_search` or an MCP one like `searxng_web_search`),
+  match the query to the situation:**
   - *Error / stack trace* → paste the **exact, distinctive** part verbatim (the message +
     the symbol), drop machine-specific noise (paths, PIDs, hex addresses). Quote a literal
     phrase to pin it.

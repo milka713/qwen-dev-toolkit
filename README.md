@@ -211,8 +211,10 @@ on by default; see the `/research` command). Tells the model *when* to research 
 fix/build, a shaky solution, missing info, before touching live state, prior-art hunting in
 brainstorm), *which* source to reach for (real current state → project docs → the web →
 finally you), and *how to search the web well* (verbatim error strings, official docs, version
-pins, bounded — no rabbit holes). Delegates deep API digs to the `researcher` subagent to keep
-the main context lean.
+pins, bounded — no rabbit holes). Recognises web search under any name — the built-in
+`web_search` **or** an MCP-provided one (e.g. a SearXNG bridge's `searxng_web_search`) — so a
+locally wired-up search is actually used. Delegates deep API digs to the `researcher` subagent
+to keep the main context lean.
 
 **`/terminal`** — Hands a command off to the **user's own terminal** for the things the
 model's non-interactive shell can't or shouldn't do itself: an interactive `sudo` password

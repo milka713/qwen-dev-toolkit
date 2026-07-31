@@ -427,6 +427,8 @@ console.log('— /research —');
   ok('research on when already on is a clean no-op', /is ON/.test(run('on').stdout));
   // the research skill ships and is signed
   ok('research skill is present + signed', /^description: \[toolkit\] /m.test(fs.readFileSync(path.join(ROOT, 'skills', 'research', 'SKILL.md'), 'utf8')));
+  // it recognises an MCP-provided web search (not only the built-in web_search)
+  ok('research skill is MCP-search aware (searxng_web_search)', (() => { const s = fs.readFileSync(path.join(ROOT, 'skills', 'research', 'SKILL.md'), 'utf8'); return s.includes('searxng_web_search') && /MCP/.test(s); })());
 }
 
 // ---- /applied — read-only introspection of what the toolkit currently applies ---------
