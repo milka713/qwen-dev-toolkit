@@ -4,6 +4,14 @@ All notable changes to qwen-dev-toolkit are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com); versions follow semver.
 (Releases before 1.7.0 predate this file and are not backfilled — see the git history.)
 
+## [1.23.1] - 2026-08-01
+
+### Fixed
+- **Docs completeness:** the `classifier-window-check` SessionStart hook (added in 1.22.0) was
+  described in the `/classifier-window` command entry but missing as a row in the **Hooks** table
+  of README.md / README.ru.md. Added it, so every shipped hook now appears in the hooks table.
+  Full audit: all 20 commands, 14 skills, 6 subagents, and 14 hooks are documented in both READMEs.
+
 ## [1.23.0] - 2026-08-01
 
 ### Added
