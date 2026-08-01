@@ -809,6 +809,82 @@ console.log('— /doctor —');
   ok('doctor WARNs about a disabled guard', /DISABLED via \/hooks: git-branch-guard/.test(run()));
 }
 
+// ---- /classifier-window — deterministic bundle patch -------------------------
+console.log('— /classifier-window —');
+{
+  const cw = path.join(ROOT, 'commands', '_classifier-window.js');
+  const hook = path.join(ROOT, 'hooks', 'classifier-window-check.js');
+  // A fake bundle: a chunks/ dir with the single definition + a second chunk that only USES
+  // the binding (mirrors the real layout: one def, other chunks import it). package.json at the
+  // root so the version is discoverable exactly like the real install.
+  const mkBundle = (v) => {
+    const home = tmp();
+    const chunks = path.join(home, 'chunks'); fs.mkdirSync(chunks, { recursive: true });
+    fs.writeFileSync(path.join(chunks, 'chunk-DEF.js'), 'var MAX_TRANSCRIPT_MESSAGES = ' + v + ';\nexport { MAX_TRANSCRIPT_MESSAGES };\n');
+    fs.writeFileSync(path.join(chunks, 'src-USE.js'), 'import { MAX_TRANSCRIPT_MESSAGES } from "./chunk-DEF.js";\nconst r = xs.slice(-MAX_TRANSCRIPT_MESSAGES);\n');
+    fs.writeFileSync(path.join(home, 'package.json'), JSON.stringify({ name: '@qwen-code/qwen-code', version: '9.9.9' }));
+    return { home, chunks, def: path.join(chunks, 'chunk-DEF.js') };
+  };
+  const val = (f) => { const m = fs.readFileSync(f, 'utf8').match(/MAX_TRANSCRIPT_MESSAGES\s*=\s*(\d+)/); return m ? parseInt(m[1], 10) : null; };
+  const cwRun = (arg, b) => cp.spawnSync('node', [cw, ...(arg == null ? [] : [String(arg)])],
+    { encoding: 'utf8', env: { ...process.env, QDT_CLASSIFIER_BUNDLE: b.chunks, QWEN_HOME: b.home } }).stdout;
+  const hookRun = (b, input) => cp.spawnSync('node', [hook],
+    { input: input || '{}', encoding: 'utf8', env: { ...process.env, QDT_CLASSIFIER_BUNDLE: b.chunks, QWEN_HOME: b.home } }).stdout;
+
+  // 1. status on a stock bundle shows 40 + the chunk path
+  let b = mkBundle(40);
+  const st = cwRun('status', b);
+  ok('cw: status shows stock 40 and the chunk path', /STATUS/.test(st) && /\b40\b/.test(st) && st.includes(b.def));
+
+  // 2. set 16 → report + independent read of the chunk shows 16, backup made, restart warned, pref recorded
+  const s16 = cwRun(16, b);
+  ok('cw: set 16 reports SET ok with 40 and 16', /SET ok/.test(s16) && s16.includes('40') && s16.includes('16'));
+  ok('cw: set 16 actually patched the bundle (independent grep)', val(b.def) === 16);
+  ok('cw: set 16 warns a restart is needed', /RESTART|re-open/i.test(s16));
+  ok('cw: set 16 made a per-version backup of the pristine chunk', fs.existsSync(b.def + '.qdt-bak') && val(b.def + '.qdt-bak') === 40);
+  ok('cw: set 16 records the preference', fs.readFileSync(path.join(b.home, '.classifier-window'), 'utf8').trim() === '16');
+
+  // 3. re-set 16 → no-op, bundle bytes unchanged
+  const before = fs.readFileSync(b.def); const s16b = cwRun(16, b);
+  ok('cw: re-set the same value is a NOOP, file byte-identical', /NOOP/.test(s16b) && Buffer.compare(before, fs.readFileSync(b.def)) === 0);
+
+  // 4. reset → back to 40 (confirmed by grep), preference cleared
+  const rs = cwRun('reset', b);
+  ok('cw: reset restores stock 40', /RESET ok/.test(rs) && val(b.def) === 40);
+  ok('cw: reset clears the recorded preference', !fs.existsSync(path.join(b.home, '.classifier-window')));
+
+  // 5. out-of-range values rejected, bundle untouched
+  const b2 = mkBundle(40); const bytes2 = fs.readFileSync(b2.def);
+  const lo = cwRun(3, b2);
+  ok('cw: N below floor 8 rejected, bundle untouched', /ERROR/.test(lo) && /floor/.test(lo) && Buffer.compare(bytes2, fs.readFileSync(b2.def)) === 0);
+  const hi = cwRun(99, b2);
+  ok('cw: N above stock 40 rejected, bundle untouched', /ERROR/.test(hi) && Buffer.compare(bytes2, fs.readFileSync(b2.def)) === 0);
+
+  // 6. renamed/absent definition → fail with the upstream/update message, no write
+  const b3 = tmp(); const ch3 = path.join(b3, 'chunks'); fs.mkdirSync(ch3, { recursive: true });
+  fs.writeFileSync(path.join(ch3, 'chunk-x.js'), 'var RENAMED_LIMIT = 40;\n');
+  const bytes3 = fs.readFileSync(path.join(ch3, 'chunk-x.js'));
+  const miss = cp.spawnSync('node', [cw, '16'], { encoding: 'utf8', env: { ...process.env, QDT_CLASSIFIER_BUNDLE: ch3, QWEN_HOME: b3 } }).stdout;
+  ok('cw: renamed constant → error names upstream/update, no write', /ERROR/.test(miss) && /(renamed|upstream|update)/i.test(miss) && Buffer.compare(bytes3, fs.readFileSync(path.join(ch3, 'chunk-x.js'))) === 0);
+
+  // >1 definition → refuse and list
+  const b4 = tmp(); const ch4 = path.join(b4, 'chunks'); fs.mkdirSync(ch4, { recursive: true });
+  fs.writeFileSync(path.join(ch4, 'a.js'), 'var MAX_TRANSCRIPT_MESSAGES = 40;\n');
+  fs.writeFileSync(path.join(ch4, 'b.js'), 'var MAX_TRANSCRIPT_MESSAGES = 30;\n');
+  const dup = cp.spawnSync('node', [cw, '16'], { encoding: 'utf8', env: { ...process.env, QDT_CLASSIFIER_BUNDLE: ch4, QWEN_HOME: b4 } }).stdout;
+  ok('cw: more than one definition → refuse (exactly ONE)', /ERROR/.test(dup) && /exactly ONE/.test(dup));
+
+  // SessionStart hook: preference set but bundle drifted back to 40 → warns to re-apply
+  const bd = mkBundle(40); fs.writeFileSync(path.join(bd.home, '.classifier-window'), '16\n');
+  const hOut = hookRun(bd, '{"source":"startup"}');
+  ok('cw hook: warns when bundle drifted from the recorded preference', /classifier/i.test(hOut) && hOut.includes('/classifier-window 16'));
+  // in sync → silent
+  const bd2 = mkBundle(16); fs.writeFileSync(path.join(bd2.home, '.classifier-window'), '16\n');
+  ok('cw hook: silent when bundle matches the preference', hookRun(bd2).trim() === '');
+  // no preference recorded → silent
+  ok('cw hook: silent when no preference is recorded', hookRun(mkBundle(40)).trim() === '');
+}
+
 // ---- summary ------------------------------------------------------------------
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

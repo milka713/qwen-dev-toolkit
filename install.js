@@ -107,8 +107,8 @@ if (!isWin) { for (const f of fs.readdirSync(path.join(QHOME, 'commands')).filte
 console.log('\nInstalled:');
 console.log(`  ✓ skills   (${SKILLS.join(', ')})`);
 console.log(`  ✓ agents   (${AGENTS.join(', ')})`);
-console.log('  ✓ commands (/dev, /cover, /pin, /status, /maxagents, /bro, /main-push, /versioning, /autocompact, /toolkit-reset, /reality, /hooks, /doctor)  [Node backends' + (isWin ? '' : ' + bash wrappers') + ']');
-console.log('  ✓ hooks    (restore, compaction-steer, compact-warn, secret-guard, git-branch-guard, release-guard, toolkit-reset-guard, devmode-guard, skill-reminder, agent-limit, checkpoint-nudge)');
+console.log('  ✓ commands (/dev, /cover, /pin, /status, /maxagents, /bro, /main-push, /versioning, /autocompact, /toolkit-reset, /reality, /hooks, /doctor, /classifier-window)  [Node backends' + (isWin ? '' : ' + bash wrappers') + ']');
+console.log('  ✓ hooks    (restore, compaction-steer, compact-warn, classifier-window-check, secret-guard, git-branch-guard, release-guard, toolkit-reset-guard, devmode-guard, skill-reminder, agent-limit, checkpoint-nudge)');
 
 // ---- 5) merge hooks + memory into settings.json --------------------------
 (function mergeSettings() {
@@ -132,6 +132,7 @@ console.log('  ✓ hooks    (restore, compaction-steer, compact-warn, secret-gua
   setHook('SessionStart', 'session-start-restore.js', 'restore-progress');
   setHook('SessionStart', 'agent-limit.js reset', 'agent-limit-reset');
   setHook('SessionStart', 'compact-warn.js', 'compact-warn', 'compact');
+  setHook('SessionStart', 'classifier-window-check.js', 'classifier-window-check');
   setHook('PreCompact', 'pre-compact-steer.js', 'steer-compaction');
   setHook('PreToolUse', 'secret-guard.js', 'secret-guard', 'write_file|edit|replace|run_shell_command');
   setHook('PreToolUse', 'git-branch-guard.js', 'git-branch-guard', 'run_shell_command');

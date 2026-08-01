@@ -4,6 +4,31 @@ All notable changes to qwen-dev-toolkit are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com); versions follow semver.
 (Releases before 1.7.0 predate this file and are not backfilled — see the git history.)
 
+## [1.22.0] - 2026-08-01
+
+### Added
+- **`/classifier-window <8..40> · status · reset`** — a new command that sets the fast-model
+  permission-classifier's transcript window by patching the single constant
+  `MAX_TRANSCRIPT_MESSAGES` in the **installed qwen-code bundle**. The classifier prompt is a
+  stable system prompt + the last N transcript messages; that window slides on nearly every call,
+  busting llama.cpp's prefix cache and forcing a full cold prefill per verdict (measured: same
+  window 0.6s vs shifted one message 57.6s). Lowering N (stock **40** ≈ 33s on the local 4B →
+  **16** ≈ 13s) shortens the prompt with **no change to safety** — same model, same prompt, just
+  fewer messages shown. Floor **8** (below that a long tool-call chain can leave zero user
+  messages, which the classifier needs to read intent).
+  - **Deterministic or nothing.** Resolves the bundle from `which qwen` (never hard-codes the
+    path — it differs per platform and the chunk filename carries a content hash), then requires
+    **exactly one** `MAX_TRANSCRIPT_MESSAGES` definition across `chunks/*.js`. Zero matches
+    (renamed upstream) or more than one → it **fails loudly and writes nothing**, rather than
+    guess. Backs up the pristine chunk once per version (`<chunk>.qdt-bak`), and **verifies the
+    write by re-reading** — never reports success off the write call alone.
+  - **Idempotent** (re-running the same value is a no-op) so it doubles as the recovery step.
+  - New **`classifier-window-check` SessionStart hook**: a qwen-code update replaces the bundle
+    and silently reverts the window to 40; the hook compares the live value to the recorded
+    preference (`~/.qwen/.classifier-window`) and prints a one-line reminder to re-apply.
+  - Not writable (root-owned install) → the command fails with the exact `sudo perl -i` one-liner
+    to run. Applies at the next qwen-code start (the command warns to restart).
+
 ## [1.21.3] - 2026-07-31
 
 ### Changed

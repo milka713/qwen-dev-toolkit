@@ -110,6 +110,23 @@ OK/WARN/FAIL by section and names the fix (`/toolkit-update`, `/hooks on <name>`
 that's down). Changes nothing.
 · _Example:_ `/doctor`
 
+**`/classifier-window <8..40>` · `status` · `reset`** — Speed up AUTO-mode permission checks on a
+local fast model. The classifier prompt = a stable system prompt + the last N transcript messages;
+that window slides on almost every call, busting llama.cpp's prefix cache and forcing a full cold
+prefill each verdict (measured: same window 0.6s vs shifted one message 57.6s). This patches the
+single constant `MAX_TRANSCRIPT_MESSAGES` in the installed qwen-code bundle — stock **40** (~33s on
+the local 4B) down to e.g. **16** (~13s) — at **no change to safety** (same model, same prompt; it
+only trims how many messages are shown). Deterministic: it finds the one definition across the
+bundle's `chunks/*.js` or **fails loudly** rather than guess — refusing if the constant was renamed
+upstream or appears more than once, backing up the pristine chunk once per version, and verifying
+the write by re-reading it. Idempotent (re-run to reapply). Floor is **8** (below that a long
+tool-call chain can leave the window with no user message, which the classifier needs to judge
+intent); `reset` restores 40. **Takes effect only after you restart / re-open qwen-code.** A
+qwen-code update (`brew upgrade`, `npm i -g`) replaces the bundle and silently reverts the window
+to 40 — the `classifier-window-check` SessionStart hook notices the drift and reminds you to re-run
+it.
+· _Example:_ `/classifier-window 16` · `/classifier-window status` · `/classifier-window reset`
+
 **`/sudo-on <password>` · `confirm` · `status` · `/sudo-off`**
 
 > ## ☢️ EXTREME DANGER — FULL PASSWORDLESS ROOT FOR THE MODEL

@@ -23,6 +23,7 @@ const HOOKS = [
   { name: 'restore-progress',    kind: 'auto',  event: 'SessionStart',     desc: 're-injects .qwen/PROGRESS.md after compaction / on a new session' },
   { name: 'agent-limit-reset',   kind: 'auto',  event: 'SessionStart',     desc: 'resets the subagent counter at session start' },
   { name: 'compact-warn',        kind: 'auto',  event: 'SessionStart',     desc: 'when a compaction saved <15%, warns and latches auto-compaction OFF (it is proven ineffective)' },
+  { name: 'classifier-window-check', kind: 'auto', event: 'SessionStart',  desc: 'warns if a qwen-code update reverted the /classifier-window patch (window back to 40)' },
   { name: 'steer-compaction',    kind: 'auto',  event: 'PreCompact',       desc: 'steers what compaction keeps (goal/plan over churn)' },
   { name: 'skill-reminder',      kind: 'auto',  event: 'UserPromptSubmit', desc: 'nudges the matching skill when a prompt clearly fits one' },
   { name: 'agent-limit-post',    kind: 'auto',  event: 'PostToolUse',      desc: 'decrements the subagent counter after a subagent finishes' },
