@@ -107,7 +107,7 @@ if (!isWin) { for (const f of fs.readdirSync(path.join(QHOME, 'commands')).filte
 console.log('\nInstalled:');
 console.log(`  ✓ skills   (${SKILLS.join(', ')})`);
 console.log(`  ✓ agents   (${AGENTS.join(', ')})`);
-console.log('  ✓ commands (/dev, /cover, /pin, /status, /maxagents, /bro, /main-push, /versioning, /autocompact, /toolkit-reset, /reality, /hooks, /doctor, /classifier-window)  [Node backends' + (isWin ? '' : ' + bash wrappers') + ']');
+console.log('  ✓ commands (/dev, /cover, /pin, /status, /maxagents, /bro, /main-push, /versioning, /autocompact, /toolkit-reset, /reality, /hooks, /doctor, /classifier-window, /settings-sync)  [Node backends' + (isWin ? '' : ' + bash wrappers') + ']');
 console.log('  ✓ hooks    (restore, compaction-steer, compact-warn, classifier-window-check, secret-guard, git-branch-guard, release-guard, toolkit-reset-guard, devmode-guard, skill-reminder, agent-limit, checkpoint-nudge)');
 
 // ---- 5) merge hooks + memory into settings.json --------------------------

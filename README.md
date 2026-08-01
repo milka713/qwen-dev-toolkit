@@ -127,6 +127,21 @@ to 40 — the `classifier-window-check` SessionStart hook notices the drift and 
 it.
 · _Example:_ `/classifier-window 16` · `/classifier-window status` · `/classifier-window reset`
 
+**`/settings-sync connect <github-url>` · `push` · `pull` · `status` · `disconnect`** — Stop
+hand-carrying `~/.qwen/settings.json` between machines. Point it at a GitHub repo you own and it
+syncs your settings (providers, `fastModel`, `permissions`, `mcpServers`, …) through it. Because
+settings.json holds **secrets** (provider API keys, MCP tokens), `connect` runs a **mandatory
+privacy check** — it refuses any repo that isn't confirmed **private** (via `gh`) — and also
+verifies **this machine can actually reach the repo over git** (SSH). Every `push` **re-checks**
+both before uploading, so secrets never leave for a repo that's public or unreachable. Direction
+is **always explicit and deterministic**: `push` writes local → repo, `pull` copies repo → local
+(and **backs up** the local file first, and validates the incoming JSON before overwriting). There
+is deliberately **no bare "sync"** that guesses a direction. `status` shows the connected repo, its
+live privacy + access state, and whether local differs from the repo; `disconnect` forgets the repo
+(settings.json untouched). Pull takes effect after you **restart qwen-code**. Requires `gh`
+(authenticated) and `git`.
+· _Example:_ `/settings-sync connect https://github.com/me/qwen-code-settings` → `/settings-sync push` … on another machine → `/settings-sync pull`
+
 **`/sudo-on <password>` · `confirm` · `status` · `/sudo-off`**
 
 > ## ☢️ EXTREME DANGER — FULL PASSWORDLESS ROOT FOR THE MODEL

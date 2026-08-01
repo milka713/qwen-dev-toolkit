@@ -4,6 +4,25 @@ All notable changes to qwen-dev-toolkit are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com); versions follow semver.
 (Releases before 1.7.0 predate this file and are not backfilled — see the git history.)
 
+## [1.23.0] - 2026-08-01
+
+### Added
+- **`/settings-sync connect <github-url> · push · pull · status · disconnect`** — sync
+  `~/.qwen/settings.json` across machines through a **private** GitHub repo, so you stop
+  hand-carrying qwen-code config around.
+  - **Mandatory privacy check.** settings.json holds secrets (provider API keys, MCP tokens), so
+    `connect` refuses any repo not confirmed **private** via `gh`, and **every `push` re-checks**
+    it before uploading — secrets never leave for a repo that's public.
+  - **Access check.** `connect`/`push`/`pull` also verify **this machine can actually reach the
+    repo over git** (`git ls-remote` / SSH), not just that `gh` can see it — so a machine whose key
+    isn't authorised fails early with a clear message instead of a confusing clone error.
+  - **Explicit, deterministic direction.** `push` = local → repo, `pull` = repo → local. There is
+    no bare "sync" that guesses; `pull` **backs up** the local file (`settings.json.bak-<ts>`) and
+    validates the incoming JSON before overwriting, and reports a no-op when already in sync.
+  - `status` shows the connected repo, its live privacy + access state, and whether local differs
+    from the repo; `disconnect` forgets the repo and its clone, leaving settings.json untouched.
+    Uses a persistent working clone at `~/.qwen/.settings-sync-repo`; state in `~/.qwen/.settings-repo`.
+
 ## [1.22.0] - 2026-08-01
 
 ### Added
