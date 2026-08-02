@@ -4,6 +4,22 @@ All notable changes to qwen-dev-toolkit are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com); versions follow semver.
 (Releases before 1.7.0 predate this file and are not backfilled — see the git history.)
 
+## [1.24.1] - 2026-08-02
+
+### Fixed
+- **`/settings-sync` no longer syncs machine-specific sections** — it was copying the whole
+  `settings.json`, including the toolkit's `hooks` block, whose commands are **absolute paths for
+  the machine that pushed** (e.g. `node "/Users/milka/.qwen/hooks/checkpoint-nudge.js"`). Pulled
+  onto another machine (Linux home `/home/…`, or a different toolkit version), qwen tried to run
+  those non-existent paths and failed **every hook** with `Cannot find module …/checkpoint-nudge.js`.
+  - Sync now moves only the **portable core** (`modelProviders`/keys, `fastModel`, `model`,
+    `security`, `mcpServers`, `env`, `memory`, `context`, `ui`). `hooks` and `permissions` (also
+    full of absolute local paths) are **excluded**: `push` strips them from the repo, `pull` keeps
+    this machine's own. Each machine owns those via its `node install.js`.
+  - **Remediation on an already-broken machine:** update the toolkit and re-run `node install.js`
+    (or `/toolkit-update`) — the installer rewrites the `hooks` block with that machine's correct
+    paths. Then `pull` is safe (it preserves the local `hooks`/`permissions`).
+
 ## [1.24.0] - 2026-08-02
 
 ### Changed

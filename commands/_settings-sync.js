@@ -22,8 +22,22 @@ const cp = require('child_process');
 const SETTINGS = () => path.join(qHome(), 'settings.json');
 const STATE = () => path.join(qHome(), '.settings-repo');       // { slug, ssh, privateAck, connectedAt }
 const CLONE = () => path.join(qHome(), '.settings-sync-repo');  // persistent working clone
-const SYNCED = ['settings.json'];                                // the file(s) we sync
 const AUTHOR = ['-c', 'user.name=milka713', '-c', 'user.email=milka713@users.noreply.github.com'];
+
+// Keys that are MACHINE-SPECIFIC and must NOT travel between machines — sync moves only the
+// PORTABLE core (modelProviders/keys, fastModel, model, security, mcpServers, env, memory,
+// context, ui) and each machine sets these up itself:
+//   • `hooks` — the toolkit installer writes it with ABSOLUTE paths for THIS machine (e.g.
+//     node "/Users/milka/.qwen/hooks/checkpoint-nudge.js") + a version-specific hook set. Pulled
+//     onto another home (/home/... on Linux) or toolkit version, qwen runs hook paths that don't
+//     exist → "Cannot find module" on every hook. Owned by that machine's `node install.js`.
+//   • `permissions` — allow/deny carry absolute local paths (Read(//Users/milka/…)) that mean
+//     nothing on another box, and each machine's own paths/policy shouldn't be clobbered.
+// On push these are stripped from the repo copy; on pull the local ones are kept untouched.
+const PORTABLE_EXCLUDE = ['hooks', 'permissions'];
+const readJson = (p) => { try { return JSON.parse(readF(p)); } catch (_) { return null; } };
+const pretty = (o) => JSON.stringify(o, null, 2) + '\n';
+const stripExcluded = (o) => { const c = Object.assign({}, o); for (const k of PORTABLE_EXCLUDE) delete c[k]; return c; };
 // SSH hardening for every network git call: never prompt (fail fast), short connect timeout.
 const NETENV = { env: { ...process.env, GIT_SSH_COMMAND: 'ssh -o BatchMode=yes -o ConnectTimeout=10' } };
 
@@ -125,18 +139,20 @@ function cmdPush() {
   if (!haveGit()) throw E('git not found on PATH — required to push.');
   if (!st.privateAck) throw E('this repo was connected without confirming it is private (settings hold secrets). Reconnect explicitly:  /settings-sync connect ' + st.slug + ' private  — nothing was pushed.');
   requireAccess(parseRepo(st.slug), 'pushed');  // THIS machine can still reach it over SSH
+  const localObj = readJson(SETTINGS());
+  if (!localObj) throw E('local settings.json is not valid JSON — refusing to push a broken file.');
   const dir = ensureClone(st);
-  for (const f of SYNCED) fs.copyFileSync(path.join(qHome(), f), path.join(dir, f));
-  git(dir, ['add', ...SYNCED]);
+  writeF(path.join(dir, 'settings.json'), pretty(stripExcluded(localObj))); // strip machine-specific `hooks`
+  git(dir, ['add', 'settings.json']);
   const status = (git(dir, ['status', '--porcelain']).stdout || '').trim();
-  if (!status) return out('NOOP — the repo already matches this machine\'s settings; nothing to push. (' + st.slug + ')');
+  if (!status) return out('NOOP — the repo already matches this machine\'s portable settings; nothing to push. (' + st.slug + ')');
   const branch = repoBranch(dir, st);
   const host = os.hostname();
   const cm = git(dir, [...AUTHOR, 'commit', '--quiet', '-m', 'settings: sync from ' + host + ' (' + new Date().toISOString() + ')']);
   if (cm.status !== 0) throw E('git commit failed:\n' + (cm.stderr || '').trim());
   const pu = git(dir, ['push', '--quiet', '-u', 'origin', 'HEAD:' + branch]);
   if (pu.status !== 0) throw E('git push failed:\n' + (pu.stderr || '').trim());
-  out('PUSHED — settings.json → ' + st.slug + ' (' + branch + '). Other machines get it with `/settings-sync pull`. (Private per your confirmation; it now holds your keys/tokens.)');
+  out('PUSHED — settings.json → ' + st.slug + ' (' + branch + '), excluding machine-specific `hooks` + `permissions`. Other machines get it with `/settings-sync pull`. (Private per your confirmation; it holds your keys/tokens.)');
 }
 
 function cmdPull() {
@@ -148,17 +164,24 @@ function cmdPull() {
   const dir = ensureClone(st);
   const incoming = path.join(dir, 'settings.json');
   if (!exists(incoming)) throw E('the repo has no settings.json yet — push from a configured machine first. Nothing was pulled.');
-  let parsed; try { parsed = JSON.parse(readF(incoming)); } catch (_) { throw E('the repo\'s settings.json is not valid JSON — refusing to overwrite your local file.'); }
+  const repoObj = readJson(incoming);
+  if (!repoObj) throw E('the repo\'s settings.json is not valid JSON — refusing to overwrite your local file.');
   const local = SETTINGS();
+  const localObj = exists(local) ? readJson(local) : null;
+  // Take the repo's portable settings, but KEEP this machine's own `hooks` (absolute paths /
+  // version-specific) so we never point qwen at hook files that don't exist here.
+  const merged = Object.assign({}, repoObj);
+  for (const k of PORTABLE_EXCLUDE) { if (localObj && localObj[k] !== undefined) merged[k] = localObj[k]; }
+  const mergedStr = pretty(merged);
   let backup = null;
-  if (exists(local)) {
-    if (readF(local) === readF(incoming)) return out('NOOP — local settings.json already matches ' + st.slug + '; nothing to pull.');
+  if (localObj) {
+    if (pretty(localObj) === mergedStr) return out('NOOP — local settings.json already matches ' + st.slug + ' (portable settings); nothing to pull.');
     backup = local + '.bak-' + new Date().toISOString().replace(/[:.]/g, '-');
     fs.copyFileSync(local, backup);
   }
-  for (const f of SYNCED) fs.copyFileSync(path.join(dir, f), path.join(qHome(), f));
-  const nProv = (((parsed.modelProviders || {}).openai || []).length) || 0;
-  out('PULLED — settings.json ← ' + st.slug + (backup ? ' (local backed up to ' + path.basename(backup) + ')' : '') + '. ' + nProv + ' provider(s). ⚠ Restart / re-open qwen-code to load it.');
+  writeF(local, mergedStr);
+  const nProv = (((repoObj.modelProviders || {}).openai || []).length) || 0;
+  out('PULLED — settings.json ← ' + st.slug + (backup ? ' (local backed up to ' + path.basename(backup) + ')' : '') + '. ' + nProv + ' provider(s); kept THIS machine\'s own `hooks` + `permissions`. ⚠ Restart / re-open qwen-code to load it.');
 }
 
 function cmdStatus() {
@@ -173,7 +196,9 @@ function cmdStatus() {
     const incoming = path.join(dir, 'settings.json');
     if (!exists(incoming)) diff = 'repo has no settings.json yet (push to seed it)';
     else if (!exists(SETTINGS())) diff = 'no local settings.json (pull to fetch)';
-    else diff = readF(SETTINGS()) === readF(incoming) ? 'in sync' : 'DIFFER — push to upload local, or pull to overwrite local';
+    else diff = pretty(stripExcluded(readJson(SETTINGS()) || {})) === readF(incoming)
+      ? 'in sync (portable settings; `hooks`/`permissions` stay per-machine)'
+      : 'DIFFER — push to upload local, or pull to overwrite local (`hooks`/`permissions` stay per-machine)';
   } catch (_) { diff = 'could not reach the repo'; }
   out('STATUS — ' + st.slug + ' [' + priv + '; ' + access + '], connected ' + (st.connectedAt || '?') + '. Local vs repo: ' + diff + '. Direction is explicit: `push` (local→repo) / `pull` (repo→local).');
 }

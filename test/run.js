@@ -925,18 +925,35 @@ console.log('— /settings-sync —');
     cp.spawnSync('git', ['init', '--quiet', '--bare', bare]);
     cp.spawnSync('git', ['-C', bare, 'symbolic-ref', 'HEAD', 'refs/heads/main']); // pin default branch
     const state = (home, extra) => { fs.writeFileSync(path.join(home, '.settings-repo'), JSON.stringify({ slug: 'milka713/qwen-code-settings', ssh: bare, privateAck: true, connectedAt: 'x', ...extra }) + '\n'); };
-    // machine A: settings with a marker → push (access verified by real local ls-remote on the bare)
-    const A = tmp(); fs.writeFileSync(path.join(A, 'settings.json'), JSON.stringify({ marker: 'FROM_A', modelProviders: { openai: [{}, {}] } }, null, 2));
+    // machine A (a Mac): settings with a marker + a machine-specific hooks block (absolute path)
+    const A = tmp(); fs.writeFileSync(path.join(A, 'settings.json'), JSON.stringify({
+      marker: 'FROM_A', modelProviders: { openai: [{}, {}] },
+      hooks: { Stop: [{ hooks: [{ type: 'command', command: 'node "/Users/milka/.qwen/hooks/checkpoint-nudge.js"', name: 'checkpoint-nudge' }] }] },
+      permissions: { allow: ['Read(//Users/milka/project/**)'] },
+    }, null, 2));
     state(A);
     const push = ssRun(['push'], { QWEN_HOME: A });
     ok('ss: push uploads local settings.json (real git over the bare remote)', /PUSHED/.test(push));
+    // the pushed repo copy must carry NO machine-specific sections and NO absolute paths (Ubuntu bug)
+    const pushedRaw = fs.readFileSync(path.join(A, '.settings-sync-repo', 'settings.json'), 'utf8');
+    const pushed = JSON.parse(pushedRaw);
+    ok('ss: push strips machine-specific `hooks`+`permissions` (no absolute paths leak to the repo)',
+      pushed.hooks === undefined && pushed.permissions === undefined && pushed.marker === 'FROM_A' && !/Users\/milka/.test(pushedRaw));
     // push again with no change → NOOP
     ok('ss: second push with no change is a NOOP', /NOOP/.test(ssRun(['push'], { QWEN_HOME: A })));
-    // machine B: different local settings → pull overwrites, backing up first
-    const B = tmp(); fs.writeFileSync(path.join(B, 'settings.json'), JSON.stringify({ marker: 'OLD_B' }, null, 2));
+    // machine B (a Linux box): its OWN hooks + permissions with /home paths → pull must keep them
+    const B = tmp(); fs.writeFileSync(path.join(B, 'settings.json'), JSON.stringify({
+      marker: 'OLD_B',
+      hooks: { Stop: [{ hooks: [{ type: 'command', command: 'node "/home/mark/.qwen/hooks/checkpoint-nudge.js"', name: 'checkpoint-nudge' }] }] },
+      permissions: { allow: ['Read(//home/mark/project/**)'] },
+    }, null, 2));
     state(B);
     const pull = ssRun(['pull'], { QWEN_HOME: B });
-    ok('ss: pull overwrites local from the repo', /PULLED/.test(pull) && JSON.parse(fs.readFileSync(path.join(B, 'settings.json'), 'utf8')).marker === 'FROM_A');
+    const bRaw = fs.readFileSync(path.join(B, 'settings.json'), 'utf8');
+    const bAfter = JSON.parse(bRaw);
+    ok('ss: pull syncs the portable settings from the repo', /PULLED/.test(pull) && bAfter.marker === 'FROM_A');
+    ok('ss: pull KEEPS this machine\'s own hooks+permissions (no /Users/milka leaks onto the Linux box)',
+      /home\/mark/.test(bAfter.hooks.Stop[0].hooks[0].command) && /home\/mark/.test(bAfter.permissions.allow[0]) && !/Users\/milka/.test(bRaw));
     ok('ss: pull backed up the previous local settings.json', fs.readdirSync(B).some((f) => /^settings\.json\.bak-/.test(f)));
     ok('ss: second pull when already in sync is a NOOP', /NOOP/.test(ssRun(['pull'], { QWEN_HOME: B })));
     // push refuses if the repo was connected without the private confirmation — secrets must never leave

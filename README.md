@@ -141,8 +141,17 @@ SSH key. settings.json holds **secrets** (provider API keys, MCP tokens), so two
   never upload silently. (For automated privacy verification you'd need the GitHub API over HTTPS,
   which isn't SSH — deliberately out of scope here.)
 
+Only the **portable core** is synced — `modelProviders`/keys, `fastModel`, `model`, `security`,
+`mcpServers`, `env`, `memory`, `context`, `ui`. The **machine-specific** sections `hooks`
+(toolkit-managed, absolute paths) and `permissions` (absolute local paths) are deliberately **left
+per-machine**: push strips them from the repo, pull keeps this machine's own. Without this, a Mac's
+`node "/Users/…/hooks/checkpoint-nudge.js"` would land in the repo and, pulled onto a Linux box
+(home `/home/…`), make qwen fail every hook with *Cannot find module*. Each machine wires those up
+itself via `node install.js`.
+
 Direction is **always explicit and deterministic**: `push` writes local → repo, `pull` copies repo →
-local (and **backs up** the local file first, and validates the incoming JSON before overwriting).
+local (and **backs up** the local file first, validates the incoming JSON, and never touches this
+machine's `hooks`/`permissions`).
 There is deliberately **no bare "sync"** that guesses a direction. `status` shows the connected repo,
 whether privacy was confirmed, live SSH reachability, and whether local differs from the repo;
 `disconnect` forgets the repo (settings.json untouched). Pull takes effect after you **restart
