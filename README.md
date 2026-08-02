@@ -127,20 +127,27 @@ to 40 — the `classifier-window-check` SessionStart hook notices the drift and 
 it.
 · _Example:_ `/classifier-window 16` · `/classifier-window status` · `/classifier-window reset`
 
-**`/settings-sync connect <github-url>` · `push` · `pull` · `status` · `disconnect`** — Stop
+**`/settings-sync connect <github-url> private` · `push` · `pull` · `status` · `disconnect`** — Stop
 hand-carrying `~/.qwen/settings.json` between machines. Point it at a GitHub repo you own and it
-syncs your settings (providers, `fastModel`, `permissions`, `mcpServers`, …) through it. Because
-settings.json holds **secrets** (provider API keys, MCP tokens), `connect` runs a **mandatory
-privacy check** — it refuses any repo that isn't confirmed **private** (via `gh`) — and also
-verifies **this machine can actually reach the repo over git** (SSH). Every `push` **re-checks**
-both before uploading, so secrets never leave for a repo that's public or unreachable. Direction
-is **always explicit and deterministic**: `push` writes local → repo, `pull` copies repo → local
-(and **backs up** the local file first, and validates the incoming JSON before overwriting). There
-is deliberately **no bare "sync"** that guesses a direction. `status` shows the connected repo, its
-live privacy + access state, and whether local differs from the repo; `disconnect` forgets the repo
-(settings.json untouched). Pull takes effect after you **restart qwen-code**. Requires `gh`
-(authenticated) and `git`.
-· _Example:_ `/settings-sync connect https://github.com/me/qwen-code-settings` → `/settings-sync push` … on another machine → `/settings-sync pull`
+syncs your settings (providers, `fastModel`, `permissions`, `mcpServers`, …) through it — **entirely
+over SSH** (`git@github.com:…`), no `gh` or HTTPS token, so it works on a machine set up with just an
+SSH key. settings.json holds **secrets** (provider API keys, MCP tokens), so two safeguards:
+- **SSH access is verified** with `git ls-remote` (BatchMode — a missing/unauthorised key fails fast
+  instead of prompting) on `connect`, `push` and `pull`.
+- **Privacy can't be checked over SSH** — the git protocol exposes no public/private flag (a private
+  repo you can read and a public one answer identically). So instead of a check it can't do, `connect`
+  requires an **explicit one-time confirmation**: `connect <url> private` — you assert the repo is
+  private. It's recorded, and **`push` refuses** unless that confirmation is on record, so secrets
+  never upload silently. (For automated privacy verification you'd need the GitHub API over HTTPS,
+  which isn't SSH — deliberately out of scope here.)
+
+Direction is **always explicit and deterministic**: `push` writes local → repo, `pull` copies repo →
+local (and **backs up** the local file first, and validates the incoming JSON before overwriting).
+There is deliberately **no bare "sync"** that guesses a direction. `status` shows the connected repo,
+whether privacy was confirmed, live SSH reachability, and whether local differs from the repo;
+`disconnect` forgets the repo (settings.json untouched). Pull takes effect after you **restart
+qwen-code**. Requires `git` with an SSH key authorised on the repo.
+· _Example:_ `/settings-sync connect https://github.com/me/qwen-code-settings private` → `/settings-sync push` … on another machine → `/settings-sync pull`
 
 **`/sudo-on <password>` · `confirm` · `status` · `/sudo-off`**
 

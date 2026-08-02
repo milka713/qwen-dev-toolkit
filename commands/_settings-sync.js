@@ -4,19 +4,28 @@
 'use strict';
 // /settings-sync — sync ~/.qwen/settings.json across machines via a PRIVATE GitHub repo.
 //
-// Your qwen-code settings.json holds secrets (provider API keys, MCP tokens). So connecting a
-// repo REQUIRES a privacy check (gh api .private === true) and every push RE-checks it before
-// uploading — secrets never go to a repo we can't confirm is private. Direction is ALWAYS
-// explicit: `push` (local → repo) or `pull` (repo → local). There is deliberately no bare
-// "sync" that guesses a direction, and `pull` backs up the local file before overwriting it.
+// SSH-ONLY: everything here uses git over SSH (git@github.com:o/r.git). No `gh`, no HTTPS API —
+// so it works on a machine set up with just an SSH key. Two consequences:
+//   • Access is verified with `git ls-remote` over SSH (BatchMode, so a missing key fails fast
+//     instead of prompting). That confirms the repo is reachable and this machine's key is
+//     authorised.
+//   • Repo PRIVACY cannot be determined over SSH — the git protocol exposes no public/private
+//     flag (a private repo you can access and a public one both answer the same). settings.json
+//     holds secrets, so instead of a check we can't do, `connect` REQUIRES an explicit one-time
+//     confirmation token (`connect <url> private`): you assert the repo is private. It's stored,
+//     and `push` refuses unless that confirmation is on record. Deterministic, no silent upload.
+// Direction is ALWAYS explicit: `push` (local → repo) or `pull` (repo → local). No bare "sync"
+// that guesses; `pull` backs up the local file before overwriting it.
 const { fs, os, path, readF, writeF, exists, qHome, rawArg } = require('./_qdt.js');
 const cp = require('child_process');
 
 const SETTINGS = () => path.join(qHome(), 'settings.json');
-const STATE = () => path.join(qHome(), '.settings-repo');       // { slug, ssh, branch, connectedAt }
+const STATE = () => path.join(qHome(), '.settings-repo');       // { slug, ssh, privateAck, connectedAt }
 const CLONE = () => path.join(qHome(), '.settings-sync-repo');  // persistent working clone
 const SYNCED = ['settings.json'];                                // the file(s) we sync
 const AUTHOR = ['-c', 'user.name=milka713', '-c', 'user.email=milka713@users.noreply.github.com'];
+// SSH hardening for every network git call: never prompt (fail fast), short connect timeout.
+const NETENV = { env: { ...process.env, GIT_SSH_COMMAND: 'ssh -o BatchMode=yes -o ConnectTimeout=10' } };
 
 const out = (s) => console.log('SETTINGS_SYNC_RESULT: ' + s);
 function E(msg) { const e = new Error(msg); e.qdt = true; return e; }
@@ -35,38 +44,25 @@ function parseRepo(input) {
   return { owner, name, slug: owner + '/' + name, ssh: 'git@github.com:' + owner + '/' + name + '.git' };
 }
 
-// ---- privacy check (mandatory) ----------------------------------------------
-// Returns 'private' | 'public' | 'notfound' | 'nogh'. QDT_SETTINGS_GH_PRIVATE overrides the
-// gh call for hermetic tests ('true'|'false'|'notfound'|'nogh').
-function checkPrivate(repo) {
-  const ov = process.env.QDT_SETTINGS_GH_PRIVATE;
-  if (ov) return ov === 'true' ? 'private' : ov === 'false' ? 'public' : ov === 'notfound' ? 'notfound' : 'nogh';
-  const probe = sh('gh', ['--version']);
-  if (probe.status !== 0) return 'nogh';
-  const r = sh('gh', ['api', 'repos/' + repo.slug, '--jq', '.private']);
-  if (r.status !== 0) return 'notfound';
-  return (r.stdout || '').trim() === 'true' ? 'private' : 'public';
-}
-function requirePrivate(repo, verb) {
-  const v = checkPrivate(repo);
-  if (v === 'private') return;
-  if (v === 'nogh') throw E('the GitHub CLI `gh` is required for the mandatory privacy check (settings hold secrets). Install it and run `gh auth login`, then retry. Nothing was ' + verb + '.');
-  if (v === 'notfound') throw E('cannot access ' + repo.slug + ' via `gh` — check the name and that you have access. Nothing was ' + verb + '.');
-  throw E('repo ' + repo.slug + ' is PUBLIC. Your settings.json contains secrets (API keys, MCP tokens) — refusing to ' + verb + '. Make the repo private on GitHub first, then retry.');
-}
+// ---- privacy (explicit confirmation — NOT verifiable over SSH) ---------------
+// SSH exposes no public/private flag, so we can't check it. The user confirms once at connect
+// time with the literal token `private`; we record it and gate push on it. `ack` is the raw
+// third arg to `connect`.
+const isPrivateAck = (ack) => String(ack || '').toLowerCase() === 'private';
 
-// This machine's OWN git access to the repo (SSH key authorised, repo reachable). Distinct from
-// the gh privacy check above — gh uses its own token; push/pull go over git/SSH. ls-remote returns
-// 0 for a reachable repo (even an empty one). QDT_SETTINGS_ACCESS overrides for tests ('ok'|'denied').
+// ---- access check (pure SSH) ------------------------------------------------
+// `git ls-remote` over SSH returns 0 for a reachable repo this machine's key can read (even an
+// empty one), and non-zero (BatchMode → no prompt) when the key isn't authorised / repo is gone.
+// This is the strongest thing SSH can tell us. QDT_SETTINGS_ACCESS overrides for tests ('ok'|'denied').
 function checkAccess(ssh) {
   const ov = process.env.QDT_SETTINGS_ACCESS;
   if (ov) return ov === 'ok';
   if (!haveGit()) return false;
-  return git(null, ['ls-remote', ssh]).status === 0;
+  return git(null, ['ls-remote', ssh], NETENV).status === 0;
 }
 function requireAccess(repo, verb) {
   if (checkAccess(repo.ssh)) return;
-  throw E('this machine can\'t reach ' + repo.slug + ' over git — its SSH key may not be authorised for the repo (or git/network is down). Add this machine\'s key on GitHub, then retry. Nothing was ' + verb + '.');
+  throw E('this machine can\'t reach ' + repo.slug + ' over SSH — its key may not be authorised for the repo (or git/network is down). Add this machine\'s SSH key on GitHub, then retry. Nothing was ' + verb + '.');
 }
 
 // ---- state ------------------------------------------------------------------
@@ -75,23 +71,24 @@ function saveState(o) { writeF(STATE(), JSON.stringify(o, null, 2) + '\n'); }
 
 // ---- git --------------------------------------------------------------------
 function haveGit() { return sh('git', ['--version']).status === 0; }
-function git(dir, args) { return sh('git', dir ? ['-C', dir, ...args] : args); }
+function git(dir, args, opts) { return sh('git', dir ? ['-C', dir, ...args] : args, opts); }
 
-// Guarantee a fresh clone at CLONE() synced to origin. Re-clones on any inconsistency.
+// Guarantee a fresh clone at CLONE() synced to origin. Re-clones on any inconsistency. Network
+// ops (clone/fetch) go through NETENV so a missing/unauthorised SSH key fails fast, never prompts.
 function ensureClone(st) {
   const dir = CLONE();
   const isRepo = exists(path.join(dir, '.git'));
   const originOk = isRepo && (git(dir, ['remote', 'get-url', 'origin']).stdout || '').trim() === st.ssh;
   if (!originOk) {
     fs.rmSync(dir, { recursive: true, force: true });
-    const c = git(null, ['clone', '--quiet', st.ssh, dir]);
+    const c = git(null, ['clone', '--quiet', st.ssh, dir], NETENV);
     if (c.status !== 0) throw E('git clone failed for ' + st.ssh + ':\n' + (c.stderr || '').trim());
     return dir;
   }
-  const f = git(dir, ['fetch', '--quiet', 'origin']);
+  const f = git(dir, ['fetch', '--quiet', 'origin'], NETENV);
   if (f.status !== 0) { // fetch broke — nuke and re-clone
     fs.rmSync(dir, { recursive: true, force: true });
-    const c = git(null, ['clone', '--quiet', st.ssh, dir]);
+    const c = git(null, ['clone', '--quiet', st.ssh, dir], NETENV);
     if (c.status !== 0) throw E('git clone failed for ' + st.ssh + ':\n' + (c.stderr || '').trim());
     return dir;
   }
@@ -108,13 +105,16 @@ function repoBranch(dir, st) {
 }
 
 // ---- commands ---------------------------------------------------------------
-function cmdConnect(url) {
+function cmdConnect(url, ack) {
   const repo = parseRepo(url);
   if (!repo) return out('ERROR — could not parse "' + url + '" as a GitHub repo. Use https://github.com/<owner>/<repo> or <owner>/<repo>. Nothing changed.');
-  requirePrivate(repo, 'connected');            // mandatory: repo is private
-  requireAccess(repo, 'connected');             // mandatory: THIS machine can reach it over git
-  saveState({ slug: repo.slug, ssh: repo.ssh, connectedAt: new Date().toISOString() });
-  out('CONNECTED — ' + repo.slug + ' (verified PRIVATE + reachable by this machine). Now: `/settings-sync push` to upload this machine\'s settings.json, or `/settings-sync pull` to overwrite local with the repo\'s.');
+  if (!haveGit()) throw E('git not found on PATH — required.');
+  requireAccess(repo, 'connected');             // mandatory: THIS machine can reach it over SSH
+  if (!isPrivateAck(ack)) {                      // privacy can't be verified over SSH — confirm explicitly
+    return out('ERROR — privacy can\'t be verified over SSH (git exposes no public/private flag), and settings.json holds secrets (API keys, MCP tokens). If ' + repo.slug + ' is PRIVATE, confirm it explicitly:  /settings-sync connect ' + url + ' private  — nothing was connected.');
+  }
+  saveState({ slug: repo.slug, ssh: repo.ssh, privateAck: true, connectedAt: new Date().toISOString() });
+  out('CONNECTED — ' + repo.slug + ' (SSH-reachable ✓; confirmed private by you). Now: `/settings-sync push` to upload this machine\'s settings.json, or `/settings-sync pull` to overwrite local with the repo\'s.');
 }
 
 function cmdPush() {
@@ -123,8 +123,8 @@ function cmdPush() {
   if (!exists(SETTINGS())) throw E('local ' + SETTINGS() + ' does not exist — nothing to push.');
   try { JSON.parse(readF(SETTINGS())); } catch (_) { throw E('local settings.json is not valid JSON — refusing to push a broken file. Fix it first.'); }
   if (!haveGit()) throw E('git not found on PATH — required to push.');
-  requirePrivate(parseRepo(st.slug), 'pushed'); // RE-check privacy before uploading secrets
-  requireAccess(parseRepo(st.slug), 'pushed');  // and that THIS machine can still reach it
+  if (!st.privateAck) throw E('this repo was connected without confirming it is private (settings hold secrets). Reconnect explicitly:  /settings-sync connect ' + st.slug + ' private  — nothing was pushed.');
+  requireAccess(parseRepo(st.slug), 'pushed');  // THIS machine can still reach it over SSH
   const dir = ensureClone(st);
   for (const f of SYNCED) fs.copyFileSync(path.join(qHome(), f), path.join(dir, f));
   git(dir, ['add', ...SYNCED]);
@@ -136,7 +136,7 @@ function cmdPush() {
   if (cm.status !== 0) throw E('git commit failed:\n' + (cm.stderr || '').trim());
   const pu = git(dir, ['push', '--quiet', '-u', 'origin', 'HEAD:' + branch]);
   if (pu.status !== 0) throw E('git push failed:\n' + (pu.stderr || '').trim());
-  out('PUSHED — settings.json → ' + st.slug + ' (' + branch + '). Other machines get it with `/settings-sync pull`. (Repo is private; it now holds your keys/tokens.)');
+  out('PUSHED — settings.json → ' + st.slug + ' (' + branch + '). Other machines get it with `/settings-sync pull`. (Private per your confirmation; it now holds your keys/tokens.)');
 }
 
 function cmdPull() {
@@ -144,9 +144,7 @@ function cmdPull() {
   if (!st) throw E('no repo connected. Run `/settings-sync connect <github-url>` first. Nothing was pulled.');
   if (!haveGit()) throw E('git not found on PATH — required to pull.');
   const repo = parseRepo(st.slug);
-  const v = checkPrivate(repo);
-  if (v === 'notfound') throw E('cannot access ' + st.slug + ' via `gh` — check access. Nothing was pulled.');
-  requireAccess(repo, 'pulled');                // THIS machine must be able to reach it over git
+  requireAccess(repo, 'pulled');                // THIS machine must be able to reach it over SSH
   const dir = ensureClone(st);
   const incoming = path.join(dir, 'settings.json');
   if (!exists(incoming)) throw E('the repo has no settings.json yet — push from a configured machine first. Nothing was pulled.');
@@ -165,11 +163,10 @@ function cmdPull() {
 
 function cmdStatus() {
   const st = loadState();
-  if (!st) return out('STATUS — not connected. Run `/settings-sync connect <github-url>` (must be a PRIVATE repo — settings hold secrets).');
+  if (!st) return out('STATUS — not connected. Run `/settings-sync connect <github-url> private` (settings hold secrets; you confirm the repo is private — it can\'t be verified over SSH).');
   const repo = parseRepo(st.slug);
-  const v = checkPrivate(repo);
-  const priv = v === 'private' ? 'PRIVATE ✓' : v === 'public' ? 'PUBLIC ⚠ (push blocked)' : v === 'nogh' ? 'unknown (gh missing)' : 'unreachable';
-  const access = checkAccess(repo.ssh) ? 'this machine has git access ✓' : 'NO git access from this machine ⚠';
+  const priv = st.privateAck ? 'confirmed private by you ✓ (SSH can\'t verify)' : 'NOT confirmed private ⚠ (push blocked — reconnect with `private`)';
+  const access = checkAccess(repo.ssh) ? 'SSH-reachable by this machine ✓' : 'NOT reachable over SSH from this machine ⚠';
   let diff = 'unknown';
   try {
     const dir = ensureClone(st);
@@ -194,7 +191,7 @@ function main() {
   const sub = (parts[0] || 'status').toLowerCase();
   try {
     if (sub === 'status') return cmdStatus();
-    if (sub === 'connect') return cmdConnect(parts[1]);
+    if (sub === 'connect') return cmdConnect(parts[1], parts[2]);
     if (sub === 'push') return cmdPush();
     if (sub === 'pull') return cmdPull();
     if (sub === 'disconnect') return cmdDisconnect();
@@ -204,5 +201,5 @@ function main() {
   }
 }
 
-module.exports = { parseRepo, checkPrivate };
+module.exports = { parseRepo, isPrivateAck };
 if (require.main === module) main();

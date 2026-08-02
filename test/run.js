@@ -897,19 +897,22 @@ console.log('— /settings-sync —');
   ok('ss: parse github.com/o/r and strip a trailing path', (() => { const r = pr('https://github.com/o/r/tree/main'); return r && r.slug === 'o/r'; })());
   ok('ss: reject junk', pr('not a url') === null && pr('https://gitlab.com/o/r') === null);
 
+  ok('ss: isPrivateAck only accepts the literal "private"', ssMod.isPrivateAck('private') === true && ssMod.isPrivateAck('yes') === false && ssMod.isPrivateAck('') === false);
+
   const ssRun = (args, env) => cp.spawnSync('node', [path.join(ROOT, 'commands', '_settings-sync.js'), ...args],
     { encoding: 'utf8', env: { ...process.env, ...env } }).stdout;
 
-  // connect: mandatory privacy gate
+  // connect is SSH-only: verify access via SSH; privacy is an EXPLICIT confirmation (can't be
+  // checked over SSH). No gh anywhere.
   const h1 = tmp();
-  const pub = ssRun(['connect', 'https://github.com/milka713/qwen-code-settings'], { QWEN_HOME: h1, QDT_SETTINGS_GH_PRIVATE: 'false' });
-  ok('ss: connect refuses a PUBLIC repo and writes no state', /ERROR/.test(pub) && /PUBLIC/.test(pub) && !fs.existsSync(path.join(h1, '.settings-repo')));
-  const nogh = ssRun(['connect', 'o/r'], { QWEN_HOME: tmp(), QDT_SETTINGS_GH_PRIVATE: 'nogh' });
-  ok('ss: connect fails clearly when gh is missing', /ERROR/.test(nogh) && /gh/.test(nogh));
-  const noacc = ssRun(['connect', 'o/r'], { QWEN_HOME: tmp(), QDT_SETTINGS_GH_PRIVATE: 'true', QDT_SETTINGS_ACCESS: 'denied' });
-  ok('ss: connect refuses when this machine has no git access (even if private)', /ERROR/.test(noacc) && /access|reach/.test(noacc));
-  const con = ssRun(['connect', 'https://github.com/milka713/qwen-code-settings'], { QWEN_HOME: h1, QDT_SETTINGS_GH_PRIVATE: 'true', QDT_SETTINGS_ACCESS: 'ok' });
-  ok('ss: connect stores a verified private + reachable repo', /CONNECTED/.test(con) && JSON.parse(fs.readFileSync(path.join(h1, '.settings-repo'), 'utf8')).slug === 'milka713/qwen-code-settings');
+  const noack = ssRun(['connect', 'https://github.com/milka713/qwen-code-settings'], { QWEN_HOME: h1, QDT_SETTINGS_ACCESS: 'ok' });
+  ok('ss: connect without the `private` confirmation refuses and writes no state', /ERROR/.test(noack) && /private/i.test(noack) && !fs.existsSync(path.join(h1, '.settings-repo')));
+  const noacc = ssRun(['connect', 'o/r', 'private'], { QWEN_HOME: tmp(), QDT_SETTINGS_ACCESS: 'denied' });
+  ok('ss: connect refuses when this machine has no SSH access to the repo', /ERROR/.test(noacc) && /SSH|reach/.test(noacc));
+  const con = ssRun(['connect', 'https://github.com/milka713/qwen-code-settings', 'private'], { QWEN_HOME: h1, QDT_SETTINGS_ACCESS: 'ok' });
+  ok('ss: connect with SSH access + explicit `private` stores the repo (privateAck)', (() => {
+    if (!/CONNECTED/.test(con)) return false; const s = JSON.parse(fs.readFileSync(path.join(h1, '.settings-repo'), 'utf8')); return s.slug === 'milka713/qwen-code-settings' && s.privateAck === true;
+  })());
 
   // push/pull with no repo connected → explicit error
   ok('ss: push without a connected repo errors', /ERROR/.test(ssRun(['push'], { QWEN_HOME: tmp() })) );
@@ -921,23 +924,25 @@ console.log('— /settings-sync —');
     const bare = path.join(tmp(), 'remote.git');
     cp.spawnSync('git', ['init', '--quiet', '--bare', bare]);
     cp.spawnSync('git', ['-C', bare, 'symbolic-ref', 'HEAD', 'refs/heads/main']); // pin default branch
-    const state = (home, extra) => { fs.writeFileSync(path.join(home, '.settings-repo'), JSON.stringify({ slug: 'milka713/qwen-code-settings', ssh: bare, connectedAt: 'x', ...extra }) + '\n'); };
-    // machine A: settings with a marker → push
+    const state = (home, extra) => { fs.writeFileSync(path.join(home, '.settings-repo'), JSON.stringify({ slug: 'milka713/qwen-code-settings', ssh: bare, privateAck: true, connectedAt: 'x', ...extra }) + '\n'); };
+    // machine A: settings with a marker → push (access verified by real local ls-remote on the bare)
     const A = tmp(); fs.writeFileSync(path.join(A, 'settings.json'), JSON.stringify({ marker: 'FROM_A', modelProviders: { openai: [{}, {}] } }, null, 2));
     state(A);
-    const push = ssRun(['push'], { QWEN_HOME: A, QDT_SETTINGS_GH_PRIVATE: 'true' });
-    ok('ss: push uploads local settings.json (real git)', /PUSHED/.test(push));
+    const push = ssRun(['push'], { QWEN_HOME: A });
+    ok('ss: push uploads local settings.json (real git over the bare remote)', /PUSHED/.test(push));
     // push again with no change → NOOP
-    ok('ss: second push with no change is a NOOP', /NOOP/.test(ssRun(['push'], { QWEN_HOME: A, QDT_SETTINGS_GH_PRIVATE: 'true' })));
+    ok('ss: second push with no change is a NOOP', /NOOP/.test(ssRun(['push'], { QWEN_HOME: A })));
     // machine B: different local settings → pull overwrites, backing up first
     const B = tmp(); fs.writeFileSync(path.join(B, 'settings.json'), JSON.stringify({ marker: 'OLD_B' }, null, 2));
     state(B);
-    const pull = ssRun(['pull'], { QWEN_HOME: B, QDT_SETTINGS_GH_PRIVATE: 'true' });
+    const pull = ssRun(['pull'], { QWEN_HOME: B });
     ok('ss: pull overwrites local from the repo', /PULLED/.test(pull) && JSON.parse(fs.readFileSync(path.join(B, 'settings.json'), 'utf8')).marker === 'FROM_A');
     ok('ss: pull backed up the previous local settings.json', fs.readdirSync(B).some((f) => /^settings\.json\.bak-/.test(f)));
-    ok('ss: second pull when already in sync is a NOOP', /NOOP/.test(ssRun(['pull'], { QWEN_HOME: B, QDT_SETTINGS_GH_PRIVATE: 'true' })));
-    // push refuses if the repo is (now) public — secrets must never leave
-    ok('ss: push re-checks privacy and refuses if public', /ERROR/.test(ssRun(['push'], { QWEN_HOME: A, QDT_SETTINGS_GH_PRIVATE: 'false' })) && /PUBLIC/.test(ssRun(['push'], { QWEN_HOME: A, QDT_SETTINGS_GH_PRIVATE: 'false' })));
+    ok('ss: second pull when already in sync is a NOOP', /NOOP/.test(ssRun(['pull'], { QWEN_HOME: B })));
+    // push refuses if the repo was connected without the private confirmation — secrets must never leave
+    const C = tmp(); fs.writeFileSync(path.join(C, 'settings.json'), JSON.stringify({ marker: 'X' }));
+    state(C, { privateAck: false });
+    ok('ss: push refuses when privacy was never confirmed', /ERROR/.test(ssRun(['push'], { QWEN_HOME: C })) && /private/i.test(ssRun(['push'], { QWEN_HOME: C })));
     // disconnect forgets the repo but leaves settings.json
     const dis = ssRun(['disconnect'], { QWEN_HOME: B });
     ok('ss: disconnect forgets the repo, keeps settings.json', /DISCONNECTED/.test(dis) && !fs.existsSync(path.join(B, '.settings-repo')) && fs.existsSync(path.join(B, 'settings.json')));

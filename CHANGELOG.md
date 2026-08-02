@@ -4,6 +4,23 @@ All notable changes to qwen-dev-toolkit are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com); versions follow semver.
 (Releases before 1.7.0 predate this file and are not backfilled — see the git history.)
 
+## [1.24.0] - 2026-08-02
+
+### Changed
+- **`/settings-sync` is now SSH-only** — it no longer uses `gh` or the GitHub HTTPS API at all, so
+  it works on a machine set up with just an SSH key (the common case). Everything goes over
+  `git@github.com:…`.
+  - **Access** is verified with `git ls-remote` over SSH (BatchMode + short ConnectTimeout, so a
+    missing/unauthorised key fails fast instead of hanging on a prompt) — on connect, push and pull.
+  - **Privacy**: a repo's public/private state **cannot be determined over SSH** (the git protocol
+    exposes no such flag). So the mandatory-privacy behaviour changes from a `gh`-based check to an
+    **explicit one-time confirmation**: `connect <url> private`. The confirmation is recorded
+    (`privateAck` in `~/.qwen/.settings-repo`) and **`push` refuses** unless it's present — secrets
+    still never upload without a deliberate acknowledgement, but now with zero HTTPS/`gh` dependency.
+  - `status` reports the recorded privacy confirmation + live SSH reachability. A repo connected by
+    the old (pre-1.24) `gh` flow has no `privateAck`, so `status` flags it and `push` asks you to
+    reconnect with `connect <url> private`.
+
 ## [1.23.1] - 2026-08-01
 
 ### Fixed
