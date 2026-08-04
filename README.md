@@ -189,15 +189,22 @@ protection (e.g. `secret-guard` off = nothing stops a committed secret). Bare `/
 refused. Global scope.
 · _Example:_ `/hooks off git-branch-guard`
 
-**`/main-push` · `off` · `status`** — The user-only release valve for the protected branch. By
-default the `git-branch-guard` hook blocks every push/merge to `main`/`master`; running
-`/main-push` authorizes **exactly one push to main** — **single-use**: it covers the merge and
-the one push, then it's consumed **when the push actually succeeds** (the `main-push-consume`
-PostToolUse hook removes the token on a zero exit code). A push that is **blocked or fails does
-not** waste it — the model just fixes the error and retries under the same authorization; a
-genuinely second successful push needs `/main-push` again (an unused authorization also expires
-after 15 min). `off` revokes it early, `status` checks it. Because only you can run a slash
-command, this makes "yes, really release to main" un-fakeable by the model.
+**`/main-push` · `on` · `off` · `status`** — The user-only release valve for the protected
+branch. By default the `git-branch-guard` hook blocks every push/merge to `main`/`master`. Three
+modes:
+- **`/main-push`** (bare) — **single-use**: authorizes **exactly one push to main**, covering the
+  merge and the one push, then it's consumed **when the push actually succeeds** (the
+  `main-push-consume` PostToolUse hook removes the token on a zero exit code). A push that is
+  **blocked or fails does not** waste it — the model just fixes the error and retries under the
+  same authorization; a genuinely second successful push needs `/main-push` again. An unused
+  token expires after 15 min.
+- **`/main-push on`** — **persistent**: every push/merge to main is allowed **until you run
+  `/main-push off`**. No expiry, never consumed — for a run of back-to-back releases.
+- **`/main-push off`** — revoke (back to the blocked default). **`status`** reports the current
+  mode.
+
+Because only you can run a slash command, this makes "yes, really release to main" un-fakeable
+by the model.
 
 **`/main-push-hint` · `off` · `status`** — One-time, per-machine setup for **Auto Mode**. There,
 qwen-code classifies each shell command with an LLM **before** the `git-branch-guard` hook runs,
@@ -385,7 +392,7 @@ project you reset).
 | `SessionStart(compact)` → `compact-warn.js` | Compaction-saturation guard: after a compaction, reads the real before/after token counts from the session transcript; if the history shrank by **less than 15%**, it (a) tells the model to warn you that compacting this session again is no longer effective, and (b) **latches auto-compaction off** (`autoCompactThreshold` → 1, if it was on) so qwen-code stops retrying a compaction that on a reasoning model can come back empty and hard-fail the turn — handing over to `/checkpoint` + a fresh session. Silent on healthy compressions. |
 | `SessionStart` → `classifier-window-check.js` | Warns when a qwen-code update (`brew upgrade`/`npm i -g`) replaced the bundle and reverted the `/classifier-window` patch back to the stock 40 — compares the live bundle value to your recorded preference (`~/.qwen/.classifier-window`) and prints a one-line reminder to re-run `/classifier-window <N>`. Read-only; silent when they match or no preference is set. |
 | `PreToolUse` → `secret-guard.js` | **Blocks** any write/edit/command containing a hardcoded credential (private keys, AWS/OpenAI/GitHub/Slack/HF tokens, …) or that commits a secret file (`.env`, `id_rsa`, `*.pem`). Env-var usage and placeholders pass. |
-| `PreToolUse` → `git-branch-guard.js` | **Blocks** any `git push`/`merge`/`rebase` that would touch `main`/`master` (explicit target, or while checked out on it, or a switch-then-merge one-liner). Pushes to `dev`/feature branches and read-only git pass. Unlocked for one push (single-use) by `/main-push` — this guard only **allows** while the token is present; it never consumes it (so a blocked/failed push doesn't burn the authorization). |
+| `PreToolUse` → `git-branch-guard.js` | **Blocks** any `git push`/`merge`/`rebase` that would touch `main`/`master` (explicit target, or while checked out on it, or a switch-then-merge one-liner). Pushes to `dev`/feature branches and read-only git pass. Unlocked by `/main-push` — single-use (`.main-approval` = `once`, 15-min TTL) or persistent (`= persistent`, from `/main-push on`, no TTL). This guard only **allows** while a valid token is present; it never consumes it (so a blocked/failed push doesn't burn the authorization). |
 | `PostToolUse` → `main-push-consume.js` | Companion to `git-branch-guard`: **consumes** the single-use `/main-push` token — deletes `~/.qwen/.main-approval` — but only when a `git push` to `main`/`master` actually **succeeded** (zero exit code). A push that was blocked (Auto-Mode classifier) or failed leaves the token intact for the retry; a bare merge (no push) never consumes it. Silent; enforces "one *successful* push" without burning the token on attempts that never landed. |
 | `PreToolUse` → `release-guard.js` | **Reminds** (never blocks) when a push advances `main`/`master` but the release would lag the code — a bumped `VERSION` with no matching tag, or commits past the released tag with no bump — injecting a note to run `/release` (or `/changelog` then `/release`). This is the deterministic backstop that makes `/release` fire even if the model forgets it. Silent when the release is in sync. |
 | `PreToolUse` → `toolkit-reset-guard.js` | **Blocks** an attempt to run `/toolkit-reset`'s confirm step without a valid 15-minute approval window — closes the gap where a model could otherwise call the backend script directly via a shell command instead of waiting for you to type `/toolkit-reset confirm` yourself. Preview-only calls (no `confirm`) always pass. |

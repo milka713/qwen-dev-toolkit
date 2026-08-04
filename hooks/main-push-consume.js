@@ -74,8 +74,12 @@ function succeeded(resp) {
 }
 if (!succeeded(input.tool_response)) process.exit(0); // failed/blocked — keep the authorization
 
-// --- Consume the token (if a fresh one is present). ---
+// --- Consume the token — but ONLY a single-use one. A persistent grant ('persistent', from
+// `/main-push on`) stays until the user runs `/main-push off`. ---
 const QHOME = process.env.QWEN_HOME || path.join(process.env.HOME || require('os').homedir(), '.qwen');
 const TOKEN = path.join(QHOME, '.main-approval');
-try { fs.unlinkSync(TOKEN); } catch (_) { /* nothing to consume */ }
+let mode;
+try { mode = fs.readFileSync(TOKEN, 'utf8').trim(); } catch (_) { process.exit(0); } // no token to consume
+if (mode === 'persistent') process.exit(0);   // never consume a persistent authorization
+try { fs.unlinkSync(TOKEN); } catch (_) {}     // single-use — consume it now that the push landed
 process.exit(0);

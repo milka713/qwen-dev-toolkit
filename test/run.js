@@ -262,6 +262,11 @@ const staleT = (Date.now() - 20 * 60 * 1000) / 1000;
 fs.utimesSync(tok, staleT, staleT);
 ok('a stale token is rejected', gbRun('git push origin main', devRepo).includes('"deny"'));
 ok('the stale token was cleaned up', !fs.existsSync(tok));
+// PERSISTENT token ('persistent', from `/main-push on`): allowed with NO TTL — even an "old" one.
+fs.writeFileSync(tok, 'persistent');
+fs.utimesSync(tok, staleT, staleT); // backdate it well past the single-use TTL
+ok('a persistent token authorizes a main push regardless of age', gbRun('git push origin main', devRepo) === '');
+ok('a persistent token is not dropped for age', fs.existsSync(tok));
 
 // ---- main-push-consume (PostToolUse) -------------------------------------------
 console.log('— main-push-consume —');
@@ -283,6 +288,26 @@ setTok(); mpcRun('git switch main && git merge dev && git push origin main', { o
 ok('a successful switch+merge+push consumes the token', !fs.existsSync(tokc));
 setTok(); mpcRun('git switch main && git merge dev && git push origin main', { error: 'fatal: invalid reference: main\nExit Code: 128' });
 ok('a release attempt that fails before the push keeps the token', fs.existsSync(tokc));
+// a PERSISTENT token is never consumed, even by a successful main push.
+fs.writeFileSync(tokc, 'persistent'); mpcRun('git push origin main', { output: 'Exit Code: 0' });
+ok('a persistent token survives a successful main push', fs.existsSync(tokc) && fs.readFileSync(tokc, 'utf8') === 'persistent');
+
+// ---- /main-push modes (backend) ------------------------------------------------
+console.log('— /main-push modes —');
+{
+  const mp = path.join(ROOT, 'commands', '_main-push.js');
+  const mpHome = tmp();
+  const mpTok = path.join(mpHome, '.main-approval');
+  const mpRun = (arg) => cp.spawnSync('node', [mp, ...(arg == null ? [] : [String(arg)])], { encoding: 'utf8', env: { ...process.env, QWEN_HOME: mpHome } }).stdout;
+  const bareOut = mpRun(null);
+  ok('mp: bare /main-push writes a single-use token', fs.readFileSync(mpTok, 'utf8').trim() === 'once' && /single-use/i.test(bareOut));
+  const onOut = mpRun('on');
+  ok('mp: /main-push on writes a persistent token', fs.readFileSync(mpTok, 'utf8').trim() === 'persistent' && /persistent/i.test(onOut));
+  ok('mp: status reports persistent', /AUTHORIZED \(persistent\)/.test(mpRun('status')));
+  mpRun('off');
+  ok('mp: /main-push off revokes the token', !fs.existsSync(mpTok) && /revoked/i.test(mpRun('off')));
+  ok('mp: status with no token reports NOT authorized', /NOT authorized/.test(mpRun('status')));
+}
 
 // ---- release-guard -------------------------------------------------------------
 console.log('— release-guard —');

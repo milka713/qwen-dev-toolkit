@@ -27,7 +27,7 @@ const HOOKS = [
   { name: 'steer-compaction',    kind: 'auto',  event: 'PreCompact',       desc: 'steers what compaction keeps (goal/plan over churn)' },
   { name: 'skill-reminder',      kind: 'auto',  event: 'UserPromptSubmit', desc: 'nudges the matching skill when a prompt clearly fits one' },
   { name: 'agent-limit-post',    kind: 'auto',  event: 'PostToolUse',      desc: 'decrements the subagent counter after a subagent finishes' },
-  { name: 'main-push-consume',   kind: 'auto',  event: 'PostToolUse',      desc: 'consumes the /main-push token only after a push to main SUCCEEDS (so blocked/failed attempts don\'t waste it)' },
+  { name: 'main-push-consume',   kind: 'auto',  event: 'PostToolUse',      desc: 'consumes a single-use /main-push token only after a push to main SUCCEEDS (blocked/failed attempts don\'t waste it; a persistent `/main-push on` grant is never consumed)' },
   { name: 'checkpoint-nudge',    kind: 'auto',  event: 'Stop',             desc: 'holds the turn once if code changed but PROGRESS.md is stale, or if the context window is nearly full' },
 ];
 const NAMES = HOOKS.map((h) => h.name);

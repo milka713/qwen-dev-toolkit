@@ -4,6 +4,18 @@ All notable changes to qwen-dev-toolkit are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com); versions follow semver.
 (Releases before 1.7.0 predate this file and are not backfilled — see the git history.)
 
+## [1.26.0] - 2026-08-04
+
+### Added
+- **`/main-push on` — persistent authorization.** `/main-push` now has three modes instead of a
+  single one-shot: bare **`/main-push`** stays single-use (one *successful* push, 15-min unused
+  TTL, consumed by `main-push-consume`); **`/main-push on`** grants a **persistent** authorization
+  — every push/merge to main allowed until **`/main-push off`**, with no expiry and never consumed
+  — for a run of back-to-back releases; **`/main-push off`** revokes (the blocked default). The
+  mode is recorded in `~/.qwen/.main-approval` (`once` vs `persistent`); `git-branch-guard`
+  ignores the TTL for a persistent token and `main-push-consume` never consumes one. `status`
+  reports which mode is active. (Empty legacy tokens are treated as single-use.)
+
 ## [1.25.0] - 2026-08-04
 
 ### Fixed

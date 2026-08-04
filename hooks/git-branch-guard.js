@@ -87,24 +87,27 @@ if (!reason &&
 
 if (!reason) process.exit(0); // allow
 
-// Explicit user authorization? /main-push drops a SINGLE-USE token: it authorizes exactly
-// one push to main/master. This guard only ALLOWS while the token is present — it does NOT
+// Explicit user authorization? /main-push drops a token whose MODE is its content:
+//   'persistent' (from `/main-push on`)  → EVERY main push allowed until `/main-push off`;
+//                                           no TTL, never consumed.
+//   'once' / empty (bare `/main-push`)   → SINGLE-USE: one successful push, 15-min unused TTL.
+// This guard only ALLOWS while a valid token is present — for the single-use token it does NOT
 // consume it here: a PreToolUse guard fires before the command runs, so consuming now would
-// burn the authorization on a push that is then blocked (Auto-Mode classifier) or fails
-// (bad auth, `git switch main` on a not-yet-created branch, non-fast-forward). Consumption is
-// the companion PostToolUse hook `main-push-consume`, keyed on the push actually SUCCEEDING.
-// The TTL only expires an UNUSED token (a staleness guard so a forgotten authorization can't
-// be used much later) — it is not a multi-push window.
+// burn the authorization on a push that is then blocked (Auto-Mode classifier) or fails (bad
+// auth, `git switch main` on a not-yet-created branch, non-fast-forward). Consumption is the
+// companion PostToolUse hook `main-push-consume`, keyed on the push actually SUCCEEDING (and it
+// never consumes a persistent token). The TTL only expires an UNUSED single-use token.
 const path = require('path');
 const QHOME = process.env.QWEN_HOME || path.join(process.env.HOME || require('os').homedir(), '.qwen');
 const TOKEN = path.join(QHOME, '.main-approval');
 const TTL_MS = 15 * 60 * 1000;
 try {
+  const persistent = fs.readFileSync(TOKEN, 'utf8').trim() === 'persistent';
   const st = fs.statSync(TOKEN);
-  if (Date.now() - st.mtimeMs <= TTL_MS) {
-    process.exit(0); // authorized — allow (main-push-consume removes the token once the push lands)
+  if (persistent || Date.now() - st.mtimeMs <= TTL_MS) {
+    process.exit(0); // authorized — allow (main-push-consume removes a single-use token once the push lands)
   }
-  try { fs.unlinkSync(TOKEN); } catch (_) {} // stale — drop it
+  try { fs.unlinkSync(TOKEN); } catch (_) {} // stale single-use token — drop it
 } catch (_) { /* no token */ }
 
 process.stdout.write(JSON.stringify({
