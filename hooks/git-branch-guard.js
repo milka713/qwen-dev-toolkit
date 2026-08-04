@@ -15,9 +15,12 @@
 //   - `git merge` / `git rebase` while checked out ON main/master
 //   - a one-liner that switches to main/master and then merges/pushes
 // Allows everything else (all pushes to dev/feature branches, all read-only git, and any
-// main operation once `/main-push` has authorized it). The token is SINGLE-USE: a push to
-// main/master CONSUMES it (so a second push needs a fresh `/main-push`); a bare merge/rebase
-// onto main does NOT consume it, so one authorization still covers "merge dev then push".
+// main operation once `/main-push` has authorized it). The token is SINGLE-USE, but it is
+// NOT consumed here: this hook only ALLOWS while the token is present. The companion
+// PostToolUse hook `main-push-consume` deletes the token only when a push to main/master
+// actually SUCCEEDS — so a push that is blocked (e.g. by the Auto-Mode classifier) or fails
+// (bad auth, `git switch main` on a not-yet-created branch, non-fast-forward) never burns
+// the authorization, and the model can just fix the error and retry under the same token.
 'use strict';
 try { if (require('./_hookutil.js').disabled('git-branch-guard')) process.exit(0); } catch (_) {}
 const fs = require('fs');
@@ -85,10 +88,13 @@ if (!reason &&
 if (!reason) process.exit(0); // allow
 
 // Explicit user authorization? /main-push drops a SINGLE-USE token: it authorizes exactly
-// one push to main/master. A push CONSUMES the token here (so a second push needs a fresh
-// /main-push); a bare merge/rebase onto main does NOT consume it, so one authorization still
-// covers the "merge dev → push" release. The TTL only expires an UNUSED token (a staleness
-// guard so a forgotten authorization can't be used much later) — it is not a multi-push window.
+// one push to main/master. This guard only ALLOWS while the token is present — it does NOT
+// consume it here: a PreToolUse guard fires before the command runs, so consuming now would
+// burn the authorization on a push that is then blocked (Auto-Mode classifier) or fails
+// (bad auth, `git switch main` on a not-yet-created branch, non-fast-forward). Consumption is
+// the companion PostToolUse hook `main-push-consume`, keyed on the push actually SUCCEEDING.
+// The TTL only expires an UNUSED token (a staleness guard so a forgotten authorization can't
+// be used much later) — it is not a multi-push window.
 const path = require('path');
 const QHOME = process.env.QWEN_HOME || path.join(process.env.HOME || require('os').homedir(), '.qwen');
 const TOKEN = path.join(QHOME, '.main-approval');
@@ -96,9 +102,7 @@ const TTL_MS = 15 * 60 * 1000;
 try {
   const st = fs.statSync(TOKEN);
   if (Date.now() - st.mtimeMs <= TTL_MS) {
-    // consume on the push (the outward, irreversible act); leave it for a bare merge/rebase.
-    if (/\bgit\b[\s\S]*?\bpush\b/.test(cmd)) { try { fs.unlinkSync(TOKEN); } catch (_) {} }
-    process.exit(0); // authorized — allow
+    process.exit(0); // authorized — allow (main-push-consume removes the token once the push lands)
   }
   try { fs.unlinkSync(TOKEN); } catch (_) {} // stale — drop it
 } catch (_) { /* no token */ }

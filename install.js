@@ -107,8 +107,8 @@ if (!isWin) { for (const f of fs.readdirSync(path.join(QHOME, 'commands')).filte
 console.log('\nInstalled:');
 console.log(`  ✓ skills   (${SKILLS.join(', ')})`);
 console.log(`  ✓ agents   (${AGENTS.join(', ')})`);
-console.log('  ✓ commands (/dev, /cover, /pin, /status, /maxagents, /bro, /main-push, /versioning, /autocompact, /toolkit-reset, /reality, /hooks, /doctor, /classifier-window, /settings-sync)  [Node backends' + (isWin ? '' : ' + bash wrappers') + ']');
-console.log('  ✓ hooks    (restore, compaction-steer, compact-warn, classifier-window-check, secret-guard, git-branch-guard, release-guard, toolkit-reset-guard, devmode-guard, skill-reminder, agent-limit, checkpoint-nudge)');
+console.log('  ✓ commands (/dev, /cover, /pin, /status, /maxagents, /bro, /main-push, /main-push-hint, /versioning, /autocompact, /toolkit-reset, /reality, /hooks, /doctor, /classifier-window, /settings-sync)  [Node backends' + (isWin ? '' : ' + bash wrappers') + ']');
+console.log('  ✓ hooks    (restore, compaction-steer, compact-warn, classifier-window-check, secret-guard, git-branch-guard, release-guard, main-push-consume, toolkit-reset-guard, devmode-guard, skill-reminder, agent-limit, checkpoint-nudge)');
 
 // ---- 5) merge hooks + memory into settings.json --------------------------
 (function mergeSettings() {
@@ -142,6 +142,7 @@ console.log('  ✓ hooks    (restore, compaction-steer, compact-warn, classifier
   setHook('PreToolUse', 'devmode-guard.js', 'devmode-guard', 'write_file|edit');
   setHook('PreToolUse', 'terminal-guard.js', 'terminal-guard', 'run_shell_command');
   setHook('PostToolUse', 'agent-limit.js post', 'agent-limit-post', 'agent');
+  setHook('PostToolUse', 'main-push-consume.js', 'main-push-consume', 'run_shell_command');
   setHook('UserPromptSubmit', 'skill-reminder.js', 'skill-reminder');
   setHook('Stop', 'checkpoint-nudge.js', 'checkpoint-nudge');
   s.memory = Object.assign({ enableManagedAutoMemory: true, enableManagedAutoDream: true }, s.memory || {});

@@ -33,7 +33,9 @@ This is a **hard workflow policy**, not a suggestion. It protects the stable bra
   2. `git merge dev` (resolve conflicts if trivial; otherwise stop and ask)
   3. `git push origin main`
   4. `git switch dev` — never keep working on `main`.
-  If a step is blocked because the window expired, ask the user to run `/main-push` again — don't retry blindly.
+  - **First release (no `main` anywhere):** if `main` exists neither locally nor on the remote, step 1 fails (`fatal: invalid reference: main`). Don't loop on it — create `main` from `dev` instead: `git push origin dev:main` (or `git branch main dev` && `git push origin main`), then `git switch dev`.
+  - The token is consumed only when a push to main **succeeds**, so a blocked or failed attempt does **not** waste it — fix the actual error and retry under the same authorization; only ask for a fresh `/main-push` if you need a genuinely second successful push (or the unused token expired after 15 min).
+  - If the push is refused with **`Blocked by auto mode policy`** (not the `[toolkit] git-flow guard` message), that is qwen-code's Auto-Mode classifier running ahead of the hook — do not reroute around it; the user should run **`/main-push-hint`** once per machine (then restart qwen) so the classifier defers main pushes to the deterministic hook.
   - **If this main update is a release** (the `VERSION` file changed): cut the tag + GitHub Release with **`/release`** so the published release never lags the code. `/release check` reports whether main is ahead of the latest tag.
 - **Before any push:** sanity-check you are not about to push `main` unintentionally — `git rev-parse --abbrev-ref HEAD` if unsure.
 

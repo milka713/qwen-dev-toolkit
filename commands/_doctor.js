@@ -36,7 +36,7 @@ for (const [cmd, args] of [['node', ['--version']], ['git', ['--version']], ['qw
 section('Install integrity (' + H + '):');
 const need = {
   'command backends': ['commands/_qdt.js', 'commands/_stateview.js', 'commands/_hookcat.js', 'commands/_status.js', 'commands/_hooks.js', 'commands/_toolkit-reset.js', 'commands/_doctor.js'].map((p) => path.join(H, p)),
-  'hook scripts': ['hooks/_hookutil.js', 'hooks/secret-guard.js', 'hooks/git-branch-guard.js', 'hooks/release-guard.js', 'hooks/toolkit-reset-guard.js', 'hooks/agent-limit.js', 'hooks/session-start-restore.js', 'hooks/pre-compact-steer.js', 'hooks/compact-warn.js', 'hooks/skill-reminder.js', 'hooks/checkpoint-nudge.js'].map((p) => path.join(H, p)),
+  'hook scripts': ['hooks/_hookutil.js', 'hooks/secret-guard.js', 'hooks/git-branch-guard.js', 'hooks/release-guard.js', 'hooks/main-push-consume.js', 'hooks/toolkit-reset-guard.js', 'hooks/agent-limit.js', 'hooks/session-start-restore.js', 'hooks/pre-compact-steer.js', 'hooks/compact-warn.js', 'hooks/skill-reminder.js', 'hooks/checkpoint-nudge.js'].map((p) => path.join(H, p)),
   'skills': ['implement', 'plan', 'checkpoint', 'audit', 'brainstorm', 'gitflow', 'commit', 'review', 'docs', 'changelog', 'release', 'toolkit-update'].map((s) => path.join(H, 'skills', s, 'SKILL.md')),
   'subagents': ['implementer', 'scout', 'debugger', 'tester', 'researcher', 'verifier'].map((a) => path.join(H, 'agents', a + '.md')),
 };

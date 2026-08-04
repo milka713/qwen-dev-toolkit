@@ -246,20 +246,43 @@ ok('bare push while ON dev allowed', gbRun('git push', devRepo) === '');
 ok('merge while ON main denied', gbRun('git merge dev', mainRepo).includes('"deny"'));
 ok('merge while ON dev allowed', gbRun('git merge feature-x', devRepo) === '');
 ok('switch-to-main + push one-liner denied', gbRun('git switch main && git push', devRepo).includes('"deny"'));
-// single-use token: a push to main is authorized AND consumes the token, so the very next
-// push is blocked again; a bare merge onto main does NOT consume it (so merge+push works).
+// single-use token: while present it AUTHORIZES a main push, but the guard does NOT consume
+// it (a PreToolUse guard fires before the push runs — consuming there would burn the token on
+// a push that is then blocked/fails). Consumption is the PostToolUse main-push-consume hook's
+// job, keyed on success. So here the token must survive every guard check.
 const tok = path.join(gh, '.main-approval');
 fs.writeFileSync(tok, '');
 ok('token authorizes a main push', gbRun('git push origin main', devRepo) === '');
-ok('the push consumed the token (single-use)', !fs.existsSync(tok));
-ok('a second push without a fresh token is denied', gbRun('git push origin main', devRepo).includes('"deny"'));
-// merge onto main with a token present is allowed but does NOT consume it...
-fs.writeFileSync(tok, '');
+ok('the guard does NOT consume the token (PostToolUse does)', fs.existsSync(tok));
+ok('so a blocked/retried push is still authorized', gbRun('git push origin main', devRepo) === '');
 ok('merge onto main is authorized by the token', gbRun('git merge dev', mainRepo) === '');
 ok('a bare merge does not consume the token', fs.existsSync(tok));
-// ...so the push that follows the merge is still covered by the same authorization, and consumes it
-ok('the following push is still covered by the same token', gbRun('git push origin main', devRepo) === '');
-ok('that push consumed the token', !fs.existsSync(tok));
+// a stale token (older than the 15-min TTL) is rejected AND cleaned up on the deny path.
+const staleT = (Date.now() - 20 * 60 * 1000) / 1000;
+fs.utimesSync(tok, staleT, staleT);
+ok('a stale token is rejected', gbRun('git push origin main', devRepo).includes('"deny"'));
+ok('the stale token was cleaned up', !fs.existsSync(tok));
+
+// ---- main-push-consume (PostToolUse) -------------------------------------------
+console.log('— main-push-consume —');
+const mpc = path.join(ROOT, 'hooks', 'main-push-consume.js');
+const ghc = tmp();
+const tokc = path.join(ghc, '.main-approval');
+const mpcRun = (command, tool_response, dir = devRepo) =>
+  runNode(mpc, { input: JSON.stringify({ tool_name: 'run_shell_command', tool_input: { command, directory: dir }, tool_response }), env: { QWEN_HOME: ghc } });
+const setTok = () => fs.writeFileSync(tokc, '');
+setTok(); mpcRun('git push origin main', { output: 'Command: git push origin main\nExit Code: 0' });
+ok('a SUCCESSFUL main push consumes the token', !fs.existsSync(tokc));
+setTok(); mpcRun('git push origin main', { error: 'Command: git push origin main\nfatal: Authentication failed\nExit Code: 128' });
+ok('a FAILED main push keeps the token', fs.existsSync(tokc));
+setTok(); mpcRun('git push origin dev', { output: 'Exit Code: 0' });
+ok('a successful dev push does not consume the token', fs.existsSync(tokc));
+setTok(); mpcRun('git merge dev', { output: 'Exit Code: 0' }, mainRepo);
+ok('a merge with no push does not consume the token', fs.existsSync(tokc));
+setTok(); mpcRun('git switch main && git merge dev && git push origin main', { output: 'Exit Code: 0' });
+ok('a successful switch+merge+push consumes the token', !fs.existsSync(tokc));
+setTok(); mpcRun('git switch main && git merge dev && git push origin main', { error: 'fatal: invalid reference: main\nExit Code: 128' });
+ok('a release attempt that fails before the push keeps the token', fs.existsSync(tokc));
 
 // ---- release-guard -------------------------------------------------------------
 console.log('— release-guard —');
@@ -964,6 +987,49 @@ console.log('— /settings-sync —');
     const dis = ssRun(['disconnect'], { QWEN_HOME: B });
     ok('ss: disconnect forgets the repo, keeps settings.json', /DISCONNECTED/.test(dis) && !fs.existsSync(path.join(B, '.settings-repo')) && fs.existsSync(path.join(B, 'settings.json')));
   }
+}
+
+// ---- /main-push-hint — Auto-Mode classifier hint toggle ----------------------
+console.log('— /main-push-hint —');
+{
+  const mph = path.join(ROOT, 'commands', '_main-push-hint.js');
+  const { HINT, MARKER } = require(mph);
+  const run = (arg, home) => cp.spawnSync('node', [mph, ...(arg == null ? [] : [String(arg)])],
+    { encoding: 'utf8', env: { ...process.env, QWEN_HOME: home } }).stdout;
+  const readSettings = (home) => { try { return JSON.parse(fs.readFileSync(path.join(home, 'settings.json'), 'utf8')); } catch (_) { return null; } };
+  const allowOf = (home) => { const h = (((readSettings(home) || {}).permissions || {}).autoMode || {}).hints; return (h && Array.isArray(h.allow)) ? h.allow : []; };
+
+  ok('mph: hint text is within the 200-char classifier cap', HINT.length <= 200);
+
+  // status on a machine with no settings.json → OFF
+  const h1 = tmp();
+  ok('mph: status with no settings reports OFF', /OFF/.test(run('status', h1)));
+
+  // on → adds the marked hint, preserves unrelated settings, backs up, warns restart
+  const h2 = tmp();
+  fs.writeFileSync(path.join(h2, 'settings.json'), JSON.stringify({ model: 'x', permissions: { allow: ['Read(**)'] } }, null, 2));
+  const onOut = run('on', h2);
+  ok('mph: on adds the marked hint to autoMode.hints.allow', allowOf(h2).some((e) => e.includes(MARKER)));
+  ok('mph: on preserves unrelated settings', readSettings(h2).model === 'x' && readSettings(h2).permissions.allow[0] === 'Read(**)');
+  ok('mph: on warns a restart is needed', /RESTART/i.test(onOut));
+  ok('mph: on backs up settings.json once', fs.existsSync(path.join(h2, 'settings.json.bak-main-push-hint')));
+
+  // idempotent: a second on is a no-op (no duplicate), and status reports ON
+  run('on', h2);
+  ok('mph: on is idempotent (no duplicate entry)', allowOf(h2).filter((e) => e.includes(MARKER)).length === 1);
+  ok('mph: status reports ON once set', /ON/.test(run('status', h2)) && !/OFF/.test(run('status', h2)));
+
+  // off removes exactly the marked entry, leaving other allow entries intact
+  fs.writeFileSync(path.join(h2, 'settings.json'), JSON.stringify({ permissions: { autoMode: { hints: { allow: ['keep me', HINT] } } } }, null, 2));
+  run('off', h2);
+  const after = allowOf(h2);
+  ok('mph: off removes the marked hint but keeps other allow entries', !after.some((e) => e.includes(MARKER)) && after.includes('keep me'));
+
+  // invalid JSON → error, file left untouched (never clobber a config we can't round-trip)
+  const h3 = tmp();
+  fs.writeFileSync(path.join(h3, 'settings.json'), '{ not json');
+  const err = run('on', h3);
+  ok('mph: invalid settings.json errors without clobbering', /ERROR/.test(err) && fs.readFileSync(path.join(h3, 'settings.json'), 'utf8') === '{ not json');
 }
 
 // ---- summary ------------------------------------------------------------------

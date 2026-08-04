@@ -4,6 +4,34 @@ All notable changes to qwen-dev-toolkit are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com); versions follow semver.
 (Releases before 1.7.0 predate this file and are not backfilled — see the git history.)
 
+## [1.25.0] - 2026-08-04
+
+### Fixed
+- **`/main-push` no longer "burns" on a push that never landed.** The single-use token was
+  consumed by the `git-branch-guard` **PreToolUse** hook the moment it *authorized* a push —
+  i.e. *before* the push ran. So a push that was then blocked (by qwen-code's Auto-Mode
+  classifier) or failed (bad auth, `git switch main` on a not-yet-created `main`, non-fast-forward)
+  still spent the authorization, and the model was told the token was "already consumed" while no
+  push had landed — needing a fresh `/main-push` for every retry.
+  - The guard now only **allows** while the token is present; it never consumes. A new **PostToolUse**
+    hook **`main-push-consume`** deletes the token only when a push to `main`/`master` actually
+    **succeeds** (checked via the shell exit code). Blocked/failed attempts leave the authorization
+    intact, so the model just fixes the error and retries under the same `/main-push`.
+
+### Added
+- **`/main-push-hint`** — one-time, per-machine setup so **Auto Mode** stops blocking authorized
+  main pushes. In Auto Mode qwen-code sends each shell command to an LLM classifier **before** the
+  toolkit's PreToolUse hook runs, so the classifier — not the deterministic hook — is what actually
+  gates a `git push` to `main`. It tends to block main pushes on its own and (reading `/main-push`'s
+  "single-use, then consumed" text in the transcript) invents a belief that the token is already
+  spent, giving `Blocked by auto mode policy` even right after `/main-push`. This command adds one
+  natural-language entry to `permissions.autoMode.hints.allow` telling the classifier to **defer**
+  main-flow pushes to the `git-branch-guard` hook. `on` / `off` / `status`; needs a qwen restart
+  (`requiresRestart`). It does **not** weaken protection — the hook + token still gate every main push.
+- **`/gitflow` and `/main-push` now handle a first release** (no `main` anywhere): they create it
+  from `dev` (`git push origin dev:main`) instead of looping on `git switch main`
+  (`fatal: invalid reference: main`), and explain the `Blocked by auto mode policy` case + `/main-push-hint`.
+
 ## [1.24.1] - 2026-08-02
 
 ### Fixed

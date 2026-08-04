@@ -192,10 +192,22 @@ refused. Global scope.
 **`/main-push` · `off` · `status`** — The user-only release valve for the protected branch. By
 default the `git-branch-guard` hook blocks every push/merge to `main`/`master`; running
 `/main-push` authorizes **exactly one push to main** — **single-use**: it covers the merge and
-the one push, then the guard **consumes** it, so a second push needs `/main-push` again (an
-unused authorization also expires after 15 min). `off` revokes it early, `status` checks it.
-Because only you can run a slash command, this makes "yes, really release to main" un-fakeable
-by the model.
+the one push, then it's consumed **when the push actually succeeds** (the `main-push-consume`
+PostToolUse hook removes the token on a zero exit code). A push that is **blocked or fails does
+not** waste it — the model just fixes the error and retries under the same authorization; a
+genuinely second successful push needs `/main-push` again (an unused authorization also expires
+after 15 min). `off` revokes it early, `status` checks it. Because only you can run a slash
+command, this makes "yes, really release to main" un-fakeable by the model.
+
+**`/main-push-hint` · `off` · `status`** — One-time, per-machine setup for **Auto Mode**. There,
+qwen-code classifies each shell command with an LLM **before** the `git-branch-guard` hook runs,
+so the classifier — not the deterministic hook — is what gates a `git push` to `main`; it tends
+to block main pushes on its own and even invents a belief that the `/main-push` token is "already
+consumed" (from reading `/main-push`'s wording in the transcript), giving `Blocked by auto mode
+policy` right after you authorized the release. This adds one entry to
+`permissions.autoMode.hints.allow` telling the classifier to **defer** main-flow pushes to the
+hook. Needs a **qwen restart**. It does not weaken anything — the hook + single-use token still
+gate every main push. Run it once on each machine where you release in Auto Mode.
 
 **`/versioning` · `on` · `off` · `status` · `<custom scheme>`** — Version-naming policy.
 Semantic versioning is **on by default** (stated in the global `QWEN.md`): the model names
@@ -373,7 +385,8 @@ project you reset).
 | `SessionStart(compact)` → `compact-warn.js` | Compaction-saturation guard: after a compaction, reads the real before/after token counts from the session transcript; if the history shrank by **less than 15%**, it (a) tells the model to warn you that compacting this session again is no longer effective, and (b) **latches auto-compaction off** (`autoCompactThreshold` → 1, if it was on) so qwen-code stops retrying a compaction that on a reasoning model can come back empty and hard-fail the turn — handing over to `/checkpoint` + a fresh session. Silent on healthy compressions. |
 | `SessionStart` → `classifier-window-check.js` | Warns when a qwen-code update (`brew upgrade`/`npm i -g`) replaced the bundle and reverted the `/classifier-window` patch back to the stock 40 — compares the live bundle value to your recorded preference (`~/.qwen/.classifier-window`) and prints a one-line reminder to re-run `/classifier-window <N>`. Read-only; silent when they match or no preference is set. |
 | `PreToolUse` → `secret-guard.js` | **Blocks** any write/edit/command containing a hardcoded credential (private keys, AWS/OpenAI/GitHub/Slack/HF tokens, …) or that commits a secret file (`.env`, `id_rsa`, `*.pem`). Env-var usage and placeholders pass. |
-| `PreToolUse` → `git-branch-guard.js` | **Blocks** any `git push`/`merge`/`rebase` that would touch `main`/`master` (explicit target, or while checked out on it, or a switch-then-merge one-liner). Pushes to `dev`/feature branches and read-only git pass. Unlocked for exactly one push (single-use) by `/main-push`. |
+| `PreToolUse` → `git-branch-guard.js` | **Blocks** any `git push`/`merge`/`rebase` that would touch `main`/`master` (explicit target, or while checked out on it, or a switch-then-merge one-liner). Pushes to `dev`/feature branches and read-only git pass. Unlocked for one push (single-use) by `/main-push` — this guard only **allows** while the token is present; it never consumes it (so a blocked/failed push doesn't burn the authorization). |
+| `PostToolUse` → `main-push-consume.js` | Companion to `git-branch-guard`: **consumes** the single-use `/main-push` token — deletes `~/.qwen/.main-approval` — but only when a `git push` to `main`/`master` actually **succeeded** (zero exit code). A push that was blocked (Auto-Mode classifier) or failed leaves the token intact for the retry; a bare merge (no push) never consumes it. Silent; enforces "one *successful* push" without burning the token on attempts that never landed. |
 | `PreToolUse` → `release-guard.js` | **Reminds** (never blocks) when a push advances `main`/`master` but the release would lag the code — a bumped `VERSION` with no matching tag, or commits past the released tag with no bump — injecting a note to run `/release` (or `/changelog` then `/release`). This is the deterministic backstop that makes `/release` fire even if the model forgets it. Silent when the release is in sync. |
 | `PreToolUse` → `toolkit-reset-guard.js` | **Blocks** an attempt to run `/toolkit-reset`'s confirm step without a valid 15-minute approval window — closes the gap where a model could otherwise call the backend script directly via a shell command instead of waiting for you to type `/toolkit-reset confirm` yourself. Preview-only calls (no `confirm`) always pass. |
 | `PreToolUse` → `devmode-guard.js` | Makes development mode's core rule deterministic: while `/dev` is on for a project, **blocks** the architect (main session) from writing source/tests/config with `write_file`/`edit` — that work must go to an `implementer`/`debugger` subagent. Subagents are exempt (they're the sanctioned writers, detected via `QWEN_CODE_AGENT_ID`); the architect's own `PROGRESS.md`/`QWEN.md`/`FACTS.md` writes pass. `/devedit <why>` authorises exactly one direct edit (logged to `PROGRESS.md`, single-use, 15-min expiry). Inert when `/dev` is off. |
