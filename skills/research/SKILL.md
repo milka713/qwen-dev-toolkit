@@ -1,6 +1,6 @@
 ---
 name: research
-description: [toolkit] Think and investigate BEFORE flailing. Use PROACTIVELY the moment a fix or build fails, a solution feels shaky/hacky, you're missing information, or you're about to change live state — instead of retrying blind edits or immediately asking the user. Covers when to research, which source to reach for, and how to search the web well. Invoke with /research (the on/off toggle) or just follow this when stuck.
+description: "[toolkit] Think and investigate BEFORE flailing. Use PROACTIVELY the moment a fix or build fails, a solution feels shaky/hacky, you're missing information, or you're about to change live state — instead of retrying blind edits or immediately asking the user. Covers when to research, which source to reach for, and how to search the web well. Invoke with /research (the on/off toggle) or just follow this when stuck."
 priority: 15
 allowedTools:
   - web_search

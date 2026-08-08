@@ -4,6 +4,43 @@ All notable changes to qwen-dev-toolkit are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com); versions follow semver.
 (Releases before 1.7.0 predate this file and are not backfilled — see the git history.)
 
+## [1.27.0] - 2026-08-06
+
+### Added
+- **`/checkpoint` is now a file command as well as a skill.** The procedure only existed as a
+  skill, so it was model-invocable but could not reliably be run by hand — and a model that
+  failed to find a *command* by that name reported the checkpoint machinery as missing from the
+  installation (it was not: the skill, the `checkpoint-nudge` Stop hook and its wiring all
+  verified healthy). `commands/checkpoint.md` now owns the `/checkpoint` slash name —
+  qwen-code's `FileCommandLoader` runs last, so a file command deterministically wins over the
+  skill's slash entry — and **delegates to the `checkpoint` skill** rather than restating the
+  procedure, keeping one template shared with `/plan` and `/implement`. A hand-written fallback
+  is included for the case where the skill cannot be invoked.
+
+### Fixed
+- **`/pin` now admits that a fresh pin is invisible to the running session.** qwen-code
+  assembles `QWEN.md` and its `@`-imports **once at startup** and never re-reads them (no file
+  watcher; `/memory` in 0.21.x opens a dialog, not a `refresh`). A fact pinned mid-session was
+  therefore on disk but absent from context — while the old wording ("loaded into context every
+  session") and `pin.md`'s "confirm what is now remembered" had the model cheerfully confirm a
+  fact it could not see, then deny seeing anything when asked to show it. `/pin` now prints a
+  `PIN_NOTE` stating the fact lands in context from the **next** session, and `pin.md` passes
+  that on honestly. Verified end-to-end against a live session: a fresh session recites the
+  pinned canary, and with the `@FACTS.md` import removed it correctly answers `NONE`.
+- **`/pin list` is a real read-out.** Bare `/pin` / `list` / `show` / `status` now report the
+  fact count and absolute path and emit the facts between `PIN_BEGIN`/`PIN_END` markers, which
+  `pin.md` instructs the model to reproduce **verbatim** — making this the reliable way to pull
+  facts pinned earlier in the same session back into the conversation. Empty memory says "0
+  facts" instead of printing an empty block. `pin.md` also notes the file is `FACTS.md`,
+  capitalised — on Linux `facts.md` does not exist, which is its own way to "not see" a pin.
+- **Frontmatter descriptions are quoted.** Every skill/command description opens with the
+  `[toolkit]` badge, and unquoted a leading `[` starts a YAML flow sequence — `description:
+  [toolkit] text` is malformed YAML that only worked because the parser qwen-code bundles
+  recovers from it. A strict parser rejected **all 35** files. Now quoted and verified against
+  both: qwen-code's own `SkillManager` (14/14 skills, descriptions intact) and a strict parser
+  (36/36, previously 0/35). A regression test fails the build on any bare YAML indicator
+  character in a description.
+
 ## [1.26.0] - 2026-08-04
 
 ### Added

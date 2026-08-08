@@ -18,7 +18,7 @@ const SKILLS = ['implement', 'plan', 'checkpoint', 'audit', 'brainstorm', 'gitfl
 for (const s of SKILLS) rm(path.join(QHOME, 'skills', s));
 for (const a of ['implementer', 'scout', 'debugger', 'tester', 'researcher', 'verifier']) rm(path.join(QHOME, 'agents', a + '.md'));
 
-const CMD_MD = ['dev', 'cover', 'pin', 'status', 'maxagents', 'bro', 'main-push', 'main-push-hint', 'versioning', 'reality', 'research', 'autocompact', 'toolkit-reset', 'applied', 'hooks', 'doctor', 'sudo-on', 'sudo-off', 'devedit', 'classifier-window', 'settings-sync'];
+const CMD_MD = ['dev', 'cover', 'pin', 'checkpoint', 'status', 'maxagents', 'bro', 'main-push', 'main-push-hint', 'versioning', 'reality', 'research', 'autocompact', 'toolkit-reset', 'applied', 'hooks', 'doctor', 'sudo-on', 'sudo-off', 'devedit', 'classifier-window', 'settings-sync'];
 const CMD_BACKENDS = ['_qdt', '_mode-toggle', '_cover', '_pin', '_status', '_maxagents', '_bro', '_main-push', '_main-push-hint', '_versioning', '_reality', '_research', '_autocompact', '_toolkit-reset', '_applied', '_hooks', '_hookcat', '_stateview', '_doctor', '_sudoctl', '_devedit', '_classifier-window', '_settings-sync'];
 for (const c of CMD_MD) rm(path.join(QHOME, 'commands', c + '.md'));
 for (const b of CMD_BACKENDS) { rm(path.join(QHOME, 'commands', b + '.sh')); rm(path.join(QHOME, 'commands', b + '.js')); }

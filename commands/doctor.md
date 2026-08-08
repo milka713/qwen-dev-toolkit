@@ -1,5 +1,5 @@
 ---
-description: [toolkit] Self-diagnostic — check the toolkit install for problems: missing files, hooks not wired into settings.json, guards accidentally disabled, stale approval tokens or a leaked subagent counter, and a live model /health ping with latency. Read-only, changes nothing. Usage: /doctor.
+description: "[toolkit] Self-diagnostic — check the toolkit install for problems: missing files, hooks not wired into settings.json, guards accidentally disabled, stale approval tokens or a leaked subagent counter, and a live model /health ping with latency. Read-only, changes nothing. Usage: /doctor."
 ---
 
 The diagnostic has already been run deterministically (read-only) by the shell below:

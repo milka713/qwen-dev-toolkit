@@ -1,5 +1,5 @@
 ---
-description: [toolkit] One glance at everything the toolkit is doing in THIS project — mode toggles (/dev, /cover, /bro, /maxagents, /versioning, /reality), the active plan / development progress (goal, done/remaining, next task), the global guards & automation hooks, pinned facts, and the toolkit version. Read-only. /status = this project; /status global = the global (~/.qwen) state.
+description: "[toolkit] One glance at everything the toolkit is doing in THIS project — mode toggles (/dev, /cover, /bro, /maxagents, /versioning, /reality), the active plan / development progress (goal, done/remaining, next task), the global guards & automation hooks, pinned facts, and the toolkit version. Read-only. /status = this project; /status global = the global (~/.qwen) state."
 argument-hint: '[global]'
 ---
 

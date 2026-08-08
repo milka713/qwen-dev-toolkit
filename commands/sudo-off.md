@@ -1,5 +1,5 @@
 ---
-description: [toolkit] Turn OFF the model's sudo access granted by /sudo-on — wipes the stored password and askpass helper and removes the guidance block, so the model can no longer run sudo and forgets the password. Always safe to run.
+description: "[toolkit] Turn OFF the model's sudo access granted by /sudo-on — wipes the stored password and askpass helper and removes the guidance block, so the model can no longer run sudo and forgets the password. Always safe to run."
 ---
 
 The command already ran deterministically via the shell below — act on `SUDO_RESULT`:

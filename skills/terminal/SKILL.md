@@ -1,6 +1,6 @@
 ---
 name: terminal
-description: [toolkit] Hand a command off to the USER'S real terminal when you can't or shouldn't run it yourself — an interactive sudo password prompt, disk work (`dd`, `diskutil`, formatting an SD card), flashing an image, or any long/interactive/destructive session. You already have the ability (via `open`/`osascript` on macOS); this is how to use it, safely, and what to do when a permission is missing. Invoke with /terminal, or follow it whenever a needed command can't run in your own non-interactive shell.
+description: "[toolkit] Hand a command off to the USER'S real terminal when you can't or shouldn't run it yourself — an interactive sudo password prompt, disk work (`dd`, `diskutil`, formatting an SD card), flashing an image, or any long/interactive/destructive session. You already have the ability (via `open`/`osascript` on macOS); this is how to use it, safely, and what to do when a permission is missing. Invoke with /terminal, or follow it whenever a needed command can't run in your own non-interactive shell."
 priority: 15
 allowedTools:
   - run_shell_command

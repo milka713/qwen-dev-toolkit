@@ -1,5 +1,5 @@
 ---
-description: [toolkit] DEPRECATED — folded into /status (which now also shows the active plan / development progress). Still works as an alias for one release. Prefer /status (or /status global). Read-only.
+description: "[toolkit] DEPRECATED — folded into /status (which now also shows the active plan / development progress). Still works as an alias for one release. Prefer /status (or /status global). Read-only."
 argument-hint: '[global]'
 ---
 

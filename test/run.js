@@ -62,16 +62,37 @@ ok('every install.js setHook() name is in uninstall.js\'s strip set', missingHoo
 const cmdFiles = fs.readdirSync(path.join(ROOT, 'commands'));
 const cmdMd = cmdFiles.filter((f) => f.endsWith('.md') && !f.startsWith('_')).map((f) => f.replace(/\.md$/, ''));
 const cmdBackends = [...new Set(cmdFiles.filter((f) => f.startsWith('_') && (f.endsWith('.sh') || f.endsWith('.js'))).map((f) => f.replace(/\.(sh|js)$/, '')))];
-const missingCmd = cmdMd.filter((c) => !new RegExp(`'${c}'`).test(uninstallSrc));
-const missingBk = cmdBackends.filter((c) => !new RegExp(`'${c}'`).test(uninstallSrc));
+// Match against the specific array, not the whole file: a bare /'name'/ over uninstall.js
+// passes on any coincidental mention elsewhere. `checkpoint.md` slipped through exactly that
+// way — 'checkpoint' was already in the SKILLS list, so the command looked covered while
+// uninstall would have orphaned the file.
+const arrayOf = (name) => {
+  const m = uninstallSrc.match(new RegExp(`const ${name} = \\[([^\\]]*)\\]`));
+  return m ? m[1].split(',').map((s) => s.trim().replace(/^'|'$/g, '')).filter(Boolean) : [];
+};
+const uninstallCmdMd = arrayOf('CMD_MD');
+const uninstallBackends = arrayOf('CMD_BACKENDS');
+ok('uninstall.js CMD_MD / CMD_BACKENDS lists were found', uninstallCmdMd.length > 0 && uninstallBackends.length > 0);
+const missingCmd = cmdMd.filter((c) => !uninstallCmdMd.includes(c));
+const missingBk = cmdBackends.filter((c) => !uninstallBackends.includes(c));
 ok('every command .md is in uninstall.js CMD_MD', missingCmd.length === 0, missingCmd.join(', '));
 ok('every command backend is in uninstall.js CMD_BACKENDS', missingBk.length === 0, missingBk.join(', '));
 // every toolkit command carries the [toolkit] signature at the start of its description, so it
 // reads as a toolkit command in the "/" palette without changing the command name (invocation).
 const SIG = '[toolkit] ';
+// Descriptions are quoted in the frontmatter (a bare leading `[` would open a YAML flow
+// sequence — see the "frontmatter YAML safety" block below), so unwrap before checking.
+const descOf = (file) => {
+  const m = fs.readFileSync(file, 'utf8').match(/^description:\s+(.*)$/m);
+  if (!m) return null;
+  const raw = m[1].trim();
+  if (raw.startsWith('"') && raw.endsWith('"')) return raw.slice(1, -1).replace(/\\"/g, '"');
+  if (raw.startsWith("'") && raw.endsWith("'")) return raw.slice(1, -1).replace(/''/g, "'");
+  return raw;
+};
 const unsigned = cmdMd.filter((c) => {
-  const m = fs.readFileSync(path.join(ROOT, 'commands', c + '.md'), 'utf8').match(/^description: (.*)$/m);
-  return !m || !m[1].startsWith(SIG);
+  const d = descOf(path.join(ROOT, 'commands', c + '.md'));
+  return d === null || !d.startsWith(SIG);
 });
 ok('every command .md description carries the toolkit signature', unsigned.length === 0, unsigned.join(', '));
 // same class of gap for hook SCRIPT files: uninstall.js strips the settings.json entries by
@@ -84,8 +105,8 @@ ok('every hooks/*.js file is in uninstall.js\'s hook-file removal list', missing
 // the [toolkit] signature also goes on skills (SKILL.md description, shown in the "/" palette)
 // and on the messages hooks surface (guards' deny reasons + the automation hooks' injected text).
 const unsignedSkill = skillNames.filter((s) => {
-  const m = fs.readFileSync(path.join(ROOT, 'skills', s, 'SKILL.md'), 'utf8').match(/^description: (.*)$/m);
-  return !m || !m[1].startsWith(SIG);
+  const d = descOf(path.join(ROOT, 'skills', s, 'SKILL.md'));
+  return d === null || !d.startsWith(SIG);
 });
 ok('every skill SKILL.md description carries the toolkit signature', unsignedSkill.length === 0, unsignedSkill.join(', '));
 const unsignedHook = hookFiles.filter((h) => !h.startsWith('_') && !fs.readFileSync(path.join(ROOT, 'hooks', h), 'utf8').includes('[toolkit]'));
@@ -349,6 +370,54 @@ for (const impl of (isWin ? ['js'] : ['sh', 'js'])) {
   const f2 = fs.readFileSync(path.join(d, 'FACTS.md'), 'utf8');
   ok(impl + ': removes the right fact only', !f2.includes('mark') && f2.includes('10.0.0.5'));
   ok(impl + ': gitignore wired', fs.readFileSync(path.join(d, '.gitignore'), 'utf8').includes('FACTS.md'));
+
+  // Listing must be self-contained: the markers are the contract pin.md keys off to make the
+  // model relay every line. This is the only way to see facts pinned during a running session,
+  // because qwen-code reads QWEN.md + its @imports once at startup and never re-reads them.
+  const listed = pinRun('list');
+  ok(impl + ': list is delimited by PIN_BEGIN/PIN_END', listed.includes('PIN_BEGIN') && listed.includes('PIN_END'));
+  ok(impl + ': list reports a fact count', /PIN_RESULT: current pinned memory — \d+ fact\(s\)/.test(listed));
+  ok(impl + ': list prints only fact lines between the markers',
+    listed.split('PIN_BEGIN')[1].split('PIN_END')[0].trim().split('\n').every((l) => l.startsWith('- ')));
+  // Bare `/pin` must behave exactly like `list` — and must not pin anything.
+  const before = fs.readFileSync(path.join(d, 'FACTS.md'), 'utf8');
+  const bare = pinRun();
+  ok(impl + ': bare /pin lists without pinning', bare.includes('PIN_BEGIN') &&
+    fs.readFileSync(path.join(d, 'FACTS.md'), 'utf8') === before);
+  // Pinning must state that it only reaches context next session — the failure that made a
+  // model insist a just-pinned fact was invisible.
+  ok(impl + ': pinning warns the fact lands in context next session', pinRun('brand', 'new', 'fact').includes('PIN_NOTE'));
+
+  // Empty memory must say so rather than printing an empty block.
+  const e = tmp();
+  const emptyRun = (...a) => cp.spawnSync('node', [path.join(ROOT, 'commands', '_pin.js'), ...a], { cwd: e, encoding: 'utf8' }).stdout;
+  emptyRun('x'); emptyRun('remove', 'x');
+  ok(impl + ': empty memory reports 0 facts, no empty block', /0 fact\(s\)/.test(emptyRun('list')) && !emptyRun('list').includes('PIN_BEGIN'));
+}
+
+// ---- frontmatter must be unambiguous YAML ------------------------------------------
+// Every skill/command description starts with the "[toolkit]" badge. Unquoted, a leading `[`
+// opens a YAML flow sequence, so `description: [toolkit] text` is only accepted because the
+// parser qwen-code bundles happens to recover from it — a strict parser (pyyaml, and anything
+// else that might read these files) rejects all of them outright. Keep them quoted.
+console.log('— frontmatter YAML safety —');
+{
+  const fmFiles = [
+    ...fs.readdirSync(path.join(ROOT, 'skills')).map((d) => path.join(ROOT, 'skills', d, 'SKILL.md')),
+    ...fs.readdirSync(path.join(ROOT, 'commands')).filter((f) => f.endsWith('.md')).map((f) => path.join(ROOT, 'commands', f)),
+  ].filter((f) => fs.existsSync(f));
+  const offenders = [];
+  for (const f of fmFiles) {
+    const lines = fs.readFileSync(f, 'utf8').split('\n');
+    if (lines[0] !== '---') continue;
+    const end = lines.indexOf('---', 1);
+    for (let i = 1; i < end; i++) {
+      const m = lines[i].match(/^description:\s+(.*)$/);
+      if (m && /^[[{&*!|>%@`]/.test(m[1])) offenders.push(path.relative(ROOT, f));
+    }
+  }
+  ok('every description is quoted (no bare YAML indicator char)', offenders.length === 0, offenders.join(', '));
+  ok('checked a meaningful number of files', fmFiles.length >= 30, String(fmFiles.length));
 }
 
 // ---- installer round-trip ---------------------------------------------------------
@@ -382,6 +451,15 @@ ok('all Node backends installed on every OS',
 ok('checkpoint-nudge Stop hook installed + wired',
   fs.existsSync(path.join(qh2, 'hooks', 'checkpoint-nudge.js')) &&
   fs.readFileSync(path.join(qh2, 'settings.json'), 'utf8').includes('checkpoint-nudge'));
+// checkpoint ships BOTH ways: the skill (model-invocable, canonical procedure) and a file
+// command so it can be run by hand. qwen-code loads FileCommandLoader last, so the file
+// command wins the `/checkpoint` slash name — it must therefore delegate to the skill rather
+// than reimplement it, or the two would drift apart.
+ok('checkpoint installed as a skill AND as a manual command',
+  fs.existsSync(path.join(qh2, 'skills', 'checkpoint', 'SKILL.md')) &&
+  fs.existsSync(path.join(qh2, 'commands', 'checkpoint.md')));
+ok('the /checkpoint command delegates to the skill (single source of truth)',
+  /skill tool with the name `checkpoint`/.test(fs.readFileSync(path.join(qh2, 'commands', 'checkpoint.md'), 'utf8')));
 // /applied: Node logic ships on every OS (like /autocompact — it parses settings.json),
 // and the install records its version so /applied can report it.
 ok('applied Node logic installed alongside the wrapper',
@@ -474,7 +552,7 @@ console.log('— /research —');
   ok('research on removes the opt-out block', !fs.readFileSync(qf, 'utf8').includes('researchoff:start'));
   ok('research on when already on is a clean no-op', /is ON/.test(run('on').stdout));
   // the research skill ships and is signed
-  ok('research skill is present + signed', /^description: \[toolkit\] /m.test(fs.readFileSync(path.join(ROOT, 'skills', 'research', 'SKILL.md'), 'utf8')));
+  ok('research skill is present + signed', /^description: "\[toolkit\] /m.test(fs.readFileSync(path.join(ROOT, 'skills', 'research', 'SKILL.md'), 'utf8')));
   // it recognises an MCP-provided web search (not only the built-in web_search)
   ok('research skill is MCP-search aware (searxng_web_search)', (() => { const s = fs.readFileSync(path.join(ROOT, 'skills', 'research', 'SKILL.md'), 'utf8'); return s.includes('searxng_web_search') && /MCP/.test(s); })());
 }

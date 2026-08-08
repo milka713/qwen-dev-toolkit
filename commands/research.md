@@ -1,5 +1,5 @@
 ---
-description: [toolkit] Research-first directive — think & investigate before flailing. ON by default in every project (after a failed fix/build, on a shaky/hacky solution, or when missing info: look at the real current state → project docs → the web, and in brainstorm find prior art, before more blind edits or asking the user). This command only lets a project OPT OUT — /research off disables it here, /research on re-enables, /research status checks. The /research skill has the full how-to.
+description: "[toolkit] Research-first directive — think & investigate before flailing. ON by default in every project (after a failed fix/build, on a shaky/hacky solution, or when missing info: look at the real current state → project docs → the web, and in brainstorm find prior art, before more blind edits or asking the user). This command only lets a project OPT OUT — /research off disables it here, /research on re-enables, /research status checks. The /research skill has the full how-to."
 argument-hint: '[on | off | status]'
 ---
 

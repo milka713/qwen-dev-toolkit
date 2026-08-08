@@ -86,10 +86,19 @@ loops).
 
 **`/pin <anything>` · `list` · `remove <text>` · `clear`** — Remember any fact you want always
 on hand — a host/port, a deploy command, a decision, a URL, a code snippet. It lands in a
-project `FACTS.md` that's auto-loaded every session via an `@FACTS.md` include (so it survives
-compaction) and is **gitignored** so it can't leak into the repo. `list` shows them,
-`remove <text>` drops matching lines, `clear` wipes all.
+project `FACTS.md` that's auto-loaded via an `@FACTS.md` include (so it survives compaction)
+and is **gitignored** so it can't leak into the repo. `remove <text>` drops matching lines,
+`clear` wipes all.
 · _Example:_ `/pin deploy = ssh -p 12578 mark@host && ./deploy-dev.sh`
+
+> **A pin reaches the context only from the *next* session.** qwen-code assembles `QWEN.md`
+> and its `@`-imports **once, at startup**, and never re-reads them — there is no file watcher
+> and no `/memory refresh` in 0.21.x. So a fact pinned mid-session is on disk but *not* in the
+> running session's context, and a model asked to show it will honestly say it sees nothing.
+> That is what **`/pin list`** (or a bare `/pin`) is for: it pins nothing and prints the whole
+> memory into the conversation, between `PIN_BEGIN`/`PIN_END` markers that the command tells
+> the model to relay verbatim. Use it to pull earlier pins back into a running session.
+> The file is `FACTS.md` — capitalised; on Linux `facts.md` simply does not exist.
 
 **`/status` · `global`** — Read-only "everything at a glance" for this project, in groups: the
 **modes** pinned in `QWEN.md` (`/dev`, `/cover`, `/bro`, `/maxagents`, `/versioning`, `/reality`, `/research`);
@@ -309,7 +318,11 @@ projects finish on a small context.
 
 **`/checkpoint` · `restore`** — Curates the important state (goal, decisions, file map,
 done/todo) into `.qwen/PROGRESS.md` so it survives lossy auto-compaction; `/checkpoint
-restore` reloads it into context after a compaction or in a fresh session.
+restore` reloads it into context after a compaction or in a fresh session. Ships **both as a
+skill** (so the model reaches for it on its own, and the `checkpoint-nudge` hook can point at
+it) **and as a file command**, so you can always run it by hand. qwen-code loads file commands
+last, so the command owns the `/checkpoint` slash name and simply delegates to the skill —
+one procedure, one template, no drift.
 
 **`/gitflow`** — The git branch & deploy discipline, applied proactively whenever you
 commit/push/merge/deploy: **new work → `dev` by default; `main`/`master` only on your explicit
@@ -426,6 +439,7 @@ no session-only QWEN.md.
 /cover 80                            # test-first, require ≥80% measured coverage
 /maxagents 2                         # cap parallel subagents (weak hardware)
 /pin model server 10.0.0.5:8080      # remember infra facts (compaction-proof, gitignored)
+/pin list                            # print everything pinned, into this conversation
 /plan add JWT auth to the API        # design → .qwen/PROGRESS.md
 /implement                           # build via delegated subagents
 /audit                               # security review

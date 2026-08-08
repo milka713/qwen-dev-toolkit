@@ -1,5 +1,5 @@
 ---
-description: [toolkit] Set the fast-model permission-classifier transcript window (MAX_TRANSCRIPT_MESSAGES) in the installed qwen-code bundle — fewer messages = shorter classifier prompt = far less cache-busting prefill = faster AUTO-mode verdicts, at no change to safety (same model); stock 40 (~33s on the local 4B) becomes 16 (~13s). Deterministic one-constant patch; applies after restarting qwen-code. /classifier-window <8..40> sets, reset restores 40, status shows current.
+description: "[toolkit] Set the fast-model permission-classifier transcript window (MAX_TRANSCRIPT_MESSAGES) in the installed qwen-code bundle — fewer messages = shorter classifier prompt = far less cache-busting prefill = faster AUTO-mode verdicts, at no change to safety (same model); stock 40 (~33s on the local 4B) becomes 16 (~13s). Deterministic one-constant patch; applies after restarting qwen-code. /classifier-window <8..40> sets, reset restores 40, status shows current."
 argument-hint: '[<N 8..40> | status | reset]'
 ---
 

@@ -1,5 +1,5 @@
 ---
-description: [toolkit] DANGER (sudo) — grant the local model FULL PASSWORDLESS ROOT (any sudo command) on THIS machine. Off by default. /sudo-on <password> stages it and shows a warning, /sudo-on confirm actually enables it, /sudo-on status checks. Turn OFF with /sudo-off. A wrong or looping model with this on can irreversibly destroy the machine, so only on boxes you own and accept losing.
+description: "[toolkit] DANGER (sudo) — grant the local model FULL PASSWORDLESS ROOT (any sudo command) on THIS machine. Off by default. /sudo-on <password> stages it and shows a warning, /sudo-on confirm actually enables it, /sudo-on status checks. Turn OFF with /sudo-off. A wrong or looping model with this on can irreversibly destroy the machine, so only on boxes you own and accept losing."
 argument-hint: '<sudo-password> | confirm | status'
 ---
 

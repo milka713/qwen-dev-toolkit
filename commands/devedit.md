@@ -1,5 +1,5 @@
 ---
-description: [toolkit] Development-mode escape hatch — authorise ONE direct architect edit while /dev is on (normally all source is written by implementer subagents). Requires a reason, logs it to .qwen/PROGRESS.md, and is single-use (auto-expires in 15 min). Use only when delegating one tiny edit is genuinely pointless.
+description: "[toolkit] Development-mode escape hatch — authorise ONE direct architect edit while /dev is on (normally all source is written by implementer subagents). Requires a reason, logs it to .qwen/PROGRESS.md, and is single-use (auto-expires in 15 min). Use only when delegating one tiny edit is genuinely pointless."
 argument-hint: '<why delegating this one edit is pointless>'
 ---
 
