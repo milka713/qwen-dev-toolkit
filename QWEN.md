@@ -132,10 +132,30 @@ or hacky, or you're missing information — **stop and investigate before more b
 or before asking the user.** In order: **(1)** look at the real current state (the exact
 error, logs, `--version`, config, how a service is actually running *before* you touch or
 restart it); **(2)** the project's own docs / README / code; **(3)** the web — `web_fetch`
-a known authoritative doc URL (official docs, PyPI/npm, the repo), or `web_search` if a
-search model is configured, or delegate a deeper dig to the `researcher` subagent —
-preferred for anything general or unfamiliar; **(4)** only then ask the user. In
-`/brainstorm`, look for existing solutions and prior art (libraries, reference
-implementations, known patterns) **before** proposing an approach or asking. Retrying the
-same failing action without new information is the anti-pattern this prevents. See the
-`/research` skill for how to search well. *A project can opt out with `/research off`.*
+a known authoritative doc URL (official docs, PyPI/npm, the repo), or a search tool, or
+delegate a deeper dig to the `researcher` subagent — preferred for anything general or
+unfamiliar; **(4)** only then ask the user. In `/brainstorm`, look for existing solutions
+and prior art (libraries, reference implementations, known patterns) **before** proposing
+an approach or asking. Retrying the same failing action without new information is the
+anti-pattern this prevents. See the `/research` skill for how to search well.
+*A project can opt out with `/research off`.*
+
+**Search the web by default — don't wait to be told.** If an answer depends on anything
+outside this repo and your own memory — a **current/latest version**, a release date, what
+changed between versions, an **unfamiliar error**, a library's real API or defaults, or
+whether something is *still* true — **search first, then answer.** Your memory has a cutoff;
+on these questions answering from it is a confident guess. Having to be asked to "google it"
+means a trigger was missed. **Find your search tool by suffix, not exact name:** MCP tools
+carry a server prefix, so search shows up as e.g. `mcp__searxng__searxng_web_search` and
+`mcp__searxng__web_url_read` — anything ending in `_web_search` counts. The built-in
+`web_search` is usually absent locally; that says nothing about MCP search. Never claim you
+have no web search without scanning the tool list for the suffix (use `tool_search` if it's
+long). If nothing matches, say so plainly and mark the answer as unverified memory.
+
+**Use what the user already gave you.** Before asking for — or guessing at — a host, port,
+path, URL, command, credential *location*, or a standing rule, check what you already have:
+the project's **`FACTS.md`** (pinned by the user, imported into context, authoritative),
+`.qwen/PROGRESS.md`, `QWEN.md`, and the repo itself (`grep`). That import is a snapshot from
+session start, so if something looks missing, **re-read `FACTS.md` from disk** — it may have
+been pinned since. Making the user repeat something they already told you is a failure, and
+so is inventing a placeholder where a pinned real value exists.

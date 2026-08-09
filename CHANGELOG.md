@@ -4,6 +4,66 @@ All notable changes to qwen-dev-toolkit are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com); versions follow semver.
 (Releases before 1.7.0 predate this file and are not backfilled — see the git history.)
 
+## [1.28.0] - 2026-08-08
+
+### Fixed
+- **Web search was named wrong, so the model concluded it had none.** MCP tools are exposed
+  as `mcp__<server>__<tool>`, so a SearXNG bridge is `mcp__searxng__searxng_web_search` — the
+  bare `searxng_web_search` that `/research` listed and described **matches nothing**. Since
+  `allowedTools` entries are session *allow* rules (`addSessionAllowRule`), the wrong name also
+  failed to pre-approve the real tool. Both spellings are now listed, and the skill and the
+  always-on guidance tell the model to **match by suffix** (`*_web_search`), to use
+  `tool_search` when the tool list is long, and **never** to conclude "I have no web search"
+  because a bare name is missing.
+
+### Added
+- **Searching is now the default, not a fallback.** A new always-on directive plus a rewritten
+  `/research` trigger list: any answer that depends on something outside the repo and the
+  model's own memory — a current/latest version, a release date, an unfamiliar error, a
+  library's real API, what changed between versions — is searched **before** it is answered.
+  Having to say "google it" is treated as a missed trigger.
+- **"Use what the user already gave you."** A second always-on directive: before asking for or
+  guessing at a host, port, path, URL, command, credential *location* or standing rule, check
+  `FACTS.md`, `.qwen/PROGRESS.md`, `QWEN.md` and the repo — and never substitute a placeholder
+  where a pinned real value exists. `/research`'s source order now starts there too.
+- **`FACTS.md`'s header is an instruction, not a caption.** It is imported verbatim, so it is
+  the cheapest place to say these lines are authoritative, must be used without reminding, and
+  — because the import is a session-start snapshot — that the file should be **re-read from
+  disk** when something looks missing. The `@FACTS.md` import in `QWEN.md` carries the same
+  directive. Projects wired by an older toolkit are **migrated in place** on any `/pin`
+  invocation (including read-only `list`), keeping their facts, idempotently.
+- **`skill-reminder` rules for both failures**: "I already gave you that" / «я тебе уже давал»
+  points at re-reading `FACTS.md` from disk; "latest version" / «последняя версия» / "google
+  it" / «погугли» push to the web and name the MCP-prefixed tool. After the first measurement
+  showed the search side unchanged, two more rules were added for the cases that actually
+  failed: a **concrete error identifier** in the prompt (`ERR_PNPM_OUTDATED_LOCKFILE`, `TS5109`,
+  `TypeError:`) and **"is X still the recommended way" / "best practice"** — the earlier pattern
+  required `still <word>` and so missed the natural "still **the** recommended way".
+
+### Measured on the live 27B (eros, `qwen -p -o stream-json`, tools read off the event stream)
+
+Nine scenarios, each a fresh project and one question; four deliberately **non-leading** (they
+never say "search" or "latest"). Same harness before and after; only the toolkit changed.
+
+| | baseline 1.27.0 | 1.28.0 |
+|---|---|---|
+| Pinned facts (F1–F5) | **3/5** | **5/5** |
+| Web search (S1–S4) | **1/4** | **3/4** |
+| Total | **4/9** | **8/9** |
+
+What flipped, and why it is believable: F2/F5 (fact on disk, *not* imported — the mid-session
+pin case) went from the model rummaging with `glob`/`grep` and giving up, to `read_file` on
+`FACTS.md` and answering with the pinned value — `read_file` on that file appears in the
+after-run tool stream and is absent from the baseline's. S2/S4 went from no tool calls at all
+to `mcp__searxng__searxng_web_search`, and S4's answer changed from stale memory to the correct
+current one (`pyproject.toml`, not `setup.py`).
+
+Honest caveats: **S3 still does not search** — but it read the real `tsconfig.json` and gave the
+correct fix, which is step 1 of the skill's own source order, so scoring it as a failure is
+arguably the benchmark's fault, not the model's. Single runs are **noisy**: F2 passed in one
+baseline sweep and failed in another, and F5 failed once on the final build before passing
+**3/3** on repeat. Treat 4/9 → 8/9 as a strong directional result, not a precise number.
+
 ## [1.27.0] - 2026-08-06
 
 ### Added

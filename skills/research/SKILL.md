@@ -1,12 +1,18 @@
 ---
 name: research
-description: "[toolkit] Think and investigate BEFORE flailing. Use PROACTIVELY the moment a fix or build fails, a solution feels shaky/hacky, you're missing information, or you're about to change live state — instead of retrying blind edits or immediately asking the user. Covers when to research, which source to reach for, and how to search the web well. Invoke with /research (the on/off toggle) or just follow this when stuck."
+description: "[toolkit] Think and investigate BEFORE answering or flailing. Use PROACTIVELY — and WITHOUT being asked to search — whenever the answer depends on anything outside this repo and your own memory: a current/latest version, a release date, an unfamiliar error message, a library's actual API or its behaviour in a specific version, what changed between versions, whether something is still true today. Also the moment a fix or build fails twice, a solution feels shaky/hacky, or you're about to change live state. Covers when to research, which source to reach for, and how to search the web well. Invoke with /research (the on/off toggle) or just follow this whenever you'd otherwise answer from memory."
 priority: 15
 allowedTools:
   - web_search
+  - web_fetch
+  # MCP tools are exposed as `mcp__<server>__<tool>`, so the bare names below never match a
+  # real MCP search tool — both spellings are listed so the skill pre-approves whichever the
+  # machine actually has (`searxng` is this setup's server name; harmless where absent).
   - searxng_web_search
   - web_url_read
-  - web_fetch
+  - mcp__searxng__searxng_web_search
+  - mcp__searxng__web_url_read
+  - mcp__searxng__searxng_search_suggestions
   - agent
   - read_file
   - read_many_files
@@ -25,7 +31,26 @@ Retrying the same failing action without learning something new is the anti-patt
 
 ## When to trigger (don't wait to be asked)
 
-Research **before** the next attempt whenever any of these is true:
+**The user should never have to say "look it up".** If they had to, the trigger was already
+there and you missed it. Search **first**, then answer.
+
+Search the web **before answering** whenever the answer depends on anything outside this repo
+and your own memory — no failure required, no permission needed:
+
+- **Anything "current", "latest", "newest", or dated** — a version number, a release date, what
+  shipped recently, whether something is still the recommended way. Your memory has a cutoff;
+  these change after it, so an answer from memory is a guess with a confident voice.
+- **An error message or code you don't recognise** — search the exact, distinctive part before
+  theorising about causes.
+- **A library's real API, options, or version-specific behaviour** — signatures, flag names,
+  defaults, what changed between major versions. Do not reconstruct an API from memory.
+- **"Is X possible / what's the right way / is this still true"** — check, don't assert.
+
+If a search tool exists, **using it is the default, not a fallback.** Answering such a question
+from memory and adding "you may want to verify" is the failure this skill prevents. If you truly
+cannot search, say so plainly and mark the answer as unverified memory.
+
+Research **before the next attempt** whenever any of these is true:
 
 - **A fix or build just failed** — especially the *same* thing failing twice. Do not try a
   third blind variation; find out *why* first.
@@ -48,10 +73,17 @@ Research **before** the next attempt whenever any of these is true:
    `systemctl status <svc>` / `ps aux | grep`, `docker ps`, `git status`, the open ports,
    the current env. Most "mysteries" are answered here for free — and this is what stops
    you restarting a service that was fine or "fixing" a problem that isn't there.
-2. **The project's own sources.** Its `README`, `docs/`, `CONTRIBUTING`, comments,
-   `Makefile`/scripts, and the surrounding code. The answer to "how is this project meant
-   to be run/tested/configured" is usually in the repo, not on the web. Delegate a wide
-   read to the `scout` subagent instead of bulk-reading into your own context.
+2. **What you were already given, then the project's own sources.** Start with
+   **`FACTS.md`** — facts the user pinned themselves (hosts, ports, paths, commands,
+   credential *locations*, standing rules). It is imported into your context, but that copy
+   is a **snapshot from session start**, so if the answer looks absent, **read `FACTS.md`
+   from disk** before concluding anything: it may have been pinned since. Then
+   `.qwen/PROGRESS.md`, the `README`, `docs/`, `CONTRIBUTING`, comments, `Makefile`/scripts,
+   and the surrounding code. The answer to "how is this project meant to be
+   run/tested/configured" is usually in the repo, not on the web. Delegate a wide read to
+   the `scout` subagent instead of bulk-reading into your own context.
+   **Never make the user repeat something they already told you**, and never substitute a
+   placeholder (`<your-key>`, `example.com`) where a pinned real value exists.
 3. **The web.** For anything general or unfamiliar — a library API, an error from a
    dependency, a best-practice question, a version-specific quirk. **Know which web tool
    you actually have** (check your tool list, don't assume):
@@ -60,15 +92,17 @@ Research **before** the next attempt whenever any of these is true:
      library's own site / readthedocs), the package page (PyPI, npm), or the project's
      GitHub (README, CHANGELOG, an issue, the source). You often already know the URL
      shape — construct it and fetch it directly.
-   - **Keyword web search** may be present under one of a few names — check your tool
-     list: the built-in `web_search` (needs a search-capable model, `tools.webSearch`), or
-     an **MCP-provided search tool** (e.g. a SearXNG bridge exposing `searxng_web_search`
-     plus `web_url_read`, or any `*_web_search`). On a purely local setup the built-in one
-     is often absent, but an **MCP search may be wired up** — so don't assume, look. If a
-     search tool of any name is there, use it to find the right URL, then `web_fetch` (or
-     the MCP `web_url_read`) that page. If none is present, don't wait on it — reach for the
-     doc URL directly, or say "web search isn't available here" instead of pretending to
-     search.
+   - **Keyword web search** — check your tool list, and **match by suffix, not by exact
+     name**. MCP-provided tools are exposed with a server prefix, so a SearXNG bridge shows
+     up as **`mcp__searxng__searxng_web_search`** and **`mcp__searxng__web_url_read`** — *not*
+     as the bare `searxng_web_search`. Anything ending in `_web_search` (or `_search`) is your
+     search tool. The built-in `web_search` needs a search-capable model (`tools.webSearch`)
+     and is usually **absent on a local setup** — its absence says nothing about whether an
+     MCP search is wired up. **Never conclude "I have no web search" because a bare name is
+     missing; scan the list for the suffix first**, and if the list is long or truncated, use
+     `tool_search` to find it. Use search to find the right URL, then `web_fetch` (or the MCP
+     `web_url_read`) to read that page. Only if nothing matches: reach for the doc URL
+     directly, and say "web search isn't available here" rather than pretending to search.
    - For a **deeper dig into an unfamiliar library/API**, delegate to the `researcher`
      subagent (read-only, compact verified digest) so your own context stays lean — it
      also falls back to the locally installed package's own docs when web tools are thin.

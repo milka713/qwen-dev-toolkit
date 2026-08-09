@@ -287,10 +287,19 @@ on by default; see the `/research` command). Tells the model *when* to research 
 fix/build, a shaky solution, missing info, before touching live state, prior-art hunting in
 brainstorm), *which* source to reach for (real current state → project docs → the web →
 finally you), and *how to search the web well* (verbatim error strings, official docs, version
-pins, bounded — no rabbit holes). Recognises web search under any name — the built-in
-`web_search` **or** an MCP-provided one (e.g. a SearXNG bridge's `searxng_web_search`) — so a
-locally wired-up search is actually used. Delegates deep API digs to the `researcher` subagent
-to keep the main context lean.
+pins, bounded — no rabbit holes). Delegates deep API digs to the `researcher` subagent to keep
+the main context lean.
+
+Searching is the **default, not a fallback**: any question whose answer depends on something
+outside the repo and the model's memory — a current/latest version, a release date, an
+unfamiliar error, a library's real API or what changed between versions — gets searched
+*before* it gets answered. Having to say "google it" means a trigger was missed.
+
+It also names the search tool **correctly**, which is what previously made search get skipped:
+MCP tools are exposed with a server prefix, so a SearXNG bridge appears as
+`mcp__searxng__searxng_web_search`, **not** as the bare `searxng_web_search`. The skill now
+matches **by suffix** (`*_web_search`), pre-approves both spellings in `allowedTools`, and is
+told never to conclude "I have no web search" just because the bare name is absent.
 
 **`/terminal`** — Hands a command off to the **user's own terminal** for the things the
 model's non-interactive shell can't or shouldn't do itself: an interactive `sudo` password

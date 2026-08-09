@@ -220,6 +220,37 @@ ok('russian plan prompt nudges /plan', srRun('составь план как р�
 ok('russian review prompt nudges /review', srRun('сделай ревью последних изменений в коде').includes('/review'));
 ok('english review prompt nudges /review', srRun('review my code changes before I push please').includes('/review'));
 ok('russian small talk stays silent', srRun('спасибо большое за помощь с этим проектом') === '');
+// "you already have this" — the user must never have to repeat a pinned fact. The remedy is
+// re-reading FACTS.md from DISK, because the copy in context is only a session-start snapshot.
+const saysReadFacts = (o) => o.includes('FACTS.md') && /from disk/.test(o);
+ok('en "I already gave you" points at FACTS.md on disk', saysReadFacts(srRun('I already gave you the production API key earlier')));
+ok('ru "я тебе давал" points at FACTS.md on disk', saysReadFacts(srRun('я тебе уже давал ключ от прода, посмотри')));
+ok('ru "я скидывал" points at FACTS.md on disk', saysReadFacts(srRun('ты забыл, я скидывал адрес сервера в прошлый раз')));
+// Recency/version questions and explicit "go look it up" must push to the web, and must name
+// the MCP-prefixed tool — the bare name does not exist, which is why search got skipped.
+const saysSearch = (o) => /_web_search/.test(o);
+ok('en latest-version question pushes to web search', saysSearch(srRun('what is the latest stable version of node these days')));
+ok('ru "последняя версия" pushes to web search', saysSearch(srRun('какая последняя версия Godot 4 сейчас?')));
+ok('en "search the web" pushes to web search', saysSearch(srRun('search the web for this pnpm lockfile error')));
+ok('ru "погугли" pushes to web search', saysSearch(srRun('погугли пожалуйста что это за ошибка')));
+ok('search hint names the MCP-prefixed tool, not the bare name',
+  /mcp__[a-z]+__[a-z_]*_web_search/.test(srRun('какая последняя версия Godot 4 сейчас?')));
+ok('an ordinary edit request triggers neither FACTS nor search',
+  (() => { const o = srRun('почини вот эту функцию, она возвращает не то'); return !saysReadFacts(o) && !saysSearch(o); })());
+// A concrete error identifier is the strongest search signal there is — the string is
+// distinctive and one search away, while guessing at its cause is the thrashing loop the
+// research skill exists to stop. These three prompts were measured NOT to trigger a search
+// on the live model, and the hook was silent on all of them; that is what these rules fix.
+ok('en error code (ERR_...) pushes to web search', saysSearch(srRun('What causes ERR_PNPM_OUTDATED_LOCKFILE when installing?')));
+ok('en compiler error id (TS5109) pushes to web search', saysSearch(srRun('My build fails with error TS5109 about moduleResolution, what do I do')));
+ok('en exception name pushes to web search', saysSearch(srRun('TypeError: cannot read property foo of undefined — what now')));
+ok('ru error id pushes to web search', saysSearch(srRun('у меня падает с ошибкой TS2345 при сборке, что делать')));
+// "still the recommended way" — a best-practice claim that expires silently. The earlier
+// pattern required `still <word>` and so missed the natural "still THE RECOMMENDED way".
+ok('en "is X still the recommended way" pushes to web search', saysSearch(srRun('Is setup.py still the recommended way to package a Python library?')));
+ok('en "best practice" pushes to web search', saysSearch(srRun('what is the best practice for structuring a fastapi project')));
+ok('ru "как сейчас правильно" pushes to web search', saysSearch(srRun('как сейчас правильно паковать питон-библиотеку')));
+ok('a plain feature request still triggers no search', !saysSearch(srRun('добавь кнопку выхода в интерфейс приложения')));
 ok('russian explainer stays silent', srRun('объясни как работает event loop в ноде') === '');
 // research (stuck) + terminal (disk/flash) rules, both languages
 ok('english stuck prompt nudges /research', srRun('this keeps failing and I have no idea why').includes('/research'));
@@ -395,6 +426,65 @@ for (const impl of (isWin ? ['js'] : ['sh', 'js'])) {
   ok(impl + ': empty memory reports 0 facts, no empty block', /0 fact\(s\)/.test(emptyRun('list')) && !emptyRun('list').includes('PIN_BEGIN'));
 }
 
+// ---- FACTS.md carries an instruction, and old projects get migrated -----------------
+// A caption ("pinned info") tells the model nothing. The header is imported into context
+// verbatim, so it is where the model learns these lines are authoritative and must be
+// consulted before asking the user to repeat something — the whole point of pinning.
+console.log('— pinned-memory wiring —');
+{
+  const d = tmp();
+  const pin = (...a) => cp.spawnSync('node', [path.join(ROOT, 'commands', '_pin.js'), ...a], { cwd: d, encoding: 'utf8' }).stdout;
+  fs.writeFileSync(path.join(d, 'QWEN.md'), '# Proj\n');
+  pin('deploy host is stg.internal.example port 2222');
+  const facts = fs.readFileSync(path.join(d, 'FACTS.md'), 'utf8');
+  const qwen = fs.readFileSync(path.join(d, 'QWEN.md'), 'utf8');
+  ok('FACTS.md header instructs rather than captions', /instruction for the assistant/.test(facts) && /authoritative/.test(facts));
+  ok('FACTS.md header tells the model to re-read from disk', /re-read FACTS\.md from disk/.test(facts));
+  ok('QWEN.md import carries the directive above @FACTS.md',
+    /\*\*Pinned project memory\.\*\*[\s\S]*@FACTS\.md/.test(qwen));
+  ok('the fact itself still lands as a plain list line', /^- deploy host is stg/m.test(facts));
+
+  // Migration: a project wired by an older toolkit must be upgraded in place, without
+  // touching the facts, and without duplicating anything on repeat runs.
+  const o = tmp();
+  fs.writeFileSync(path.join(o, 'QWEN.md'), '# Old\n\n<!-- pinned project memory (compaction-proof) — see FACTS.md -->\n@FACTS.md\n');
+  fs.writeFileSync(path.join(o, 'FACTS.md'), '# Project memory (pinned info — always in context, never compacted, gitignored)\n\n- legacy fact\n');
+  const pinO = (...a) => cp.spawnSync('node', [path.join(ROOT, 'commands', '_pin.js'), ...a], { cwd: o, encoding: 'utf8' }).stdout;
+  const listed = pinO('list');
+  const of2 = fs.readFileSync(path.join(o, 'FACTS.md'), 'utf8');
+  const oq = fs.readFileSync(path.join(o, 'QWEN.md'), 'utf8');
+  ok('migration upgrades the old header on a read-only subcommand', /instruction for the assistant/.test(of2));
+  ok('migration keeps the existing facts', /^- legacy fact$/m.test(of2) && listed.includes('legacy fact'));
+  ok('migration inserts the directive into old QWEN.md wiring', /\*\*Pinned project memory\.\*\*/.test(oq));
+  pinO('list'); pinO('list');
+  const oq2 = fs.readFileSync(path.join(o, 'QWEN.md'), 'utf8');
+  const of3 = fs.readFileSync(path.join(o, 'FACTS.md'), 'utf8');
+  ok('migration is idempotent', (oq2.match(/\*\*Pinned project memory\.\*\*/g) || []).length === 1 &&
+    (of3.match(/instruction for the assistant/g) || []).length === 1 &&
+    (oq2.match(/@FACTS\.md/g) || []).length === 1);
+}
+
+// ---- the research skill must name tools that actually exist -------------------------
+// MCP tools are exposed as `mcp__<server>__<tool>`, so a bare `searxng_web_search` matches
+// nothing — and `allowedTools` entries are session ALLOW rules, so a wrong name silently
+// fails to pre-approve the real tool. Naming a non-existent tool in the prose is worse: a
+// literal model concludes it has no web search at all.
+console.log('— research: real tool names —');
+{
+  const skill = fs.readFileSync(path.join(ROOT, 'skills', 'research', 'SKILL.md'), 'utf8');
+  const guide = fs.readFileSync(path.join(ROOT, 'QWEN.md'), 'utf8');
+  ok('research allowedTools include the MCP-prefixed search tool', /^\s+- mcp__searxng__searxng_web_search$/m.test(skill));
+  ok('research allowedTools include the MCP-prefixed page reader', /^\s+- mcp__searxng__web_url_read$/m.test(skill));
+  ok('research explains the mcp__ prefix / suffix matching', /mcp__<server>__<tool>/.test(skill) && /match by suffix/i.test(skill));
+  ok('research warns against concluding "no web search"', /Never conclude "I have no web search"/.test(skill));
+  ok('the always-on guidance also names the prefixed tool', /mcp__searxng__searxng_web_search/.test(guide));
+  ok('the always-on guidance makes searching the default for recency questions', /Search the web by default/.test(guide));
+  ok('the always-on guidance tells the model to use what it was already given', /Use what the user already gave you/.test(guide) && /FACTS\.md/.test(guide));
+  ok('research source order starts from what the user already pinned', /FACTS\.md/.test(skill) && /read `FACTS\.md`\s*\n?\s*from disk|read `FACTS\.md` from disk/.test(skill.replace(/\n\s+/g, ' ')));
+  ok('research forbids placeholders where a pinned value exists', /never substitute a placeholder/i.test(skill.replace(/\n\s+/g, ' ')));
+  ok('research makes searching the default, not a fallback', /using it is the default, not a fallback/i.test(skill));
+}
+
 // ---- frontmatter must be unambiguous YAML ------------------------------------------
 // Every skill/command description starts with the "[toolkit]" badge. Unquoted, a leading `[`
 // opens a YAML flow sequence, so `description: [toolkit] text` is only accepted because the
@@ -434,6 +524,15 @@ ok('QWEN.md guidance added', fs.readFileSync(path.join(qh2, 'QWEN.md'), 'utf8').
 // out per-project). This is the inverse of the old default-off reality toggle.
 ok('honesty directive is ON by default (in the always-on global QWEN.md)', /Honesty over agreement/.test(fs.readFileSync(path.join(qh2, 'QWEN.md'), 'utf8')));
 ok('research-first directive is ON by default (in the always-on global QWEN.md)', /Think & research before flailing/.test(fs.readFileSync(path.join(qh2, 'QWEN.md'), 'utf8')));
+// The two directives that fix "it never googles" and "I have to repeat myself" only work if
+// they actually reach the INSTALLED global QWEN.md — that is the copy the model reads.
+ok('search-by-default directive reaches the installed QWEN.md',
+  /Search the web by default/.test(fs.readFileSync(path.join(qh2, 'QWEN.md'), 'utf8')));
+ok('installed guidance names the MCP-prefixed search tool (the bare name matches nothing)',
+  /mcp__searxng__searxng_web_search/.test(fs.readFileSync(path.join(qh2, 'QWEN.md'), 'utf8')));
+ok('use-what-you-were-given directive reaches the installed QWEN.md',
+  (() => { const g = fs.readFileSync(path.join(qh2, 'QWEN.md'), 'utf8');
+    return /Use what the user already gave you/.test(g) && /re-read `FACTS\.md` from disk/.test(g); })());
 ok('terminal-handoff awareness is in the global QWEN.md', /Can't run it yourself/.test(fs.readFileSync(path.join(qh2, 'QWEN.md'), 'utf8')) && fs.existsSync(path.join(qh2, 'skills', 'terminal', 'SKILL.md')));
 ok('terminal skill requires explicit confirm + notes auto/yolo disabled', (() => { const s = fs.readFileSync(path.join(qh2, 'skills', 'terminal', 'SKILL.md'), 'utf8'); return /Always confirm before you hand off/.test(s) && /Disabled in auto \/ yolo/.test(s); })());
 ok('terminal-guard hook installed + wired', fs.existsSync(path.join(qh2, 'hooks', 'terminal-guard.js')) && fs.readFileSync(path.join(qh2, 'settings.json'), 'utf8').includes('terminal-guard'));

@@ -24,6 +24,29 @@ if (p.length < 12) process.exit(0);                      // trivial one-liners �
 // NOTE: JS \b is ASCII-only — it never fires next to Cyrillic letters, so the Russian
 // alternatives deliberately use plain substrings/groups, never \b.
 const rules = [
+  // "I already told you this" — the user should never have to repeat a pinned fact. Highest
+  // priority because it is unambiguous and the remedy is one cheap read. The context copy of
+  // FACTS.md is a session-start snapshot, so re-reading from disk is the point.
+  [/\b(i (already )?(gave|told|sent|shared) you|you (already )?have (it|that|this)|i pinned|i already (said|mentioned)|as i (said|mentioned) (before|earlier))\b/, 'the value is probably already pinned — read `FACTS.md` from disk (the copy in context is only a session-start snapshot), and check `.qwen/PROGRESS.md` / `grep` the repo, before asking the user again'],
+  [/я (тебе |вам )?(уже )?(давал|говорил|скидывал|присылал|отправлял|сообщал)|я (это )?(за)?пинил|уже (же )?(говорил|давал|скидывал)|ты (же )?(это )?знаешь|я же (говорил|давал)|тебе (это )?(уже )?давали/, 'the value is probably already pinned — read `FACTS.md` from disk (the copy in context is only a session-start snapshot), and check `.qwen/PROGRESS.md` / `grep` the repo, before asking the user again'],
+  // Explicit "go look it up" — if the user has to say this, a trigger was missed; make the
+  // tool name discoverable, since MCP search is exposed prefixed and models miss it.
+  [/\b(google (it|that)|search (the web|online)|look (it|that) up( online)?|find out online|check online)\b/, 'search the web now — an MCP search tool is exposed prefixed, e.g. `mcp__searxng__searxng_web_search` (match any `*_web_search`), then `web_fetch`/`mcp__searxng__web_url_read` the best hit'],
+  [/погугли|загугли|поищи (в интернете|в сети|инфу|информаци)|найди (в интернете|в сети)|поиск в интернете|посмотри в интернете|поищи онлайн/, 'search the web now — an MCP search tool is exposed prefixed, e.g. `mcp__searxng__searxng_web_search` (match any `*_web_search`), then `web_fetch`/`mcp__searxng__web_url_read` the best hit'],
+  // A concrete error identifier in the prompt (TS5109, ERR_PNPM_OUTDATED_LOCKFILE, E0308,
+  // SomethingError:) is the strongest possible search signal: the string is distinctive, the
+  // answer is one search away, and guessing at a cause is precisely the thrashing loop the
+  // research skill exists to stop. Matched case-INsensitively on the lowercased prompt, so
+  // the character classes below are deliberately lowercase.
+  [/\b(err_[a-z0-9_]{4,}|ts\d{4}|e\d{4}\b|[a-z]{2,6}\d{3,5}\b(?=[:\s]))|\b[a-z]+(error|exception):/, 'search the web for that exact error identifier before theorising about the cause — paste the distinctive part verbatim into the `*_web_search` tool (MCP search is prefixed, e.g. `mcp__searxng__searxng_web_search`), then read the authoritative hit'],
+  [/(ошибк\w*|падает с|вылетает с|ругается)[\s\S]{0,40}(err_[a-z0-9_]{4,}|ts\d{4}|[a-z]{2,6}\d{3,5})/, 'search the web for that exact error identifier before theorising about the cause — paste the distinctive part verbatim into the `*_web_search` tool (MCP search is prefixed, e.g. `mcp__searxng__searxng_web_search`), then read the authoritative hit'],
+  // "Is X still the right way" / "what's the recommended way" — a best-practice claim that
+  // silently expires. Note the optional article/adjective: "still THE RECOMMENDED way".
+  [/\bis\s+\S+\s+still\s+(the\s+)?\w*\s*(supported|maintained|recommended|standard|preferred|idiomatic|best)\b|\b(recommended|idiomatic|standard|best)\s+way\s+to\b|\bbest practice\b/, 'search the web before answering — "recommended/standard/best practice" claims expire silently, so verify against current official docs with the `*_web_search` tool (MCP search is prefixed, e.g. `mcp__searxng__searxng_web_search`) instead of answering from memory'],
+  [/(всё ещё|все ещё|еще|по-прежнему)[\s\S]{0,24}(рекоменд|актуал|поддерж|принят)|как (сейчас )?(правильно|принято|рекомендуется)|лучш(ая|ие) практик/, 'search the web before answering — "recommended/standard/best practice" claims expire silently, so verify against current official docs with the `*_web_search` tool (MCP search is prefixed, e.g. `mcp__searxng__searxng_web_search`) instead of answering from memory'],
+  // Version / recency questions: answering these from memory is a guess with a confident voice.
+  [/\b((latest|newest|current)\s+(stable\s+|lts\s+)?(version|release)|what'?s new in|release notes|changelog for|is\s+\S+\s+still\s+(supported|maintained|recommended)|as of (today|now|20\d\d))\b/, 'search the web before answering — a version/date/recency answer from memory is a guess (your knowledge has a cutoff); MCP search is exposed prefixed, e.g. `mcp__searxng__searxng_web_search` (match any `*_web_search`), then read the authoritative page'],
+  [/послед(няя|нюю|ней|нюю)\s+верси|актуальн(ая|ую|ой)\s+верси|какая (сейчас |нынче )?верси|что нового в|релиз.?ноутс|список изменений|(ещё|еще) (поддерживается|актуал)|на сегодняшний день|сейчас актуальн/, 'search the web before answering — a version/date/recency answer from memory is a guess (your knowledge has a cutoff); MCP search is exposed prefixed, e.g. `mcp__searxng__searxng_web_search` (match any `*_web_search`), then read the authoritative page'],
   [/\b(secur(e|ity)|vulnerab|exploit|injection|sql\s*inject|\bauthz?\b|authentication|owasp|cve|sanitiz|hardcoded|leak)/, 'invoke the `/audit` skill (security review of architecture + code)'],
   [/безопасн|уязвим|инъекц|захардкож|хардкод|утечк|взлом/, 'invoke the `/audit` skill (security review of architecture + code)'],
   [/\b(from scratch|build me|implement|scaffold|create|write)\b[\s\S]{0,48}\b(app|application|service|api|cli|tool|module|feature|system|project|backend|server|library|package|pipeline|bot)\b/, 'invoke the `/implement` skill (architect + delegated implementer subagents; the user can also pin the mode with `/dev`)'],
