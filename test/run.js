@@ -557,8 +557,15 @@ ok('checkpoint-nudge Stop hook installed + wired',
 ok('checkpoint installed as a skill AND as a manual command',
   fs.existsSync(path.join(qh2, 'skills', 'checkpoint', 'SKILL.md')) &&
   fs.existsSync(path.join(qh2, 'commands', 'checkpoint.md')));
-ok('the /checkpoint command delegates to the skill (single source of truth)',
-  /skill tool with the name `checkpoint`/.test(fs.readFileSync(path.join(qh2, 'commands', 'checkpoint.md'), 'utf8')));
+// Measured: delegating to the skill made a small model spend 59 turns walking the tree with
+// glob/grep/subagents and never call write_file at all. The command is therefore imperative —
+// the write comes first — and carries hard limits against exactly that spiral.
+ok('the /checkpoint command orders the write first, not an investigation',
+  (() => { const c = fs.readFileSync(path.join(qh2, 'commands', 'checkpoint.md'), 'utf8');
+    return /Your FIRST tool call is the write/.test(c) && /No subagents/.test(c); })());
+ok('the /checkpoint command still carries the canonical PROGRESS.md shape',
+  (() => { const c = fs.readFileSync(path.join(qh2, 'commands', 'checkpoint.md'), 'utf8');
+    return /## 📋 Task plan/.test(c) && /↳ state:/.test(c) && /continue from the first unchecked task/i.test(c); })());
 // /applied: Node logic ships on every OS (like /autocompact — it parses settings.json),
 // and the install records its version so /applied can report it.
 ok('applied Node logic installed alongside the wrapper',

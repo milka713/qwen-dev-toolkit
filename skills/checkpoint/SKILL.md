@@ -27,6 +27,13 @@ If the argument is `restore` (or the user asks to reload/recover state):
 
 ## Mode: save (default)
 
+**Budget first: this is a snapshot, not an investigation.** Write the file **before** you go
+looking for anything. Everything you need is already in this conversation; a checkpoint that
+exists is worth far more than a thorough one you never finished. Concretely: **no subagents**,
+no `glob`-ing the tree or walking directories, no unrelated tools — at most a couple of cheap
+reads (an existing `.qwen/PROGRESS.md`, `git status`). Unknown section → one honest placeholder
+line, move on.
+
 Write or update `.qwen/PROGRESS.md` (`mkdir -p .qwen` first). Curate, don't dump — the value is in *selection*. Capture exactly what a competent engineer would need to resume cold, and nothing else. Use the **same template as `/plan` and `/implement`** — one canonical shape, so the checkbox recovery contract ("continue from the first unchecked task") always holds:
 
 ```markdown
@@ -62,7 +69,10 @@ Rules for a good checkpoint:
 - Be specific: "auth uses JWT in `src/auth/jwt.ts`, refresh tokens not yet implemented" beats "working on auth."
 - Mid-task state goes on the `↳ state:` sub-line under the current unchecked task — tick a box only when the task is truly done and verified.
 - If a `.qwen/PROGRESS.md` already exists (e.g. written by `/plan` or `/implement`), **merge into its structure**: tick finished boxes, refresh the `↳ state` line, append to Log, update the timestamp — never clobber history or reorganize the sections.
-- Get the timestamp from `date '+%F %H:%M'` — don't guess it.
+- Timestamp: write the file FIRST. A shell call can raise an approval prompt, and a checkpoint
+  that stalls on one is worse than a slightly stale date — so put your best-known date in
+  `_Updated:_` (or `(timestamp pending)`), and only run `date '+%F %H:%M'` to correct it once
+  the file is on disk.
 - **Never write secrets** (keys, tokens, passwords) into this file — it may end up committed. Reference their location instead ("token in `.env`").
 - Keep the whole file lean: the auto-restore hook injects only the first **~12k characters** — anything past that won't come back automatically after a restart.
 

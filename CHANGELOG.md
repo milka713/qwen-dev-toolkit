@@ -4,6 +4,33 @@ All notable changes to qwen-dev-toolkit are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com); versions follow semver.
 (Releases before 1.7.0 predate this file and are not backfilled — see the git history.)
 
+## [1.28.1] - 2026-08-09
+
+### Fixed
+- **`/checkpoint` could stall before writing anything.** End-to-end testing (a real interactive
+  session under a pty, not `-p`) caught it: the skill said *"get the timestamp from
+  `date '+%F %H:%M'` — don't guess it"*, so the model ran a shell command **before** writing the
+  file, hit `Allow execution of: 'date'?` and sat there. Nothing reached disk. Now the write
+  comes first and **no shell command may run before the file exists** — the `_Updated:_` line
+  takes a best-known date (or `(timestamp pending)`) and is corrected afterwards. Verified: a
+  complete `.qwen/PROGRESS.md` with the canonical sections, checkboxes and a `↳ state:` line is
+  now produced in one pass.
+- **The `/checkpoint` command no longer delegates to the skill.** Measured: the delegation hop
+  plus the skill's "curate" framing sent a small model into 35–59 turns of `glob`/`grep`/
+  subagent exploration with **zero `write_file` calls**. The command is now imperative — the
+  write is ordered as the first tool call — and carries hard limits (no subagents, no
+  `tool_search`, no tree sweeps, at most one read). The skill keeps the same procedure with the
+  full rationale for the model-invoked path, and gained the same budget note.
+
+### Notes on testing
+`qwen -p` is **not** a faithful harness for slash commands: a command's `!{...}` shell step is
+refused outright (`blocked by permission rules`, which is how `/pin list` fails there), and the
+command body never appears in the `stream-json` transcript. Interactive verification needs a
+pty (`script -qec "qwen -i '/checkpoint'"`). `/checkpoint restore` was confirmed to read the
+checkpoint and sanity-check it against `git status` / `git log`; its closing restatement was not
+observed because the crude auto-answer used for the pty typed into the prompt and cancelled the
+turn — a harness limit, not a defect.
+
 ## [1.28.0] - 2026-08-08
 
 ### Fixed
