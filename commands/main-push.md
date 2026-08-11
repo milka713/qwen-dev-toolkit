@@ -1,6 +1,7 @@
 ---
 description: "[toolkit] Authorize pushing to the protected branch (main/master). The git-flow guard blocks main operations by default. Three modes - bare /main-push = ONE push (single-use, covers the merge, consumed when the push succeeds, 15-min unused expiry); /main-push on = PERSISTENT (every main push allowed until off, no expiry); /main-push off = revoke (default); /main-push status = check."
 argument-hint: '[on | off | status]'
+disable-model-invocation: true
 ---
 
 The main-authorization has already been applied deterministically by the shell below — act on its result, do not re-run it yourself:

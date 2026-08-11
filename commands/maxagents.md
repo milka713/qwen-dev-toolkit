@@ -1,6 +1,7 @@
 ---
 description: "[toolkit] Cap how many subagents run at once, for a resource-constrained local model. /maxagents <N> = at most N concurrent subagents; /maxagents off = remove the cap (default, as many as the work needs); /maxagents status = check. Deterministic, pinned in QWEN.md so it survives compaction."
 argument-hint: '[<N> | off | status]'
+disable-model-invocation: true
 ---
 
 The limit was applied deterministically by the shell below — act on its result, do not re-toggle it:

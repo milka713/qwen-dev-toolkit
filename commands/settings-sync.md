@@ -1,6 +1,7 @@
 ---
 description: "[toolkit] Sync your qwen-code settings.json across machines through a private GitHub repo, over SSH only (no gh/HTTPS). Connect once with an explicit privacy confirmation (connect <url> private) since a repo public/private state cannot be checked over SSH; SSH access is verified with git ls-remote. Then move settings with an EXPLICIT direction — push (local to repo) or pull (repo to local, local backed up first). No bare \"sync\" that guesses. /settings-sync connect <url> private, push, pull, status, disconnect."
 argument-hint: '[connect <github-url> private | push | pull | status | disconnect]'
+disable-model-invocation: true
 ---
 
 The settings-sync action has already run **deterministically** in the shell below — act on its result, do not re-run it or edit settings by hand:

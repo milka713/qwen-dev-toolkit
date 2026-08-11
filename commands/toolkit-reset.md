@@ -1,6 +1,7 @@
 ---
 description: "[toolkit] Bring the toolkit back to the shape the current version implies by default, for a chosen scope. /toolkit-reset (or /toolkit-reset project) resets THIS project; /toolkit-reset global resets the global ~/.qwen. It removes the toolkit's toggle blocks (/dev, /cover, /bro, /maxagents, /versioning, /reality) from that scope's QWEN.md, and — for the global scope — also resets the toolkit's global settings to defaults (re-enable all hooks, auto-compaction back to its default). Also cleans stale blocks an older version left in the wrong place. Unrelated to /toolkit-update (that fetches a release; this is local cleanup, no network). Requires confirmation: a plain run previews and opens a 15-minute window; /toolkit-reset confirm applies it; /toolkit-reset undo reverts the last confirm."
 argument-hint: '[project | global | confirm | undo]'
+disable-model-invocation: true
 ---
 
 The result below was produced deterministically by the shell backend — act on it, do not re-derive it, and never try to reproduce its effect yourself another way:

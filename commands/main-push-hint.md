@@ -1,6 +1,7 @@
 ---
 description: "[toolkit] One-time per-machine setup so Auto Mode stops blocking authorized main pushes. In Auto Mode qwen-code's LLM classifier runs BEFORE the git-branch-guard hook and independently blocks main/master pushes (making up its own single-use-token bookkeeping), so even after /main-push a release is refused by auto mode policy. This adds a permissions.autoMode.hints.allow entry telling the classifier to defer main pushes to the deterministic git-branch-guard hook. Needs a qwen restart. /main-push-hint or on = add; off = remove; status = check."
 argument-hint: '[on | off | status]'
+disable-model-invocation: true
 ---
 
 The settings edit has already been applied **deterministically** by the shell below — act on its result, do not re-run it or edit settings.json by hand:

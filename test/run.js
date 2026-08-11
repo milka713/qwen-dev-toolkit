@@ -510,6 +510,42 @@ console.log('— frontmatter YAML safety —');
   ok('checked a meaningful number of files', fmFiles.length >= 30, String(fmFiles.length));
 }
 
+// ---- model-invocation lock on side-effecting commands ------------------------------
+// A user command's `!{...}` block runs its shell BEFORE the model answers. Since qwen-code
+// 0.21.x every user/project file command is ALSO model-invocable (`command-factory.ts`:
+// `modelInvocable: !extensionName || ...`), and `SkillTool` executes it through
+// `setModelInvocableCommandsExecutor` — the same `cmd.action`, so the shell block runs too.
+// `shellProcessor` only prompts when the command is not already permitted, so under YOLO or a
+// broad `permissions.allow` the model could hand itself root via /sudo-on, authorize a main
+// push, or switch its own guards off with /hooks off. Anything that changes state is locked to
+// the user with `disable-model-invocation: true`; read-only reporting stays open so the model
+// can still consult it. A new command must be classified here on purpose.
+console.log('— model-invocation lock —');
+{
+  const OPEN = ['applied', 'checkpoint', 'doctor', 'pin', 'status']; // read-only / safe to self-invoke
+  const cmdFiles = fs
+    .readdirSync(path.join(ROOT, 'commands'))
+    .filter((f) => f.endsWith('.md'))
+    .map((f) => f.replace(/\.md$/, ''));
+  const hasLock = (name) => {
+    const lines = fs.readFileSync(path.join(ROOT, 'commands', name + '.md'), 'utf8').split('\n');
+    if (lines[0] !== '---') return false;
+    const end = lines.indexOf('---', 1);
+    return lines.slice(1, end).some((l) => /^disable-model-invocation:\s*true\s*$/.test(l));
+  };
+  const unlocked = cmdFiles.filter((c) => !OPEN.includes(c) && !hasLock(c));
+  ok('every side-effecting command is locked to the user', unlocked.length === 0, unlocked.join(', '));
+  const overLocked = OPEN.filter((c) => cmdFiles.includes(c) && hasLock(c));
+  ok('read-only commands stay model-invocable', overLocked.length === 0, overLocked.join(', '));
+  ok('the lock covers a meaningful number of commands', cmdFiles.filter(hasLock).length >= 15);
+  // Every command that injects shell must be either locked or on the reviewed OPEN list.
+  const shellCmds = cmdFiles.filter((c) =>
+    fs.readFileSync(path.join(ROOT, 'commands', c + '.md'), 'utf8').includes('!{'),
+  );
+  const looseShell = shellCmds.filter((c) => !hasLock(c) && !OPEN.includes(c));
+  ok('no shell-injecting command is left unclassified', looseShell.length === 0, looseShell.join(', '));
+}
+
 // ---- installer round-trip ---------------------------------------------------------
 console.log('— installer round-trip —');
 const qh2 = tmp();

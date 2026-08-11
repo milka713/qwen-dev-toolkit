@@ -52,6 +52,17 @@ speaks it's clearly the toolkit.
 Each keeps its state in a marked block in `QWEN.md` (or in `FACTS.md`), which is re-attached
 to context every request and so survives compaction. Args are shown after each name.
 
+**Side-effecting commands are locked to you.** On qwen-code 0.21.x a user command is *also*
+model-invocable by default: it is listed in the model's `<available_skills>` and `SkillTool` can
+run it through the same `action` — including the `!{…}` shell step, which `shellProcessor` only
+prompts for when the command isn't already permitted. Under YOLO mode or a broad
+`permissions.allow`, that would let the model grant itself root via `/sudo-on`, authorize a
+protected-branch push via `/main-push`, or switch off its own guards with `/hooks off`.
+So every command that changes state carries `disable-model-invocation: true` and can only be run
+by you typing it. Read-only reporting — `/status`, `/doctor`, `/pin`, `/checkpoint`, `/applied` —
+stays open, so the model can still consult it. A test enforces the split, and a new command has
+to be classified deliberately.
+
 **`/dev` · `on` · `off` · `status` · `<goal>`** — Development-mode switch: turns the session
 into an **architect that delegates**. With it on, the model plans the work and hands every
 implementation task to a fresh `implementer` subagent instead of coding in its own context —
@@ -608,8 +619,27 @@ want the main agent to keep its reasoning, the robust path is **`yolo` + a harde
 
 ## Requirements
 
-- **qwen-code** (tested on **0.19.8–0.21.0**) + **Node.js**; **git** for the git features. Any
+- **qwen-code** (tested on **0.19.8–0.21.10**) + **Node.js**; **git** for the git features. Any
   provider; designed for small-context local models. Runs on macOS, Linux and Windows.
+
+Notes on qwen-code 0.21.x, checked against the 0.21.10 sources:
+
+- **Nothing upstream replaces the toolkit.** `/summary` writes a project *description*, not the
+  checkbox work-state `/checkpoint` keeps; `/compress` is the lossy compaction we work around;
+  the built-in `/remember`–`/memory` family is qwen's own memory store, separate from `/pin`'s
+  `FACTS.md`. `/learn` and `/curator` are new but adjacent — `/curator` only ever touches
+  `.qwen/skills/auto-skill-*` directories whose frontmatter says `source: auto-skill`, so the
+  toolkit's hand-authored skills are never archived by it.
+- **`/pin`'s read-out is still needed.** 0.21.x can refresh context files mid-session, but only
+  via `refreshContextFilesOnWrite`, which is set solely by the built-in `/remember` and is not
+  reachable from a markdown command — so a mid-session pin still won't appear in that session's
+  context, and printing the facts into the transcript remains the fix.
+- **Name shadowing:** the file-command loader runs last, so a toolkit command wins over a
+  built-in of the same name (`/doctor`, `/hooks`); toolkit skills likewise shadow the bundled
+  `review` and the built-in `/plan` and `/docs`. This is intentional, but worth knowing if you
+  came looking for the upstream behaviour.
+- New in 0.21.x and worth a look, though the toolkit does not depend on it: the `compactionModel`
+  setting (`/model --compaction`) can point auto-compaction at a small fast model.
 
 ## Install / update
 
@@ -623,7 +653,7 @@ installer — the command logic is a single set of Node backends on every OS; on
 Prerequisites: **Node.js** + **qwen-code** (and **git** for the git features). The installer
 checks them and prints what's missing.
 
-> **qwen-code compatibility:** tested on **qwen-code 0.19.8 – 0.21.0**. Everything works on
+> **qwen-code compatibility:** tested on **qwen-code 0.19.8 – 0.21.10**. Everything works on
 > 0.19.x; the one feature that needs **0.20.x+** is `checkpoint-nudge`'s proactive
 > context-fill guard (it reads `context_usage` from the `Stop` event, which older versions
 > don't send — there it simply stays silent). Run `/doctor` to see your version and health.
@@ -633,7 +663,13 @@ checks them and prints what's missing.
 install.cmd       # Windows        (or: node install.js  — anywhere)
 ```
 
-Then **restart qwen-code**. To update later, re-run the same command (or `/toolkit-update`
+Then **restart qwen-code** — still the reliable way, though on qwen-code ≥ 0.21 much of it now
+lands live: skill directories are watched (`SkillManager.startWatching`, except in bare mode)
+and `hooks` is a hot-reloadable settings key, so an install into a running session usually takes
+effect on its own. Context files (`QWEN.md` and its `@FACTS.md` import) are **not** watched — they
+are assembled once at session start — so a restart is the only way to pick those up.
+
+To update later, re-run the same command (or `/toolkit-update`
 from inside qwen-code). To remove: `./uninstall.sh` / `uninstall.cmd` — it deletes only the
 toolkit's own files, strips its hook entries and clears its toggle blocks from the **global**
 `~/.qwen/QWEN.md`; per-project toggle blocks stay (clear them with `/toolkit-reset project`

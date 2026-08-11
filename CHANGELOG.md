@@ -4,6 +4,57 @@ All notable changes to qwen-dev-toolkit are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com); versions follow semver.
 (Releases before 1.7.0 predate this file and are not backfilled — see the git history.)
 
+## [1.29.0] - 2026-08-11
+
+Compatibility pass against **qwen-code 0.21.10** (671 commits since 0.21.0, reviewed at source
+level). Machines updated: Mac to 0.21.8 (Homebrew's latest), eros to 0.21.10 (npm).
+
+### Security
+- **Side-effecting commands are now locked to the user** (`disable-model-invocation: true` on 17
+  commands). Since 0.21.x every user file command is *also* model-invocable — `command-factory`
+  sets `modelInvocable: !extensionName || …`, it is listed in `<available_skills>`, and
+  `SkillTool` runs it through `setModelInvocableCommandsExecutor` using the same `cmd.action`,
+  which includes the `!{…}` shell step. `shellProcessor` only raises a confirmation when the
+  command is *not* already permitted, so under YOLO mode or a broad `permissions.allow` the model
+  could have granted itself root with `/sudo-on`, authorized a protected-branch push with
+  `/main-push`, or disabled its own guards with `/hooks off`. Locked: `autocompact`, `bro`,
+  `classifier-window`, `cover`, `dev`, `devedit`, `hooks`, `main-push`, `main-push-hint`,
+  `maxagents`, `reality`, `research`, `settings-sync`, `sudo-off`, `sudo-on`, `toolkit-reset`,
+  `versioning`. Left open because they only report: `status`, `doctor`, `pin`, `checkpoint`,
+  `applied`. The lock closes both gates — `CommandService.getModelInvocableCommands()` filters on
+  `modelInvocable === true`, and that same filtered list is what the executor looks the command up
+  in, so a locked command is neither advertised nor runnable by the model.
+
+### Changed
+- **Docs no longer overstate the restart requirement.** On 0.21.x skill directories are watched
+  (`SkillManager.startWatching`, disabled in bare mode) and `hooks` is declared
+  `requiresRestart: false`, so installing into a running session largely takes effect live.
+  Context files are still assembled once at startup, so `QWEN.md` / `@FACTS.md` changes — and
+  therefore a fresh `/pin` — still need a restart. Both READMEs now say exactly that.
+- Compatibility range in both READMEs widened to **0.19.8 – 0.21.10**, with a new section
+  recording what upstream 0.21.x does and does not replace.
+
+### Notes on the upstream review
+- **Nothing upstream replaces the toolkit.** `/summary` writes a project *description*, not
+  checkbox work-state; `/compress` is the lossy compaction this toolkit works around; the
+  `/remember`–`/memory`–`/dream` family is qwen's own memory store, orthogonal to `/pin`.
+- **`/pin`'s read-out is still required.** 0.21.x added live context-file refresh, but it is
+  gated on `refreshContextFilesOnWrite`, set *only* by the built-in `/remember` (verified: it is
+  the single non-test assignment in the CLI package) and unreachable from a markdown command.
+- **`/curator` (new) cannot touch toolkit skills** — it only manages `.qwen/skills/auto-skill-*`
+  directories whose frontmatter carries `source: auto-skill`.
+- Behaviour changes worth knowing: `&` is now a command boundary in `splitCompoundCommand`, so a
+  backgrounded command needs its own allow rule; `UserPromptSubmit` `additionalContext` is wrapped
+  in a reserved tag and kept out of transcript display and auto titles; `StopFailure` now also
+  fires on loop-detection early returns; new `SessionDelete` hook event; new `compactionModel`
+  setting (`/model --compaction`) that could point auto-compaction at a fast local model.
+
+### Tests
+429 assertions (was 425). New `model-invocation lock` block asserts every side-effecting command
+is locked, that the read-only ones are *not*, that no shell-injecting command is left
+unclassified, and that a meaningful number are covered. Verified by deliberately unlocking
+`/sudo-on` — two assertions failed — then restoring.
+
 ## [1.28.1] - 2026-08-09
 
 ### Fixed

@@ -1,6 +1,7 @@
 ---
 description: "[toolkit] Turn the toolkit's hooks off or on when they get in the way — guards (secret-guard, git-branch-guard, release-guard, toolkit-reset-guard, the subagent cap) and non-blocking automation hooks. /hooks or /hooks status = show every hook ON/OFF; /hooks off <name> = disable one; /hooks on <name> = re-enable; /hooks off guards = disable all guards at once; /hooks off all = disable everything; /hooks on = re-enable everything. Disabling is sticky (until you turn it back on) and disabled guards are shown loudly here and in /applied so you never silently lose protection. Deterministic; global (~/.qwen)."
 argument-hint: '[status | off <name|guards|all> | on [<name>|all]]'
+disable-model-invocation: true
 ---
 
 The hook on/off change has already been applied deterministically by the shell below — act on its result, do not re-toggle it:
