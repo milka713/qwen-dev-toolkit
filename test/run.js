@@ -208,6 +208,17 @@ ok('library question nudges researcher', srRun('how do I use pandas groupby with
 ok('doc-update prompt nudges /docs, not researcher', (() => { const o = srRun('update the readme for the new cli flags please'); return o.includes('/docs') && !o.includes('researcher'); })());
 ok('release prompt nudges /release', srRun('can you cut a release and tag the new version on github').includes('/release'));
 ok('requirements.txt prompt stays silent', srRun('pip install -r requirements.txt fails on my machine somehow') === '');
+// Preventive research: adopting a dependency is a big, hard-to-reverse step, and install steps
+// + "current recommended version" expire silently after a knowledge cutoff — so the nudge has
+// to land while the user is still ASKING, not after the install went sideways.
+ok('install request nudges research first (ru)', /RESEARCH FIRST/.test(srRun('поставь hermes в этот проект пожалуйста')));
+ok('install request nudges research first (en)', /RESEARCH FIRST/.test(srRun("let's install hermes into this project")));
+ok('migration request nudges research first', /RESEARCH FIRST/.test(srRun('переведи проект на pydantic v2, там вроде много поменялось')));
+ok('preventive nudge names the prefixed MCP search', /mcp__searxng__searxng_web_search/.test(srRun('поставь hermes в этот проект пожалуйста')));
+// ...but a FAILURE report is the dead-end case, not the planning case: it must not be answered
+// with "check the install docs first", and it is handled by search-on-stuck / the other rules.
+ok('install FAILURE report does not get the preventive nudge', !/RESEARCH FIRST/.test(srRun('установи hermes — падает с ошибкой на сборке')));
+ok('innocent "add a field" stays silent', srRun('добавь поле created_at в модель пользователя') === '');
 ok('short prompt stays silent', srRun('fix typo') === '');
 ok('slash command stays silent', srRun('/implement build me an app with tests') === '');
 // Russian prompts must trigger the same rules (JS \b is ASCII-only and never fires next
@@ -544,6 +555,150 @@ console.log('— model-invocation lock —');
   );
   const looseShell = shellCmds.filter((c) => !hasLock(c) && !OPEN.includes(c));
   ok('no shell-injecting command is left unclassified', looseShell.length === 0, looseShell.join(', '));
+}
+
+// ---- search-on-stuck: break the thrashing loop -------------------------------------
+// One failure is ordinary work. Two in a row is the pattern the /research skill exists to
+// stop, and the reminder only helps if it arrives at the moment of the failure. Verified
+// against qwen-code 0.21.10 on a live session: a non-zero shell exit fires
+// PostToolUseFailure (not PostToolUse) with the full Command/Output/Exit Code text.
+console.log('— search-on-stuck —');
+{
+  const sos = path.join(ROOT, 'hooks', 'search-on-stuck.js');
+  const proj = tmp();
+  const fire = (mode, payload) =>
+    cp.spawnSync('node', [sos, mode], { cwd: proj, input: JSON.stringify(payload || {}), encoding: 'utf8' }).stdout;
+  const failure = (cmd, out) => ({
+    hook_event_name: 'PostToolUseFailure',
+    tool_name: 'run_shell_command',
+    tool_input: { command: cmd },
+    error: `Command: ${cmd}\nDirectory: (root)\nOutput: ${out}\nError: (none)\nExit Code: 1`,
+  });
+
+  ok('first failure is silent (one failure is normal work)', fire('fail', failure('npm run build', 'boom')) === '');
+  const second = fire('fail', failure('npm run build', 'TS2345: Argument of type X'));
+  ok('second consecutive failure speaks up', second !== '');
+  ok('it targets PostToolUseFailure', /"hookEventName":"PostToolUseFailure"/.test(second));
+  ok('it forbids another blind variation', /Do NOT try another variation/.test(second));
+  ok('it names the prefixed MCP search tool', /mcp__searxng__searxng_web_search/.test(second));
+  ok('it tells the model to match by suffix', /_web_search/.test(second));
+  ok('it quotes the actual failing command', /npm run build/.test(second));
+  ok('it quotes the distinctive error text to search for', /TS2345/.test(second));
+  ok('it points at the /research skill', /\/research/.test(second));
+
+  // A success means we are making progress again — the streak must not carry over.
+  fire('ok', {});
+  ok('a successful attempt resets the streak', fire('fail', failure('npm run build', 'boom')) === '');
+  // Escalate while still stuck. (The reset above restarted the streak, so this pair is
+  // attempts #2 and #3 — only the third crosses into the escalated wording.)
+  const second2 = fire('fail', failure('npm run build', 'boom'));
+  ok('the next failure speaks again', second2 !== '' && !/in the loop/.test(second2));
+  const third = fire('fail', failure('npm run build', 'boom'));
+  ok('a longer streak escalates the wording', /in the loop/.test(third), third.slice(0, 120));
+
+  // Pressing Esc is not a failed attempt.
+  fire('reset', {});
+  fire('fail', { ...failure('sleep 60', ''), is_interrupt: true });
+  ok('a user interrupt is not counted as an attempt', fire('fail', failure('npm run build', 'boom')) === '');
+
+  fire('reset', {});
+  ok('SessionStart reset clears the counter', !fs.existsSync(path.join(proj, '.qwen', '.stuckcount')));
+  ok('malformed payload never crashes the hook',
+    cp.spawnSync('node', [sos, 'fail'], { cwd: proj, input: 'not json', encoding: 'utf8' }).status === 0);
+}
+
+// ---- subagents must be able to reach the MCP search --------------------------------
+// `tools:` on a subagent is an ALLOWLIST (unlike a skill's `allowedTools`, which is an allow
+// RULE), so an unlisted tool cannot be called at all. MCP tools are exposed prefixed, so an
+// agent listing only the bare `web_search` has no reachable search on a local setup and
+// degrades to `web_fetch` guessing — which is exactly what was observed for `researcher`.
+console.log('— subagent web reach —');
+{
+  const agentDir = path.join(ROOT, 'agents');
+  const toolsOf = (f) => {
+    const body = fs.readFileSync(path.join(agentDir, f), 'utf8');
+    const fm = body.split('---')[1] || '';
+    const start = fm.indexOf('tools:');
+    if (start < 0) return [];
+    return fm
+      .slice(start)
+      .split('\n')
+      .slice(1)
+      .filter((l) => /^\s+- /.test(l))
+      .map((l) => l.replace(/^\s+- /, '').trim());
+  };
+  // Every subagent gets search: guessing an API or a cause is the expensive failure mode, and
+  // one lookup replaces several blind attempts.
+  const agents = fs.readdirSync(agentDir).filter((f) => f.endsWith('.md'));
+  ok('all six subagents are present', agents.length === 6, String(agents.length));
+  for (const a of agents) {
+    const t = toolsOf(a);
+    ok(`${a} can reach a prefixed MCP search`, t.some((x) => /^mcp__.*_web_search$/.test(x)), t.join(','));
+    ok(`${a} can read a page it found`, t.some((x) => x === 'web_fetch' || /^mcp__.*web_url_read$/.test(x)));
+  }
+  // The trap that caused this: listing the bare name only. Anything with web_search must also
+  // carry a prefixed MCP entry, or it silently has no search on this setup.
+  const offenders = fs
+    .readdirSync(agentDir)
+    .filter((f) => f.endsWith('.md'))
+    .filter((f) => toolsOf(f).includes('web_search') && !toolsOf(f).some((x) => x.startsWith('mcp__')));
+  ok('no agent lists a bare web_search without an MCP counterpart', offenders.length === 0, offenders.join(', '));
+  ok('researcher prose tells it to match by suffix', /SUFFIX|suffix/.test(fs.readFileSync(path.join(agentDir, 'researcher.md'), 'utf8')));
+}
+
+// ---- /bro Свобода persona is canon, not invented ----------------------------------
+// The Freedom register is sourced from the original games' own localization
+// (ТЧ config/text/rus/stable_dialog_manager.xml + stable_dialogs_military.xml, ЗП
+// configs/text/rus/st_dialog_manager.xml + st_dialogs_jupiter.xml) and the wiki's
+// «Свобода/Реплики» page of rank-and-file barks. A previous version opened with
+// "Заходи — не бойся, выходи — не плачь", which is Сидорович — the Cordon trader, a
+// different faction entirely. Pin the canon so it can't drift back into invention.
+console.log('— /bro Свобода canon —');
+{
+  const broJs = path.join(ROOT, 'commands', '_bro.js');
+  const proj = tmp();
+  const broRun = (arg) => cp.spawnSync('node', [broJs, arg], { cwd: proj, encoding: 'utf8' });
+  const qwenMd = () => fs.readFileSync(path.join(proj, 'QWEN.md'), 'utf8');
+
+  const on = broRun('свобода');
+  ok('/bro свобода enables the Freedom persona', /BRO_RESULT: bro mode ON/.test(on.stdout));
+  const block = qwenMd();
+  // Greetings the user explicitly required to be in-character. Every one of these is
+  // attested: "Здорово, мэн." / "Рад тебя видеть, мэн!" (ЗП st_dialog_manager),
+  // "О, мэн! Здорова!" (ТЧ mil_cook_common1_105), "Хэллоу, мэн." (ТЧ dm_intro_114).
+  for (const g of ['Здорово, мэн', 'О, мэн! Здорова', 'Хэллоу, мэн', 'Рад тебя видеть, мэн']) {
+    ok(`canonical greeting present: "${g}"`, block.includes(g));
+  }
+  ok('the greeting rule is stated as mandatory', /ПРИВЕТСТВИЕ/.test(block));
+  ok('Сидорович line is called out as NOT Freedom', /Сидорович/.test(block) && /не Свобода/.test(block));
+  ok('addresses the user as "мэн"', /обращайся к юзеру "мэн"/.test(block));
+  // Register markers, each lifted verbatim from the sources above.
+  for (const m of ['Вавилон', 'Пр-ральна', 'Элементарно, сталкер', 'Не напрягайся', 'Всё ништяк']) {
+    ok(`register marker present: "${m}"`, block.includes(m));
+  }
+  ok('anti-«Долг» stance present', /по-долговски/.test(block) && /джедаи/.test(block));
+  ok('canonical pushback via the "убери ствол" lines', /Прячь волыну/.test(block) && /Разговор будет только без оружия/.test(block));
+  ok('combat chants present', block.includes('Вперё-ё-ёд, за Че') && block.includes('Свободу всем даром'));
+  ok('engineering quality is still required under the vibe', /соврать|острым и точным/.test(block));
+  ok('no drug advocacy — slang is flagged as flavour only', /не пропагандируй/.test(block));
+  // The persona is cosmetic by contract: it may change the prose and nothing else. A voice
+  // toggle that quietly shortened an answer, skipped a check or softened a risk warning would
+  // be a defect, not a style — so the boundary is spelled out inside the pinned block itself,
+  // where it is re-attached to context every request.
+  ok('persona boundary is declared', /ГРАНИЦА ПЕРСОНЫ/.test(block));
+  ok('boundary keeps substance out of scope', /диагноз/.test(block) && /план/.test(block) && /оценка рисков/.test(block));
+  ok('boundary keeps code and commits slang-free', /[Кк]оммит-месседжи/.test(block) && /остаются чистыми/.test(block));
+  ok('boundary forbids shorter answers / skipped verification', /пропустить верификацию/.test(block) && /ответить короче/.test(block));
+  ok('boundary resolves conflicts in favour of correctness', /вайб уступает/.test(block));
+
+  const st = broRun('status');
+  ok('/bro status reports the Freedom persona', /Свободовец/.test(st.stdout));
+  const lam = broRun('ламар');
+  ok('/bro ламар switches persona', /Ламар/.test(lam.stdout));
+  ok('switching leaves exactly one bromode block', qwenMd().split('bromode:start').length - 1 === 1);
+  ok('switching drops the Freedom text', !qwenMd().includes('Хэллоу, мэн'));
+  const off = broRun('off');
+  ok('/bro off disables', /bro mode OFF/.test(off.stdout) && !qwenMd().includes('bromode:start'));
 }
 
 // ---- installer round-trip ---------------------------------------------------------

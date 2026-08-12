@@ -26,6 +26,7 @@ const HOOKS = [
   { name: 'classifier-window-check', kind: 'auto', event: 'SessionStart',  desc: 'warns if a qwen-code update reverted the /classifier-window patch (window back to 40)' },
   { name: 'steer-compaction',    kind: 'auto',  event: 'PreCompact',       desc: 'steers what compaction keeps (goal/plan over churn)' },
   { name: 'skill-reminder',      kind: 'auto',  event: 'UserPromptSubmit', desc: 'nudges the matching skill when a prompt clearly fits one' },
+  { name: 'search-on-stuck',     kind: 'auto',  event: 'PostToolUseFailure', desc: 'after 2 failed attempts in a row, tells the model to stop guessing and search for the cause' },
   { name: 'agent-limit-post',    kind: 'auto',  event: 'PostToolUse',      desc: 'decrements the subagent counter after a subagent finishes' },
   { name: 'main-push-consume',   kind: 'auto',  event: 'PostToolUse',      desc: 'consumes a single-use /main-push token only after a push to main SUCCEEDS (blocked/failed attempts don\'t waste it; a persistent `/main-push on` grant is never consumed)' },
   { name: 'checkpoint-nudge',    kind: 'auto',  event: 'Stop',             desc: 'holds the turn once if code changed but PROGRESS.md is stale, or if the context window is nearly full' },

@@ -131,6 +131,7 @@ console.log('  ✓ hooks    (restore, compaction-steer, compact-warn, classifier
   };
   setHook('SessionStart', 'session-start-restore.js', 'restore-progress');
   setHook('SessionStart', 'agent-limit.js reset', 'agent-limit-reset');
+  setHook('SessionStart', 'search-on-stuck.js reset', 'search-on-stuck-reset');
   setHook('SessionStart', 'compact-warn.js', 'compact-warn', 'compact');
   setHook('SessionStart', 'classifier-window-check.js', 'classifier-window-check');
   setHook('PreCompact', 'pre-compact-steer.js', 'steer-compaction');
@@ -143,6 +144,8 @@ console.log('  ✓ hooks    (restore, compaction-steer, compact-warn, classifier
   setHook('PreToolUse', 'terminal-guard.js', 'terminal-guard', 'run_shell_command');
   setHook('PostToolUse', 'agent-limit.js post', 'agent-limit-post', 'agent');
   setHook('PostToolUse', 'main-push-consume.js', 'main-push-consume', 'run_shell_command');
+  setHook('PostToolUse', 'search-on-stuck.js ok', 'search-on-stuck-ok', 'run_shell_command|edit|write_file|replace');
+  setHook('PostToolUseFailure', 'search-on-stuck.js fail', 'search-on-stuck', 'run_shell_command|edit|write_file|replace');
   setHook('UserPromptSubmit', 'skill-reminder.js', 'skill-reminder');
   setHook('Stop', 'checkpoint-nudge.js', 'checkpoint-nudge');
   s.memory = Object.assign({ enableManagedAutoMemory: true, enableManagedAutoDream: true }, s.memory || {});

@@ -33,14 +33,14 @@ for (const f of ['.toolkit-reset-backup', '.toolkit-reset-approval', '.main-appr
 // legacy names from older releases
 for (const f of ['mainok.md', '_mainok.sh', '_mainok.js', '_dev-toggle.sh', '_covermode.block']) rm(path.join(QHOME, 'commands', f));
 
-for (const h of ['session-start-restore.js', 'pre-compact-steer.js', 'secret-guard.js', 'git-branch-guard.js', 'release-guard.js', 'main-push-consume.js', 'skill-reminder.js', 'agent-limit.js', 'compact-warn.js', 'classifier-window-check.js', 'toolkit-reset-guard.js', 'checkpoint-nudge.js', 'devmode-guard.js', 'terminal-guard.js', '_hookutil.js']) rm(path.join(QHOME, 'hooks', h));
+for (const h of ['session-start-restore.js', 'pre-compact-steer.js', 'secret-guard.js', 'git-branch-guard.js', 'release-guard.js', 'main-push-consume.js', 'skill-reminder.js', 'agent-limit.js', 'compact-warn.js', 'classifier-window-check.js', 'toolkit-reset-guard.js', 'checkpoint-nudge.js', 'devmode-guard.js', 'terminal-guard.js', 'search-on-stuck.js', '_hookutil.js']) rm(path.join(QHOME, 'hooks', h));
 console.log('  ✓ removed skills, commands, subagents, hook scripts');
 
 // strip our hook entries from settings.json (keep everything else, incl. memory setting)
 (function () {
   const file = path.join(QHOME, 'settings.json');
   let s; try { s = JSON.parse(fs.readFileSync(file, 'utf8')); } catch (_) { return; }
-  const names = new Set(['restore-progress', 'steer-compaction', 'compact-warn', 'classifier-window-check', 'secret-guard', 'git-branch-guard', 'release-guard', 'main-push-consume', 'toolkit-reset-guard', 'devmode-guard', 'terminal-guard', 'skill-reminder', 'agent-limit-reset', 'agent-limit-pre', 'agent-limit-post', 'checkpoint-nudge']);
+  const names = new Set(['restore-progress', 'steer-compaction', 'compact-warn', 'classifier-window-check', 'secret-guard', 'git-branch-guard', 'release-guard', 'main-push-consume', 'toolkit-reset-guard', 'devmode-guard', 'terminal-guard', 'skill-reminder', 'agent-limit-reset', 'agent-limit-pre', 'agent-limit-post', 'checkpoint-nudge', 'search-on-stuck', 'search-on-stuck-ok', 'search-on-stuck-reset']);
   for (const ev of Object.keys(s.hooks || {})) {
     s.hooks[ev] = (s.hooks[ev] || []).filter((g) => !(g.hooks || []).some((h) => names.has(h.name)));
     if (!s.hooks[ev].length) delete s.hooks[ev];

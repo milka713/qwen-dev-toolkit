@@ -4,6 +4,15 @@ description: Root-cause debugger. Use PROACTIVELY when a test fails, a build err
 model: inherit
 approvalMode: auto-edit
 tools:
+  # A debugger that cannot look anything up has only one move left: guess again. Web access
+  # is what turns an unrecognised error into a known one. MCP tools are exposed prefixed
+  # (`mcp__<server>__<tool>`) and `tools:` is an ALLOWLIST, so the prefixed names must be
+  # listed explicitly or the search is unreachable — match by suffix (`*_web_search`).
+  - web_fetch
+  - web_search
+  - mcp__searxng__searxng_web_search
+  - mcp__searxng__web_url_read
+  - mcp__searxng__*
   - read_file
   - read_many_files
   - grep_search

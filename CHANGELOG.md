@@ -4,6 +4,89 @@ All notable changes to qwen-dev-toolkit are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com); versions follow semver.
 (Releases before 1.7.0 predate this file and are not backfilled — see the git history.)
 
+## [1.30.0] - 2026-08-11
+
+### Added
+- **`search-on-stuck` hook (`PostToolUseFailure`) — breaks the thrashing loop.** One failed
+  command is ordinary work; **two in a row** is the pattern `/research` exists to stop. At the
+  second consecutive failure the hook injects the failing command, the distinctive error text
+  pulled out of the tool's `Output:` envelope, and a directive: stop trying variations, look at
+  the real state, then search the web for that error verbatim with a prefixed MCP `*_web_search`
+  tool and read the authoritative hit. A successful attempt resets the streak, a user interrupt
+  is not counted, and a streak older than two hours is not "in a row" any more.
+  Event choice verified empirically on qwen-code 0.21.10 by capturing real hook payloads: a shell
+  command exiting non-zero fires **`PostToolUseFailure`**, not `PostToolUse`, and its `error`
+  field carries the full `Command / Output / Exit Code` text.
+- **Preventive research nudge.** Adopting something — installing a package, migrating, upgrading —
+  is a big, hard-to-reverse step, and install steps plus "the current recommended version" are
+  exactly the facts that expire silently after a knowledge cutoff. `skill-reminder` now fires on
+  planning language ("поставь hermes", "let's install X", "переведи проект на pydantic v2") and
+  asks for a search *before* anything is touched. Deliberately scoped: it stays silent when the
+  same words appear in a failure report ("установи hermes — падает с ошибкой"), which is the
+  dead-end case handled above, and on innocent senses ("добавь поле created_at").
+
+### Fixed
+- **Subagents could not reach the MCP web search at all.** A subagent's `tools:` is an
+  **allowlist** (unlike a skill's `allowedTools`, which is an allow *rule*), and MCP tools are
+  exposed with a server prefix — so `researcher`, which listed only the bare `web_search`, had no
+  reachable search on a local setup and silently degraded to guessing URLs with `web_fetch`. All
+  six subagents now list the prefixed names plus a `mcp__searxng__*` wildcard, and are told to
+  match a search tool **by suffix** (`*_web_search`). `debugger`, `implementer`, `scout`,
+  `tester` and `verifier` gained web access for the first time.
+
+### Changed
+- **`/bro свобода` rewritten from primary sources.** The register is now taken from the original
+  games' own localization — Тени Чернобыля `config/text/rus/stable_dialog_manager.xml` and
+  `stable_dialogs_military.xml` (the Army Warehouses cook, the barrier commander), Зов Припяти
+  `configs/text/rus/st_dialog_manager.xml` and `st_dialogs_jupiter.xml` (rank-and-file Freedom
+  stalkers and Локи) — plus the wiki's «Свобода/Реплики» page of rank-and-file barks. It opens
+  with a real in-game greeting ("Здорово, мэн!", "О, мэн! Здорова!", "Хэллоу, мэн.", "Рад тебя
+  видеть, мэн!"), and carries the attested idiom: "Да расслабься", "Всё ништяк", "Будь спок",
+  "Пр-ральна!", "Элементарно, сталкер!", "Тут Вавилон не давит", the anti-«Долг» stance
+  ("джедаи, блин"), the "убери ствол" lines as its way of pushing back, and the combat chants
+  ("Вперё-ё-ёд, за Че!", "Свободу всем даром!").
+  The previous version opened with "Заходи — не бойся, выходи — не плачь", which is **Сидорович**,
+  the Cordon trader — a different faction entirely. That line is now explicitly called out as
+  not-Freedom so it cannot drift back in.
+- **Both personas now declare their boundary.** `/bro` changes only the wording of prose replies —
+  never the diagnosis, plan, architectural decision, depth of verification, risk assessment or
+  facts; code, diffs, commit messages, docs and command output stay slang-free; every skill and
+  guard keeps working in full. It is never a licence to answer shorter, skip a check, soften a
+  warning, or agree when the user is wrong. Where the vibe conflicts with the correct answer, the
+  vibe loses. Stated inside the pinned block itself, so it is re-attached to context every request.
+
+### Integration measurement — what was and was not demonstrated
+Measured on eros against the real local model (qwen-code 0.21.10), `qwen --yolo -p -o stream-json`,
+counting actual `*_web_search` tool calls in the event stream.
+
+- **Mechanism: verified.** The hook fires and its text genuinely reaches the model — the injected
+  phrase was found verbatim in the real session transcripts under
+  `~/.qwen/projects/-tmp-sb-d1/chats/*.jsonl`. Delivery is not the problem.
+- **Behavioural effect: NOT demonstrated.** A/B over three scenarios × 2 repeats (install /
+  dead-end / noise control) showed no change: install 1/2 runs searched in both arms, the noise
+  control correctly stayed silent in both. A second, harder dead-end (a `make test` that shells
+  out to a binary that does not exist — not fixable by guessing), run 2× with the hook off vs on
+  via `/hooks off search-on-stuck`, also split 1/2 versus 1/2, with large variance: the *control*
+  arm's second run made 6 searches and wandered off building a Docker image, while a treated run
+  made none.
+- **The first dead-end scenario was invalid and is reported as such.** It used
+  `ZoneInfo("Mars/Olympus")`; the model correctly diagnosed and fixed it from its own knowledge,
+  so *not* searching was the right call there. It measured the wrong thing.
+- Honest read: at n=2 per arm this says nothing either way — it is far too noisy to support a
+  claim, and single behavioural runs on this model have flipped before. The hook ships because it
+  is mechanically correct, cheap, off-switchable (`/hooks off search-on-stuck`) and cannot fire on
+  a first failure — **not** because it was shown to work. The subagent allowlist fix below is the
+  change with a solid basis: it is a plain capability bug, verified by reading 0.21.10's own
+  semantics rather than by sampling model behaviour.
+
+### Tests
+494 assertions (was 458). New blocks: `search-on-stuck` (silent on the first failure, speaks on
+the second, escalates on the third, resets on success, ignores interrupts, survives a malformed
+payload), `subagent web reach` (every agent can reach a prefixed MCP search and can read a page;
+no agent may list a bare `web_search` without an MCP counterpart), `/bro Свобода canon` (each
+canonical greeting present, the Сидорович line flagged, register markers, persona boundary), and
+preventive-research cases including the two negative controls.
+
 ## [1.29.0] - 2026-08-11
 
 Compatibility pass against **qwen-code 0.21.10** (671 commits since 0.21.0, reviewed at source

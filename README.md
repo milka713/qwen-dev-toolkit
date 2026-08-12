@@ -261,6 +261,21 @@ always calls you "мэн", `ламар` = a GTA-V *Lamar Davis* street homie ("h
 Casual, slangy and blunt, but still genuinely accurate and helpful — the vibe is a wrapper,
 never an excuse to slack. Off by default; pinned **per-project** until `/bro off`.
 
+The **Свобода** register is not invented: greetings and idiom are taken from the original
+games' own localization (Тени Чернобыля `config/text/rus/stable_dialog_manager.xml` +
+`stable_dialogs_military.xml`, Зов Припяти `configs/text/rus/st_dialog_manager.xml` +
+`st_dialogs_jupiter.xml`) and the wiki's «Свобода/Реплики» page of rank-and-file barks — so it
+opens with a real in-game greeting ("Здорово, мэн!", "О, мэн! Здорова!", "Хэллоу, мэн.") rather
+than a plausible-sounding one. A test pins the canon.
+
+**The persona is cosmetic by contract.** The pinned block states the boundary explicitly: it
+changes only the wording of prose replies — never the diagnosis, the plan, the architectural
+decision, the depth of verification, the risk assessment, or the facts. Code, diffs, commit
+messages, docs and command output stay slang-free, every skill and guard keeps working in full,
+and the persona is never a licence to answer shorter, skip a check, soften a warning or agree
+when the user is wrong. If the vibe would ever conflict with the correct answer, the vibe loses.
+
+
 **`/reality` · `off` · `on` · `status`** — Honesty directive (integrity over agreement).
 **ON by default in every project** — the assistant is held to a standing honesty directive: be
 accurate rather than agreeable, separate fact / inference / opinion, state uncertainty plainly,
@@ -416,6 +431,14 @@ project you reset).
 | `researcher` | Read-only library/API researcher — pins the version the project actually uses, verifies against official docs and the locally installed package, and returns a compact digest (real signatures, one working example, caveats) so nobody codes against a half-remembered API. |
 | `verifier` | Adversarial fact-checker for **one** claim (a suspected bug, vulnerability, or "requirement met") — tries to *refute* it first (finds the validator/caller/test that handles the case), returns CONFIRMED / REFUTED / PLAUSIBLE with file:line evidence. Used to validate `/review` and `/audit` candidates. |
 
+**All six can search the web.** A subagent's `tools:` is an **allowlist**, and MCP tools are
+exposed with a server prefix (`mcp__<server>__<tool>`) — so an agent listing only the bare
+`web_search` had *no reachable search at all* on a local setup and quietly degraded to guessing
+URLs with `web_fetch`. That was the observed behaviour of `researcher`. Every agent now lists the
+prefixed MCP names (plus a `mcp__searxng__*` wildcard) and is told to match a search tool **by
+suffix** (`*_web_search`). One lookup replaces several blind attempts, so this matters most for
+`debugger` and `implementer`.
+
 ### Hooks (`~/.qwen/settings.json`)
 
 | Hook | What it does |
@@ -432,6 +455,7 @@ project you reset).
 | `PreToolUse` → `devmode-guard.js` | Makes development mode's core rule deterministic: while `/dev` is on for a project, **blocks** the architect (main session) from writing source/tests/config with `write_file`/`edit` — that work must go to an `implementer`/`debugger` subagent. Subagents are exempt (they're the sanctioned writers, detected via `QWEN_CODE_AGENT_ID`); the architect's own `PROGRESS.md`/`QWEN.md`/`FACTS.md` writes pass. `/devedit <why>` authorises exactly one direct edit (logged to `PROGRESS.md`, single-use, 15-min expiry). Inert when `/dev` is off. |
 | `PreToolUse` → `terminal-guard.js` | Backs the `/terminal` skill: **blocks** a terminal handoff (`open -a Terminal` / `osascript … do script` / `keystroke` to Terminal) when the approval mode is `auto` or `yolo` (read from the hook's `permission_mode`) — those modes auto-approve, so a destructive handoff (`dd`, format, flash) must not fire unwatched. Passes in `default`/`auto-edit`/`plan`, and passes any non-handoff command. |
 | `UserPromptSubmit` → `skill-reminder.js` | Small local models under-trigger model-invoked skills; this injects a short, targeted reminder (e.g. "looks security-related → `/audit`") only when the prompt clearly matches, so the right skill actually fires. Matches **both English and Russian** prompts. Silent on trivial prompts. |
+| `PostToolUseFailure` → `search-on-stuck.js` | Breaks the thrashing loop. One failed command is ordinary work; **two in a row** is the pattern `/research` exists to stop, so at the second consecutive failure the hook injects the failing command, the distinctive error text, and a directive: stop trying variations, look at real state, then search the web for that error verbatim with a prefixed MCP `*_web_search` tool. A successful attempt resets the streak; a user interrupt is not counted. (Verified on qwen-code 0.21.10: a non-zero shell exit fires `PostToolUseFailure`, not `PostToolUse`.) |
 | `PreToolUse`/`PostToolUse`/`SessionStart` → `agent-limit.js` | Enforces `/maxagents` deterministically: counts running subagents and **denies** `agent` launches beyond the cap (concurrency-safe via a lock), decrements when one finishes, resets each session. No cap set → no-op. |
 | `Stop` → `checkpoint-nudge.js` | Two guards, each holds the turn once (loop-safe): **(1)** keeps `.qwen/PROGRESS.md` honest — if code was edited but the checkpoint still has unchecked tasks and wasn't updated, it makes the model tick the finished boxes first; **(2)** proactive context-fill guard — when qwen-code (0.20.x+) reports the window ~88%+ full, it forces `/checkpoint` + a fresh session **before** the window fills and an auto-compaction can fire-and-fail. Degrades to silent on older qwen-code / no `PROGRESS.md`. |
 

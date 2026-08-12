@@ -4,6 +4,16 @@ description: MUST BE USED for all non-trivial implementation work. Writes and ed
 model: inherit
 approvalMode: auto-edit
 tools:
+  # Web search for every subagent: guessing an API or an error's cause is the expensive
+  # failure mode, and one lookup replaces several blind attempts. `tools:` is an ALLOWLIST,
+  # and MCP tools are exposed with a server prefix (`mcp__<server>__<tool>`), so the bare
+  # `web_search` alone is unreachable on a local setup — list the prefixed names too and
+  # match by SUFFIX (`*_web_search`).
+  - web_fetch
+  - web_search
+  - mcp__searxng__searxng_web_search
+  - mcp__searxng__web_url_read
+  - mcp__searxng__*
   - read_file
   - read_many_files
   - write_file
