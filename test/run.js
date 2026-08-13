@@ -221,6 +221,13 @@ ok('install FAILURE report does not get the preventive nudge', !/RESEARCH FIRST/
 ok('innocent "add a field" stays silent', srRun('добавь поле created_at в модель пользователя') === '');
 ok('short prompt stays silent', srRun('fix typo') === '');
 ok('slash command stays silent', srRun('/implement build me an app with tests') === '');
+// IMPLICIT search triggers — the whole point is that the model gets nudged to search even when
+// the user NEVER said "search"/"погугли"/"look it up". These prompts contain no such word.
+ok('sr: bare recency question nudges a web search (no "search" word)', /_web_search/.test(srRun('what is the newest stable release of the vite bundler')));
+ok('sr: RU recency question nudges a web search (no "поищи")', /_web_search/.test(srRun('какая последняя версия react сейчас')));
+ok('sr: a bare error identifier nudges a web search', /_web_search/.test(srRun("the build blows up with ts5109 and i don't understand it")));
+ok('sr: "recommended way" nudges verify-via-search', /_web_search/.test(srRun('is the recommended way to write react still class components')));
+ok('sr: an unfamiliar-API usage question routes to a researcher', /researcher/.test(srRun('how do you use the stripe node sdk to paginate charges here')));
 // /search off: web-search nudges must collapse to a single "don't try, use local" note, while
 // non-search nudges still fire. Drive it via QWEN_HOME so the .search-off flag is isolated.
 const srHome = tmp();
@@ -243,6 +250,31 @@ console.log('— /search —');
   ok('search: off writes the flag + reports DISABLED', /DISABLED/.test(scRun('off')) && fs.existsSync(flag));
   ok('search: status now reports OFF', /currently OFF/.test(scRun('status')));
   ok('search: on removes the flag + reports ENABLED', /ENABLED/.test(scRun('on')) && !fs.existsSync(flag));
+}
+
+// ---- search mandate in subagents & skills --------------------------------------
+// Subagents get NEITHER the skill-reminder hook NOR the /research skill — only their own agent
+// body steers them. So the "search on a dead end, don't just web_fetch a known URL" behaviour has
+// to be written into the body, and locking that in prevents a silent regression to fetch-only.
+console.log('— search mandate (subagents/skills) —');
+{
+  const body = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
+  const dbg = body('agents/debugger.md');
+  ok('debugger has a web-search method step for a non-obvious cause', /searxng_web_search/.test(dbg) && /search the web the moment the cause/i.test(dbg));
+  ok('debugger forbids a blocked report on an un-searched error', /search before you give up/i.test(dbg));
+  const imp = body('agents/implementer.md');
+  ok('implementer mandates a search before guessing / reporting blocked', /search before you guess/i.test(imp) && /searxng_web_search/.test(imp));
+  const res = body('agents/researcher.md');
+  ok('researcher covers the prior-art / "how is this solved" mode', /how is this kind of problem/i.test(res) && /searxng_web_search/.test(res));
+  ok('plan skill has a "search for prior art" step', /prior art before designing/i.test(body('skills/plan/SKILL.md')));
+  // every subagent that can hit an unknown lists the prefixed MCP search (not just web_fetch), and
+  // all the new prose distinguishes a query search from fetching a URL you already have.
+  for (const a of ['debugger', 'implementer', 'researcher', 'scout', 'tester', 'verifier']) {
+    ok(a + ' allowlists the prefixed MCP web search', /mcp__searxng__searxng_web_search/.test(body('agents/' + a + '.md')));
+  }
+  for (const a of ['debugger', 'implementer', 'researcher']) {
+    ok(a + ' spells out search-query vs web_fetch(known URL)', /not `?web_fetch`?|query search/i.test(body('agents/' + a + '.md')));
+  }
 }
 // Russian prompts must trigger the same rules (JS \b is ASCII-only and never fires next
 // to Cyrillic — this suite locks in that the Russian alternations avoid \b correctly).
