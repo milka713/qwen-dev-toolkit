@@ -4,6 +4,33 @@ All notable changes to qwen-dev-toolkit are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com); versions follow semver.
 (Releases before 1.7.0 predate this file and are not backfilled — see the git history.)
 
+## [1.31.0] - 2026-08-13
+
+### Added
+- **`/search on · off · status` — declare whether web search is reachable.** The SearXNG MCP (or
+  whatever `*_web_search` tool the setup relies on) isn't always up; when it's down, the toolkit's
+  many "search the web" nudges just make the model flail on a dead tool. `/search off` sets a flag
+  (`~/.qwen/.search-off`) that the `skill-reminder` hook reads: every web-search nudge collapses
+  into a single "search is OFF — use local files/repo/memory and mark unverified" note, while
+  non-search nudges (`/audit`, `/plan`, …) still fire. `/search on` restores the default. Takes
+  effect immediately (no restart); locked to the user (`disable-model-invocation`).
+
+### Changed
+- **Subagents now search on a dead end instead of only `web_fetch`-ing a known URL.** v1.30.0 gave
+  every subagent the search tools; this adds the *method* that uses them:
+  - **`debugger`** — a new method step: the moment the cause isn't obvious (unfamiliar error,
+    third-party internals), **search the exact error** with `mcp__searxng__searxng_web_search`
+    before guessing again, and a rule forbidding a `blocked` report on an un-searched error.
+  - **`implementer`** — search an unfamiliar error / uncertain API / no-obvious-fix build failure
+    before guessing or reporting blocked.
+  - **`/plan`** — a "search for prior art before designing from memory" step: delegate a
+    `researcher` to find existing libraries, the recommended approach, and the pitfalls, and fold
+    them into Decisions/Gotchas.
+  - **`researcher`** — broadened from API-only to also answer "how is this kind of problem solved"
+    (prior art, recommended approach, pitfalls).
+  - All the above spell out **search (query) vs `web_fetch` (open a known URL)**, and degrade
+    gracefully when no `*_web_search` tool is present (say so, use local evidence, don't loop).
+
 ## [1.30.0] - 2026-08-11
 
 ### Added

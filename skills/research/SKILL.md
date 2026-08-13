@@ -48,7 +48,9 @@ and your own memory — no failure required, no permission needed:
 
 If a search tool exists, **using it is the default, not a fallback.** Answering such a question
 from memory and adding "you may want to verify" is the failure this skill prevents. If you truly
-cannot search, say so plainly and mark the answer as unverified memory.
+cannot search, say so plainly and mark the answer as unverified memory. (If the user has turned
+search off with `/search off` — because the backend is unreachable — don't attempt it; work from
+local sources + memory and flag what's unverified, rather than retrying a dead tool.)
 
 Research **before the next attempt** whenever any of these is true:
 

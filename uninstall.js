@@ -18,8 +18,8 @@ const SKILLS = ['implement', 'plan', 'checkpoint', 'audit', 'brainstorm', 'gitfl
 for (const s of SKILLS) rm(path.join(QHOME, 'skills', s));
 for (const a of ['implementer', 'scout', 'debugger', 'tester', 'researcher', 'verifier']) rm(path.join(QHOME, 'agents', a + '.md'));
 
-const CMD_MD = ['dev', 'cover', 'pin', 'checkpoint', 'status', 'maxagents', 'bro', 'main-push', 'main-push-hint', 'versioning', 'reality', 'research', 'autocompact', 'toolkit-reset', 'applied', 'hooks', 'doctor', 'sudo-on', 'sudo-off', 'devedit', 'classifier-window', 'settings-sync'];
-const CMD_BACKENDS = ['_qdt', '_mode-toggle', '_cover', '_pin', '_status', '_maxagents', '_bro', '_main-push', '_main-push-hint', '_versioning', '_reality', '_research', '_autocompact', '_toolkit-reset', '_applied', '_hooks', '_hookcat', '_stateview', '_doctor', '_sudoctl', '_devedit', '_classifier-window', '_settings-sync'];
+const CMD_MD = ['dev', 'cover', 'pin', 'checkpoint', 'status', 'maxagents', 'bro', 'main-push', 'main-push-hint', 'versioning', 'reality', 'research', 'search', 'autocompact', 'toolkit-reset', 'applied', 'hooks', 'doctor', 'sudo-on', 'sudo-off', 'devedit', 'classifier-window', 'settings-sync'];
+const CMD_BACKENDS = ['_qdt', '_mode-toggle', '_cover', '_pin', '_status', '_maxagents', '_bro', '_main-push', '_main-push-hint', '_versioning', '_search', '_reality', '_research', '_autocompact', '_toolkit-reset', '_applied', '_hooks', '_hookcat', '_stateview', '_doctor', '_sudoctl', '_devedit', '_classifier-window', '_settings-sync'];
 for (const c of CMD_MD) rm(path.join(QHOME, 'commands', c + '.md'));
 for (const b of CMD_BACKENDS) { rm(path.join(QHOME, 'commands', b + '.sh')); rm(path.join(QHOME, 'commands', b + '.js')); }
 rm(path.join(QHOME, 'commands', '_devmode.block'));
@@ -29,7 +29,7 @@ rm(path.join(QHOME, '.classifier-window'));  // /classifier-window preference (t
 rm(path.join(QHOME, '.settings-repo'));      // /settings-sync connected-repo state
 rm(path.join(QHOME, '.settings-sync-repo')); // /settings-sync working clone (settings.json itself is left alone)
 // approval tokens, the /toolkit-reset undo snapshot, and the /sudo-on state (toolkit-only files)
-for (const f of ['.toolkit-reset-backup', '.toolkit-reset-approval', '.main-approval', '.sudo-pending', '.sudo-pass', '.sudo-askpass']) rm(path.join(QHOME, f));
+for (const f of ['.toolkit-reset-backup', '.toolkit-reset-approval', '.main-approval', '.search-off', '.sudo-pending', '.sudo-pass', '.sudo-askpass']) rm(path.join(QHOME, f));
 // legacy names from older releases
 for (const f of ['mainok.md', '_mainok.sh', '_mainok.js', '_dev-toggle.sh', '_covermode.block']) rm(path.join(QHOME, 'commands', f));
 

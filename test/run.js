@@ -221,6 +221,29 @@ ok('install FAILURE report does not get the preventive nudge', !/RESEARCH FIRST/
 ok('innocent "add a field" stays silent', srRun('добавь поле created_at в модель пользователя') === '');
 ok('short prompt stays silent', srRun('fix typo') === '');
 ok('slash command stays silent', srRun('/implement build me an app with tests') === '');
+// /search off: web-search nudges must collapse to a single "don't try, use local" note, while
+// non-search nudges still fire. Drive it via QWEN_HOME so the .search-off flag is isolated.
+const srHome = tmp();
+const srRunOff = (prompt) => runNode(sr, { input: JSON.stringify({ prompt }), env: { QWEN_HOME: srHome } }).stdout;
+const errPrompt = 'the build dies with ERR_PNPM_OUTDATED_LOCKFILE and I have no idea why';
+ok('search ON: an error id nudges a web search', /_web_search/.test(srRunOff(errPrompt))); // no flag yet
+fs.writeFileSync(path.join(srHome, '.search-off'), '');
+const offOut = srRunOff(errPrompt);
+ok('search OFF: the web-search nudge is replaced by a search-off note', /search is OFF for this session/.test(offOut) && !/exact error identifier/.test(offOut));
+ok('search OFF: a non-search nudge (/audit) still fires', /\/audit/.test(srRunOff('please check this code for sql injection vulnerabilities')));
+
+// ---- /search backend ----------------------------------------------------------
+console.log('— /search —');
+{
+  const sc = path.join(ROOT, 'commands', '_search.js');
+  const scHome = tmp();
+  const flag = path.join(scHome, '.search-off');
+  const scRun = (arg) => cp.spawnSync('node', [sc, ...(arg == null ? [] : [String(arg)])], { encoding: 'utf8', env: { ...process.env, QWEN_HOME: scHome } }).stdout;
+  ok('search: default status is ON', /currently ON/.test(scRun('status')) && !fs.existsSync(flag));
+  ok('search: off writes the flag + reports DISABLED', /DISABLED/.test(scRun('off')) && fs.existsSync(flag));
+  ok('search: status now reports OFF', /currently OFF/.test(scRun('status')));
+  ok('search: on removes the flag + reports ENABLED', /ENABLED/.test(scRun('on')) && !fs.existsSync(flag));
+}
 // Russian prompts must trigger the same rules (JS \b is ASCII-only and never fires next
 // to Cyrillic — this suite locks in that the Russian alternations avoid \b correctly).
 ok('russian tests prompt nudges /cover', srRun('напиши юнит тесты для этого модуля с покрытием').includes('/cover'));

@@ -11,12 +11,23 @@
 'use strict';
 try { if (require('./_hookutil.js').disabled('skill-reminder')) process.exit(0); } catch (_) {}
 const fs = require('fs');
+const os = require('os');
+const path = require('path');
 
 let prompt = '';
 try { prompt = (JSON.parse(fs.readFileSync(0, 'utf8') || '{}').prompt) || ''; } catch (_) { process.exit(0); }
 const p = prompt.toLowerCase().trim();
 if (!p || p.startsWith('/')) process.exit(0);            // already a command/skill, or empty
 if (p.length < 12) process.exit(0);                      // trivial one-liners — don't nag
+
+// /search off: web search is unavailable this session. Instead of nudging the model toward a
+// dead `*_web_search` tool (which just makes it flail), we collapse every web-search hint into
+// a single "don't try, use local sources" note. Non-search hints still fire normally.
+const QHOME = process.env.QWEN_HOME || path.join(os.homedir(), '.qwen');
+let searchOff = false;
+try { fs.statSync(path.join(QHOME, '.search-off')); searchOff = true; } catch (_) {}
+const isWebHint = (h) => /_web_search|search the web|RESEARCH FIRST/.test(h);
+const SEARCH_OFF_NOTE = 'web search is OFF for this session (`/search off`) — do NOT attempt a web / `*_web_search` call; answer from local files, the repo, `--version`/`--help`, and memory, and mark anything you could not verify as unverified rather than looping on a missing tool';
 
 // Skills the model can invoke itself (via the skill tool) → "use it".
 // Commands the model CANNOT invoke (user-only slash commands) → "suggest the user run it".
@@ -81,7 +92,12 @@ const rules = [
 ];
 
 const hits = [];
-for (const [re, hint] of rules) { if (re.test(p) && !hits.includes(hint)) hits.push(hint); if (hits.length === 2) break; }
+for (const [re, hint] of rules) {
+  if (!re.test(p)) continue;
+  const h = (searchOff && isWebHint(hint)) ? SEARCH_OFF_NOTE : hint;  // suppress dead-search nudges
+  if (!hits.includes(h)) hits.push(h);
+  if (hits.length === 2) break;
+}
 if (!hits.length) process.exit(0);
 
 const msg =

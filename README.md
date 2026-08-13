@@ -297,6 +297,16 @@ first. The detailed how-to (when to research, source order, how to search the we
 it in one project, `/research on` restores the default.
 · _Example:_ `/research off`
 
+**`/search` · `on` · `off` · `status`** — Declare whether web search is actually reachable this
+session. The search backend (the SearXNG MCP, or whatever `*_web_search` tool you use) isn't
+always up — and when it's down, the toolkit's many "search the web" nudges just push the model at
+a dead tool. `/search off` sets a flag the `skill-reminder` hook reads: every web-search nudge
+collapses into a single *"search is OFF — work from local files/repo/memory and mark unverified"*
+note, while non-search nudges (`/audit`, `/plan`, …) still fire normally. `/search on` restores
+the default. Takes effect immediately (no restart). Distinct from `/research` (which governs
+*whether to* investigate); `/search` governs *whether the web tool is available at all*.
+· _Example:_ `/search off` when the search server is down → `/search on` when it's back
+
 ### Skills (model- and user-invocable)
 
 Unlike commands, the model can also invoke these **on its own** when they're relevant (or you
