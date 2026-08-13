@@ -228,6 +228,10 @@ ok('sr: RU recency question nudges a web search (no "поищи")', /_web_search
 ok('sr: a bare error identifier nudges a web search', /_web_search/.test(srRun("the build blows up with ts5109 and i don't understand it")));
 ok('sr: "recommended way" nudges verify-via-search', /_web_search/.test(srRun('is the recommended way to write react still class components')));
 ok('sr: an unfamiliar-API usage question routes to a researcher', /researcher/.test(srRun('how do you use the stripe node sdk to paginate charges here')));
+// CODELESS but distinctive errors (no ERR_/TS#### code) must still nudge a SEARCH — this is the
+// case the model otherwise answers by web_fetch-ing a guessed URL instead of searching.
+ok('sr: a codeless distinctive error nudges a web search', /_web_search/.test(srRun("the ci job fails: executable doesn't exist at /ms-playwright/chromium_headless_shell-1187/headless_shell")));
+ok('sr: RU codeless error nudges a web search', /_web_search/.test(srRun('сборка внезапно ломается: не найден модуль @app/config, вчера всё работало')));
 // /search off: web-search nudges must collapse to a single "don't try, use local" note, while
 // non-search nudges still fire. Drive it via QWEN_HOME so the .search-off flag is isolated.
 const srHome = tmp();

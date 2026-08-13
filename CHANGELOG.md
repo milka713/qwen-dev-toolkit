@@ -30,6 +30,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com); versions foll
     (prior art, recommended approach, pitfalls).
   - All the above spell out **search (query) vs `web_fetch` (open a known URL)**, and degrade
     gracefully when no `*_web_search` tool is present (say so, use local evidence, don't loop).
+  - **Search FIRST, then fetch** — debugger/implementer now explicitly forbid `web_fetch`-ing a
+    docs URL guessed from memory as a substitute for the query search (the fetch-only trap seen
+    in testing), and handle a **codeless** error (a plain message with no `ERR_`/`TS####`) by
+    searching its verbatim text. `skill-reminder` gained triggers for distinctive codeless
+    failures (`executable doesn't exist`, `cannot find module`, `permission denied`, … EN+RU).
+  - Verified on the live 35B (yolo, real subagent runs): `researcher` and a `debugger` subagent
+    both issue real `mcp__searxng__searxng_web_search` queries in their own context.
 
 ## [1.30.0] - 2026-08-11
 
